@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.2.0
+version: 1.2.1
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -126,25 +126,31 @@ All design lives in the builder; the content never sets colours, layout or motio
 
 ### The fairy (look.json)
 
-`<home>/look.json` picks who lives in the brief. Its shape (every key; the helper refuses anything else):
+`<home>/look.json` picks who lives in the brief. Its shape, as the helper writes it:
 
 ```json
-{"mascot": "ticket|clawd|fanfan", "animal": "cat|dog|lop|bunny", "line": "thin|thick", "eyes": "dots|shiny",
+{"mascot": "ticket|clawd", "animal": "cat|dog|lop|bunny", "line": "thin|thick", "eyes": "dots|shiny",
  "places": ["tabs", "quests", "toolbar", "done", "empty", "favicon"], "moves": ["wake", "sleep", "bounce", "blush", "trick"]}
 ```
 
-- **mascot:** `ticket` (the brief's own), `clawd` (fan-art stickers by alwinecor, CC BY-NC-SA 4.0, loaded as
+- **mascot:** `ticket` (the brief's own) or `clawd` (fan-art stickers by alwinecor, CC BY-NC-SA 4.0, loaded as
   pictures from jsDelivr pinned to one commit, never copied into the page or this folder; offline, the ticket stands
-  in; the page credits the artist and says Clawd belongs to Anthropic), or `fanfan` (the chosen animal).
-- **animal / line / eyes:** which fanfan icons (MIT, by 唐幡, bundled in `digest/fanfan/`). Only the chosen style is
+  in; the page credits the artist and says Clawd belongs to Anthropic). A `fanfan` mascot (from an older file or page; the helper still accepts it) reads as the ticket.
+- **animal / line / eyes:** the little animal icons (fanfan, MIT, by 唐幡, bundled in `digest/fanfan/`): with any
+  look they replace the line icons on tabs and signposts, quest rows, the Done box, empty lists and the browser-tab
+  icon (asleep after 6 PM). The top bar's sound and Look buttons keep their own drawings. Only the chosen style is
   embedded in a page, each drawing once.
-- **places:** where little animals replace the line icons: tabs and signposts, quest rows, top-bar buttons, the Done
-  box, empty lists, and the browser-tab icon (asleep after 6 PM). **moves:** one-shot motions; none under reduced
-  motion. The icons are decoration (`aria-hidden`), outside everything the copy button copies.
+- **places** is no longer a choice: every place is always on, and an older file's shorter list (or none) reads as
+  all six. The helper accepts a request without it and always writes all six.
+- **moves:** one-shot motions; none under reduced motion. The icons are decoration (`aria-hidden`), outside
+  everything the copy button copies.
 - **The picker, "Build your own fairy",** opens by itself once (per browser) on today's brief when there is no
   `look.json`, and from Look → "Build your fairy…" any time. It never stacks on the good-morning parachute.
   "Save my fairy" posts to the helper, so it only saves when the brief was opened through it (the Dock app or
-  `launch.sh`); opened as a plain file, the sheet says so and Save is off.
+  `launch.sh`). On a brief opened as a plain file the button reads "Open the live brief to save" and opens
+  `http://127.0.0.1:8765/brief/<this file>#fairy=<mascot>.<animal>.<line>.<eyes>.<move>-<move>`; a page the helper
+  serves reads that address (names only, each checked against the allowed values, anything else ignored), opens
+  the picker with those choices filled in and clears the address. Nothing is saved until "Save my fairy" there.
 - A bad value in `look.json` falls back to its default one by one (with a warning); a file that is not a JSON
   object is ignored.
 
@@ -158,8 +164,9 @@ Opened through the helper, an earlier brief gets a "Back to today" pill, and no 
 
 - `GET /fanfan/<style>/<animal>-<noun>.svg` serves the bundled icons (from `fanfan/` beside `serve.py`) for the
   picker's preview. Only listed styles, animals and nouns match; anything else is a 404.
-- `POST /look` takes the whole look, refuses any missing, unknown or repeated value, writes `<home>/look.json`
-  (creating `<home>` if needed; a temp file swapped in), then rebuilds TODAY's brief from
+- `POST /look` takes the whole look (`places` may be left out), refuses any missing, unknown or repeated value,
+  writes `<home>/look.json` with all six places (creating `<home>` if needed; a temp file swapped in), then
+  rebuilds TODAY's brief from
   `<home>/runs/content-<today>.json` with the builder beside `serve.py`, into the same briefs folder (the Desktop, or
   `BRIEF_DESKTOP_DIR`), with the same `--log` / `--admin-log` as the morning run. No content for today yet: the look
   is saved and arrives with the next brief. The reply says whether it was saved and whether it was rebuilt.

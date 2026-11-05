@@ -7,7 +7,7 @@ What is here, and where each part came from in that repo:
 
 - `thin/`, `thick/`, `thin-highlight/`, `thick-highlight/`: the motion icons, from `motion/svg/<style>/`.
   Four animals (cat, dog, lop, bunny) and only the nouns the brief uses: sun bell ticket robot trophy clock news
-  mail search file sparkles palette moon music wand sleep star face-whole alarm heart.
+  mail search file sparkles moon wand sleep star face-whole alarm heart.
 - `favicon/<style>/` and `favicon/<line>-sleep/`: the still `face-whole` drawings, from `svg/<style>/` and
   `svg/thin-sleep/`, `svg/thick-sleep/` (the repo has no sleeping "highlight" set: closed eyes have no shine).
   Used only for the browser-tab icon.

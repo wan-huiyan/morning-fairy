@@ -95,18 +95,16 @@ def _mood_id(m, prefix=""):
     return prefix + ("mascot" if m == "calm" else "mascot-" + m)
 
 
-def mascot_defs(kind="ticket", fan=None):
+def mascot_defs(kind="ticket"):
     """Hidden once per page: the body gradient and one <symbol> per mood. Everything else <use>s these.
-    kind picks who fills the symbols: the ticket; Clawd (a picture loaded from jsDelivr, the ticket kept beside it as tk-*
-    so the page can fall back to it when the picture cannot load); or the look's fanfan animal (fan: the page's Fan)."""
+    kind picks who fills the symbols: the ticket, or Clawd (a picture loaded from jsDelivr, the ticket kept beside it as tk-*
+    so the page can fall back to it when the picture cannot load)."""
     if kind == "clawd":
         x, y, w = CLAWD_BOX
         pic = (f'<image href="{CLAWD_BASE}{CLAWD_IDLE}" x="{x}" y="{y}" width="{w}" height="{w}" '
                'image-rendering="pixelated" preserveAspectRatio="xMidYMid meet"/>')
         sym = "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{pic}</symbol>' for m in MOODS)
         sym += "".join(f'<symbol id="{_mood_id(m, "tk-")}" viewBox="0 0 64 64" overflow="visible">{mascot_parts(m)}</symbol>' for m in MOODS)
-    elif kind == "fanfan" and fan:
-        sym = fan.mascot_symbols()
     else:
         sym = "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{mascot_parts(m)}</symbol>' for m in MOODS)
     return ('<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>'
@@ -4665,12 +4663,13 @@ def _panel(key, nav, title_html, count, body, icon):
 FF_DIR = HERE / "fanfan"
 LOOK_CHOICES = {"mascot": ("ticket", "clawd", "fanfan"), "animal": ("cat", "dog", "lop", "bunny"),
                 "line": ("thin", "thick"), "eyes": ("dots", "shiny")}
+# Every place always draws the animal when a look is set (nobody picks places any more): a look.json that lists fewer, or none, is read as all six.
 FF_PLACES = ("tabs", "quests", "toolbar", "done", "empty", "favicon")
 FF_MOVES = ("wake", "sleep", "bounce", "blush", "trick")
 LOOK_DEFAULT = {"mascot": "ticket", "animal": "cat", "line": "thin", "eyes": "dots",
-                "places": ["tabs", "quests", "toolbar", "done", "empty"], "moves": list(FF_MOVES)}
+                "places": list(FF_PLACES), "moves": list(FF_MOVES)}
 FF_NOUNS = ("sun", "bell", "ticket", "robot", "trophy", "clock", "news", "mail", "search", "file", "sparkles",
-            "palette", "moon", "music", "wand", "sleep", "star", "face-whole", "alarm", "heart")
+            "moon", "wand", "sleep", "star", "face-whole", "alarm", "heart")
 # which drawing each section gets (tab, signpost, panel heading); a section not listed keeps its own line drawing
 FF_SEC = {"today": "sun", "overview": "sun", "flags": "bell", "todo": "ticket", "quests": "robot", "nochange": "trophy",
           "calendar": "clock", "sources": "news", "internal": "file"}
@@ -4678,7 +4677,7 @@ FF_QUEST = {"mail": "mail", "find": "search", "page": "file", "spark": "sparkles
 FF_DARK_INK = "#e2e8f0"  # the tab icon's lines on a dark browser tab strip
 FAN = None  # the Fan for the page being built, or None (set by build() only)
 
-# ---- who the mascot is (look.json "mascot"): the ticket, Clawd, or the look's fanfan animal ----
+# ---- who the mascot is (look.json "mascot"): the ticket or Clawd (the little animal is the icon style, never the mascot) ----
 # Clawd is fan art by alwinecor (CC BY-NC-SA 4.0); Clawd belongs to Anthropic. It is never copied into the page or this
 # folder: the page loads each sticker as a picture from jsDelivr, pinned to one commit, and falls back to the ticket when
 # the picture cannot load. The stickers are 24-unit pixel art on a 288 px canvas, Clawd standing in its lower middle.
@@ -4692,8 +4691,6 @@ OFFER_CLAWD = True
 CLAWD_STICKERS = {"sweat": ["deadline.apng", 4280], "starry": ["passed_long.apng", 4760], "hello": ["hello.apng", 4650],
                   "done": ["lgtm.apng", 4760], "sleepy": ["sleep.apng", 0]}
 CLAWD_BOX = (-4, -7, 72)   # where a sticker sits in the mascot's 64-unit box (x, y, size): feet on the ticket's feet line
-FF_BOX = (0, 3, 64)        # where a fanfan drawing (24 units) sits in the same box
-FF_MOOD_NOUN = {"calm": "face-whole", "sweat": "alarm", "starry": "trophy"}  # sleepy: the still face with its eyes shut
 CLAWD_CREDIT = ('<p class="foot credit" id="clawd-credit">Clawd stickers: fan art by '
                 '<a href="https://github.com/alwinecor/clawd-stickers" target="_blank" rel="noopener noreferrer">alwinecor</a>'
                 ' (CC BY-NC-SA 4.0). Clawd belongs to Anthropic; unofficial.</p>')
@@ -4702,11 +4699,10 @@ FF_CREDIT = ('<p class="foot credit">Little animals: <a href="https://github.com
 
 
 def mascot_kind(look, fan):
-    """Who the mascot is on this page: the look's choice, or the ticket when there is no look (or no fanfan to draw one)."""
+    """Who the mascot is on this page: Clawd when the look asks for it, else the ticket. An older look.json that says
+    "fanfan" (once a mascot choice) still reads, as the ticket."""
     kind = (look or {}).get("mascot", "ticket")
-    if (kind == "fanfan" and not fan) or (kind == "clawd" and not OFFER_CLAWD):
-        return "ticket"
-    return kind if kind in LOOK_CHOICES["mascot"] else "ticket"
+    return "clawd" if kind == "clawd" and OFFER_CLAWD else "ticket"
 
 
 def read_look(path):
@@ -4731,14 +4727,14 @@ def read_look(path):
         look[k] = v if isinstance(v, str) and v in allowed else LOOK_DEFAULT[k]
         if k in raw and look[k] != v:
             print(f"warning: look {k}={v!r} is not one of {', '.join(allowed)}; using {look[k]}", file=sys.stderr)
-    for k, allowed in (("places", FF_PLACES), ("moves", FF_MOVES)):
-        v = raw.get(k)
-        if isinstance(v, list):
-            look[k] = [x for x in allowed if x in v]  # the fixed order; anything unknown is dropped
-        else:
-            look[k] = list(LOOK_DEFAULT[k])
-            if k in raw:
-                print(f"warning: look {k} is not a list; using the default", file=sys.stderr)
+    look["places"] = list(FF_PLACES)  # whatever an older look.json lists, all six places are on
+    v = raw.get("moves")
+    if isinstance(v, list):
+        look["moves"] = [x for x in FF_MOVES if x in v]  # the fixed order; anything unknown is dropped
+    else:
+        look["moves"] = list(LOOK_DEFAULT["moves"])
+        if "moves" in raw:
+            print("warning: look moves is not a list; using the default", file=sys.stderr)
     return look
 
 
@@ -4777,7 +4773,7 @@ class Fan:
 
     def __init__(self, look):
         self.look, self.style, self.animal = look, ff_style(look), look["animal"]
-        self.places = set(look["places"])
+        self.places = set(FF_PLACES)  # all six, whatever the look lists
         self.used = []
         self.svgs = {}
         for n in FF_NOUNS:  # read them all now, so a missing file stops fanfan here rather than half way down the page
@@ -4790,10 +4786,6 @@ class Fan:
     def on(self, place):
         return place in self.places
 
-    def inline(self):
-        """True when any drawing goes into the page itself (the tab icon alone needs no css or script)."""
-        return bool(self.places - {"favicon"})
-
     def ph(self, noun, cls=""):
         if noun not in self.used:
             self.used.append(noun)
@@ -4802,28 +4794,6 @@ class Fan:
 
     def templates(self):
         return "".join(f'<template id="ff-{n}">{self.svgs[n]}</template>' for n in self.used)
-
-    def use(self, noun):
-        """Ask for a drawing's template without placing it (the mascot script makes its own copies)."""
-        if noun not in self.used:
-            self.used.append(noun)
-
-    def mascot_symbols(self):
-        """The animal as the mascot: one <symbol> per mood, with the ticket's ids and 64-unit box, so every place that draws
-        the mascot (and every script that swaps its mood) keeps working. Lines take the page's ink colour. Calm is the face,
-        sweat the alarm clock, starry the trophy, sleepy the still face with its eyes shut. These copies hold still; the one
-        in the scene and the one on the parachute are real copies the mascot script moves (see JS_MASCOT)."""
-        x, y, w = FF_BOX
-        place = f'<svg x="{x}" y="{y}" width="{w}" height="{w}" style="color:var(--w-ink)" '
-        sleep = _ff_read(FF_DIR / "favicon" / f'{self.look["line"]}-sleep' / f"{self.animal}-face-whole.svg")
-        sleep = re.sub(r'\swidth="24" height="24"', "", sleep, count=1).replace("<svg ", '<svg aria-hidden="true" focusable="false" ', 1)
-        out = []
-        for m in MOODS:
-            t = sleep if m == "sleepy" else self.svgs[FF_MOOD_NOUN[m]]
-            out.append(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{t.replace("<svg ", place, 1)}</symbol>')
-        for n in ("face-whole", "alarm", "trophy"):
-            self.use(n)
-        return "".join(out)
 
     def favicon(self, asleep=False):
         """The browser-tab icon: the still face-whole drawing (asleep: the -sleep set, which has no shiny version).
@@ -4869,7 +4839,6 @@ CSS_MASCOT = r"""
 .who-pic{pointer-events:none}
 .who-pic image,.pc .mm image{image-rendering:pixelated}
 .pc .mm{overflow:visible}
-svg.ff-who,.pc .mm svg.bb{color:var(--w-ink)}
 html .panel p.foot.credit{padding:0 0 4px;margin:0;font:500 12px/1.45 var(--ui);color:var(--w-muted)}
 html .panel p.foot.credit+p.foot.credit{padding-top:2px}
 .foot.credit a{color:inherit}
@@ -4907,7 +4876,7 @@ JS_FAN_MOVES = r"""(function(){
     if (!s || !can('trick') || TRICKS.indexOf(s.getAttribute('data-ff')) < 0 || s.classList.contains('is-asleep')) return;
     if (el._ffT && now - el._ffT < 1600) return; el._ffT = now; F.play(s, 'trick');
   }
-  document.addEventListener('mouseover', function(e){ var el = e.target.closest && e.target.closest('.tab, .spot, #look, #sound, .look-switch'); if (el) trick(el); });
+  document.addEventListener('mouseover', function(e){ var el = e.target.closest && e.target.closest('.tab, .spot, .look-switch'); if (el) trick(el); });
   // tabs: the open section's icon is awake; with "sleep" the others doze, with "wake" the one you open wakes up
   var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
   function syncTabs(first){
@@ -4927,10 +4896,6 @@ JS_FAN_MOVES = r"""(function(){
   var spots = document.getElementById('hotspots');
   if (spots) new MutationObserver(function(){ Array.prototype.forEach.call(spots.querySelectorAll('svg.bb.is-asleep'), function(s){ F.asleep(s, false); }); })
     .observe(spots, {childList: true});
-  // sounds: the music cat wakes when sounds go on and dozes off when they go off (the button repaints its own icon)
-  var snd = document.getElementById('sound');
-  if (snd) new MutationObserver(function(){ var s = icon(snd); if (!s) return; snd._ffT = Date.now(); if (snd.getAttribute('aria-pressed') === 'true') { if (can('wake')) F.play(s, 'wake'); } else if (can('sleep')) F.play(s, 'sleep'); })
-    .observe(snd, {attributes: true, attributeFilter: ['aria-pressed']});
   // ticks: an accepted quest's icon bounces; a Done star bounces once the pill has popped, then blushes
   document.addEventListener('change', function(e){
     var b = e.target; if (!b || !b.checked || !b.closest) return;
@@ -4956,10 +4921,7 @@ JS_MASCOT = r"""(function(){
   var M = {cfg}, NS = 'http://www.w3.org/2000/svg', kind = M.kind;
   var scene = document.getElementById('scene'), mq = matchMedia('(prefers-reduced-motion: reduce)');
   var who = null, actor = null, mood = null, shot = null, shotT = 0, n = 0, nap = null;  // nap: the night's sleep loop, kept so a redraw does not fetch it again
-  var DO = ['do-wake', 'do-sleep', 'do-bounce', 'do-blush', 'do-trick'];
   function rm(){ return mq.matches; }
-  function can(m){ return M.moves.indexOf(m) > -1; }
-  function F(){ return window.FanfanMotion; }
   // a drawing placed the way the symbols place theirs: a 64-unit box, drawn 52 wide where the scene stands its mascot
   function frame(el){
     var g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'who-pic'); g.setAttribute('transform', 'translate(-26 -50) scale(.8125)');
@@ -4992,34 +4954,6 @@ JS_MASCOT = r"""(function(){
     stick(me.href, function(){ begin(me); });
   }
 
-  /* ---------- the fanfan animal: a real copy in the scene, because the moves are classes a <use> copy cannot take ---------- */
-  function icon(noun){ var t = document.getElementById('ff-' + noun); return t ? t.content.firstElementChild.cloneNode(true) : null; }
-  function settle(s, ms){ setTimeout(function(){ if (s.classList.contains('is-asleep')) return; DO.forEach(function(c){ s.classList.remove(c); }); }, ms); }
-  function fanTo(noun){
-    if (!who || !who.parentNode) return null;
-    var cur = actor && actor.firstChild;
-    if (cur && cur.getAttribute('data-ff') === noun) return cur;
-    var s = icon(noun); if (!s) return null;
-    put(s, M.fbox); s.setAttribute('data-ff', noun); s.classList.add('ff-who');
-    if (cur) actor.replaceChild(s, cur);
-    else { actor = frame(s); who.parentNode.insertBefore(actor, who.nextSibling); who.style.visibility = 'hidden'; }
-    return s;
-  }
-  function nounOf(m){ return m === 'sweat' ? 'alarm' : m === 'starry' ? 'trophy' : 'face-whole'; }
-  function fanRest(s, m){ var f = F(); if (!s || !f) return; if (m === 'sleepy') { f.idle(s, false); f.asleep(s, true); } else { f.asleep(s, false); f.idle(s, !rm()); } }
-  function fanMood(prev, m){
-    var f = F(), s = fanTo(nounOf(m)); if (!s || !f) return;
-    if (m === 'sleepy') { f.idle(s, false); if (prev && prev !== 'sleepy' && can('sleep')) f.play(s, 'sleep'); else f.asleep(s, true); return; }
-    if (s.classList.contains('is-asleep')) { if (prev === 'sleepy' && can('wake')) { f.play(s, 'wake'); settle(s, 1500); } else f.asleep(s, false); }
-    f.idle(s, !rm());
-    if (m === 'sweat' && can('trick')) { f.play(s, 'trick'); settle(s, 2400); }
-    if (m === 'starry') {
-      if (can('bounce')) f.play(s, 'bounce');
-      if (can('blush')) setTimeout(function(){ if (actor && actor.firstChild === s) f.play(s, 'blush'); }, can('bounce') ? 700 : 0);
-      settle(s, (can('bounce') ? 700 : 0) + (can('blush') ? 2300 : 750));
-    }
-  }
-
   /* ---------- the scene: follow its mood, and stand back up after it redraws itself ---------- */
   function moodOf(u){ var h = u.getAttribute('href') || ''; return h === '#mascot' ? 'calm' : h.replace('#mascot-', ''); }
   function sync(){
@@ -5030,14 +4964,12 @@ JS_MASCOT = r"""(function(){
       if (prev === m || prev === null) {
         // on load the day's mood plays once (sweat), but a day that was already all done does not celebrate again on reload
         if (kind === 'clawd') { if (shot) { var me = shot; stick(me.href, function(){ begin(me); }); } else if (prev === null && m === 'sweat') oneShot(m); else rest(); }
-        else if (kind === 'fanfan') { if (prev === null && m !== 'starry') fanMood(null, m); else fanRest(fanTo(nounOf(m)), m); }
         return;
       }
     }
     if (m === prev) return;
     mood = m;
     if (kind === 'clawd') { clearTimeout(shotT); shot = null; if (m === 'sweat' || m === 'starry') oneShot(m); else rest(); }
-    else if (kind === 'fanfan') fanMood(prev, m);
   }
   // the moves script comes last on the page, so wait for the whole page before the first look
   function start(){
@@ -5053,7 +4985,6 @@ JS_MASCOT = r"""(function(){
     setTimeout(function(){
       if (!b.checked) return;
       if (kind === 'clawd') oneShot('done');
-      else if (kind === 'fanfan' && can('bounce') && actor) { var s = actor.firstChild; if (s && !s.classList.contains('is-asleep')) { F().play(s, 'bounce'); settle(s, 750); } }
     }, 600);
   });
 
@@ -5066,10 +4997,6 @@ JS_MASCOT = r"""(function(){
       i.addEventListener('load', function(){ if (kind !== 'clawd') return; i.style.opacity = ''; u.style.visibility = 'hidden';
         setTimeout(function(){ if (i.parentNode) i.parentNode.removeChild(i); u.style.visibility = ''; }, M.stickers.hello[1]); });
       i.addEventListener('error', function(){ if (i.parentNode) i.parentNode.removeChild(i); });
-    } else if (kind === 'fanfan') {
-      var s = icon('face-whole'), f = F(); if (!s || !f) return;
-      put(s, M.fbox); u.style.visibility = 'hidden'; mm.appendChild(s); f.asleep(s, true);
-      setTimeout(function(){ if (can('wake')) f.play(s, 'wake'); else f.asleep(s, false); }, 2150);  // as it lands
     }
   }
   new MutationObserver(function(ms){ ms.forEach(function(r){ Array.prototype.forEach.call(r.addedNodes, function(nd){ if (nd.id === 'hello') hello(nd); }); }); })
@@ -5100,8 +5027,6 @@ FAIRY_STYLES = ("thin", "thick", "thin-highlight", "thick-highlight")
 FAIRY_PREVIEW = ("face-whole", "bell", "mail", "star")  # the drawings the live preview shows
 FAIRY_FACE_STYLE = "thin"  # every picker carries each animal's face in this style, so the animals show even with no helper to ask
 FAIRY_ANIMALS = (("cat", "Cat"), ("dog", "Dog"), ("lop", "Lop bunny"), ("bunny", "Bunny"))
-FAIRY_PLACES = (("tabs", "Tabs and signposts"), ("quests", "Quest rows"), ("toolbar", "Top-bar buttons"), ("done", "The Done box"),
-                ("empty", "Empty lists"), ("favicon", "The browser-tab icon"))
 FAIRY_MOVES = (("wake", "Wake"), ("sleep", "Sleep"), ("bounce", "Bounce"), ("blush", "Blush"), ("trick", "Its own trick"))
 
 CSS_FAIRY = r"""
@@ -5118,6 +5043,8 @@ h2{margin:0;font:700 26px/1.12 "Fraunces","Geist",Georgia,serif;color:var(--ink)
 :host([data-world="candy"]) h2{font-family:"Fredoka","Geist",system-ui,sans-serif}
 :host([data-world="candy"]) dialog{border-width:3px}
 .what{margin:6px 0 0;color:var(--muted)}
+.sect h3{margin:0;font-size:15px;font-weight:700}
+.sect .what{margin-top:2px;font-size:13.5px;line-height:1.4}
 fieldset{margin:0;padding:0;border:0;min-width:0}
 legend{float:left;width:100%;padding:0;margin:0 0 8px;font-size:13px;font-weight:650;color:var(--muted)}
 legend+*{clear:both}
@@ -5192,6 +5119,9 @@ JS_FAIRY = r"""(function(){
   var RE = {d: new RegExp('^' + C.safe.d + '$'), v: new RegExp('^' + C.safe.v + '$')};
   // same rule as the Done button: only a brief the local helper serves can save
   var SERVED = /^http:\/\/(127\.0\.0\.1|localhost):8765$/.test(location.origin);
+  // opened as a plain file: the helper refuses saves from there, so "Save" opens this same brief through the helper instead,
+  // carrying the choices in the address after a #, where a served page picks them up and opens the sheet with them filled in
+  var FROM_FILE = location.protocol === 'file:';
   var tpl = document.getElementById('fairy-tpl'); if (!tpl) return;
   var root = null, dlg = null, opener = null, waiters = [], cache = {}, busy = false, reloading = false;
   function get(k){ try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -5201,6 +5131,19 @@ JS_FAIRY = r"""(function(){
   function $(s){ return root.querySelector(s); }
   function $$(s){ return Array.prototype.slice.call(root.querySelectorAll(s)); }
   function styleOf(l){ return l.line + (l.eyes === 'shiny' ? '-highlight' : ''); }
+
+  /* ---------- the choices in an address: #fairy=mascot.animal.line.eyes.move-move (names only; nothing else travels) ---------- */
+  /*hash:start*/
+  function hashOf(l){ return 'fairy=' + [l.mascot, l.animal, l.line, l.eyes, (l.moves || []).join('-')].join('.'); }
+  // only values from the allowed lists count; a bad or missing part is left out, so the sheet keeps its own choice there
+  function parseHash(h){
+    var m = /^#?fairy=([A-Za-z0-9.-]*)$/.exec(h || ''); if (!m) return null;
+    var p = m[1].split('.'), A = C.allowed, out = {};
+    ['mascot', 'animal', 'line', 'eyes'].forEach(function(k, i){ if (A[k].indexOf(p[i]) > -1) out[k] = p[i]; });
+    if (p.length > 4) out.moves = p[4].split('-').filter(function(x, i, a){ return A.moves.indexOf(x) > -1 && a.indexOf(x) === i; });
+    return out;
+  }
+  /*hash:end*/
 
   /* ---------- drawings for the previews: the page's own copy when it has this style, else the helper's; a face with neither
      falls back to the picker's own thin face of that animal, so the animals always show ---------- */
@@ -5265,18 +5208,17 @@ JS_FAIRY = r"""(function(){
   function choice(){
     function one(n){ var r = $('input[name="' + n + '"]:checked'); return r ? r.value : C.def[n]; }
     function many(n){ return $$('input[name="' + n + '"]').filter(function(b){ return b.checked; }).map(function(b){ return b.value; }); }
-    return {mascot: one('mascot'), animal: one('animal'), line: one('line'), eyes: one('eyes'), places: many('places'), moves: many('moves')};
+    return {mascot: one('mascot'), animal: one('animal'), line: one('line'), eyes: one('eyes'), moves: many('moves')};
   }
   function fill(l){
     ['mascot', 'animal', 'line', 'eyes'].forEach(function(n){
       var rs = $$('input[name="' + n + '"]'), hit = rs.filter(function(r){ return r.value === l[n]; })[0] || rs.filter(function(r){ return r.value === C.def[n]; })[0] || rs[0];
       rs.forEach(function(r){ r.checked = r === hit; });
     });
-    ['places', 'moves'].forEach(function(n){ $$('input[name="' + n + '"]').forEach(function(b){ b.checked = (l[n] || []).indexOf(b.value) > -1; }); });
+    $$('input[name="moves"]').forEach(function(b){ b.checked = (l.moves || []).indexOf(b.value) > -1; });
   }
   function preview(){
     var l = choice();
-    paint($('.card .ff'), l, 'face-whole');
     $$('.chip .pic[data-a]').forEach(function(p){ paint(p, {animal: p.getAttribute('data-a'), line: l.line, eyes: l.eyes}, 'face-whole'); });
     $$('.pv .pic').forEach(function(p){ paint(p, l, p.getAttribute('data-n')); });
     var n = $('.note'); if (n) n.hidden = SERVED || !!(C.emb && C.emb[0] === styleOf(l) && C.emb[1] === l.animal);
@@ -5297,7 +5239,10 @@ JS_FAIRY = r"""(function(){
     if (cw) cw.addEventListener('error', function(){ cw.src = C.ticket; cw.parentNode.classList.remove('clawd'); var s = cw.parentNode.parentNode.querySelector('.sub'); if (s) s.textContent = 'Offline: Clawd shows once the artist\'s page can load'; });
     $('.later').addEventListener('click', notNow);
     $('.save').addEventListener('click', save);
-    if (!SERVED) { $('.save').disabled = true; $('.why').hidden = false; }
+    if (!SERVED) {
+      $('.why').hidden = false;
+      if (FROM_FILE) $('.save').textContent = 'Open the live brief to save'; else $('.save').disabled = true;
+    }
     dlg.addEventListener('cancel', function(e){ e.preventDefault(); notNow(); });
     // keys stay inside the sheet: Escape is "Not now", Tab goes round, and nothing reaches the page's own shortcuts
     dlg.addEventListener('keydown', function(e){
@@ -5311,12 +5256,13 @@ JS_FAIRY = r"""(function(){
       else if (!e.shiftKey && (at === last || !at)) { e.preventDefault(); first.focus(); }
     });
   }
-  function open(from){
+  function open(from, pre){
     make();
     if (dlg.open) return;
     opener = from || document.activeElement;
     root.host.setAttribute('data-world', document.documentElement.getAttribute('data-world') || 'garden');
-    fill(C.look || C.def); say(''); preview();
+    var l = C.look || C.def;
+    fill(pre ? Object.assign({}, l, pre) : l); say(''); preview();
     dlg.showModal();
     var c = $('input[name="mascot"]:checked'); if (c) c.focus();
   }
@@ -5332,6 +5278,11 @@ JS_FAIRY = r"""(function(){
   }
   function notNow(){ if (reloading) return; set('brief-fairy-offered', '1'); close(); }
   function save(){
+    if (FROM_FILE && !SERVED) {
+      var name = encodeURIComponent(decodeURIComponent(location.pathname.split('/').pop() || ''));
+      location.assign('http://127.0.0.1:8765/brief/' + name + '#' + hashOf(choice()));
+      return;
+    }
     if (!SERVED || busy || reloading) return;
     var l = choice(), btn = $('.save');
     busy = true; btn.disabled = true; say('Saving your fairy…');
@@ -5357,8 +5308,12 @@ JS_FAIRY = r"""(function(){
     if (lb && lp && !lp.hidden) lb.click();  // the Look panel closes the way it always does
     open(lb || row);
   });
+  // sent here from a file page's Save: open with its choices filled in, then clear the address
+  var sent = SERVED && /^#fairy=/.test(location.hash) ? parseHash(location.hash) : null;
+  if (SERVED && /^#fairy=/.test(location.hash)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+  if (sent) { set('brief-fairy-offered', '1'); open(null, sent); }
   // once ever: on today's brief, when no look.json was found (a past morning from the time machine never asks)
-  if (document.body.getAttribute('data-look-set') === '0' && C.date === today() && !get('brief-fairy-offered')) {
+  else if (document.body.getAttribute('data-look-set') === '0' && C.date === today() && !get('brief-fairy-offered')) {
     set('brief-fairy-offered', '1');
     open(null);
   }
@@ -5381,8 +5336,6 @@ def fairy_picker(look, date, emb):
         cards.append(radio("mascot", "clawd", f'<span class="pic clawd"><img src="{CLAWD_BASE}{CLAWD_IDLE}" alt="" width="76" height="76"></span>'
                            '<span class="nm"><b>B</b>Clawd</span><span class="sub">Fan art, non-commercial use, loads from the artist\'s own page</span>', "card"))
         credit = '<p class="credit">Clawd stickers: fan art by alwinecor (CC BY-NC-SA 4.0). Clawd belongs to Anthropic; unofficial.</p>'
-    cards.append(radio("mascot", "fanfan", f'<span class="pic ff none"></span><span class="nm"><b>{"C" if OFFER_CLAWD else "B"}</b>A little animal</span>'
-                       '<span class="sub">The animal you pick below</span>', "card"))
     animals = "".join(radio("animal", a, f'<span class="pic none" data-a="{a}"></span><span>{esc(t)}</span>', "chip") for a, t in FAIRY_ANIMALS)
     lines = "".join(radio("line", v, f"<span>{t}</span>", "chip") for v, t in (("thin", "Thin"), ("thick", "Thick")))
     eyes = "".join(radio("eyes", v, f"<span>{t}</span>", "chip") for v, t in (("dots", "Dots"), ("shiny", "Shiny")))
@@ -5392,26 +5345,28 @@ def fairy_picker(look, date, emb):
                         for a, _ in FAIRY_ANIMALS)
     except (OSError, ValueError):
         faces = ""  # no bundled drawings: the chips fall back to empty circles
-    places = "".join(tick("places", v, t) for v, t in FAIRY_PLACES)
     moves = "".join(tick("moves", v, t) for v, t in FAIRY_MOVES)
     tpl = (f'<template id="fairy-tpl"><style>{CSS_FAIRY}</style>{faces}'
            '<dialog class="fairy" aria-modal="true" aria-labelledby="fairy-title" aria-describedby="fairy-what"><div class="body">'
            '<div><h2 id="fairy-title">Build your own fairy</h2><p class="what" id="fairy-what">Pick who lives in your brief, the little '
            'animal that draws its icons, and how it moves. You can change it any time from Look.</p></div>'
            f'<fieldset><legend>Mascot</legend><div class="cards">{"".join(cards)}</div>{credit}</fieldset>'
+           '<div class="sect"><h3>Little animal icons</h3><p class="what">They draw the little icons across the page: '
+           'tabs, quests, the Done box and the browser tab.</p></div>'
            f'<fieldset><legend>Animal</legend><div class="opts">{animals}</div></fieldset>'
            f'<div class="two"><fieldset><legend>Line</legend><div class="opts">{lines}</div></fieldset>'
            f'<fieldset><legend>Eyes</legend><div class="opts">{eyes}</div></fieldset></div>'
            f'<div class="pv"><span>Preview</span>{pv}</div>'
            '<p class="note" hidden>This style shows once the brief is opened from the Morning Brief app.</p>'
-           f'<fieldset><legend>Where little animals go</legend><div class="ticks">{places}</div></fieldset>'
            f'<fieldset><legend>Moves</legend><div class="ticks">{moves}</div></fieldset>'
            '</div><div class="foot"><p class="say" role="status" aria-live="polite"></p>'
-           '<p class="why" id="fairy-why" hidden>Open the brief from the Morning Brief app in your Dock to save your fairy.</p>'
+           '<p class="why" id="fairy-why" hidden>Saving goes through the Morning Brief app. If the page doesn\'t open, click Morning Brief in your Dock (or run launch.sh) first.</p>'
            '<div class="btns"><button type="button" class="later">Not now</button>'
            '<button type="button" class="save" aria-describedby="fairy-why">Save my fairy</button></div></div></dialog></template>')
     cfg = {"date": date, "def": LOOK_DEFAULT, "look": look, "emb": emb, "styles": list(FAIRY_STYLES),
-           "animals": [a for a, _ in FAIRY_ANIMALS], "nouns": list(FAIRY_PREVIEW), "ticket": ticket, "faceStyle": FAIRY_FACE_STYLE,
+           "animals": [a for a, _ in FAIRY_ANIMALS],
+           "allowed": {"mascot": ["ticket"] + (["clawd"] if OFFER_CLAWD else []), "animal": [a for a, _ in FAIRY_ANIMALS],
+                       "line": list(LOOK_CHOICES["line"]), "eyes": list(LOOK_CHOICES["eyes"]), "moves": list(FF_MOVES)}, "nouns": list(FAIRY_PREVIEW), "ticket": ticket, "faceStyle": FAIRY_FACE_STYLE,
            "safe": {"tags": list(FF_TAGS), "attrs": list(FF_ATTRS), "d": FF_D_RE, "v": FF_VALUE_RE}}
     js = "<script>" + JS_FAIRY.replace("{cfg}", json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/")) + "</script>\n"
     return tpl, js
@@ -5427,8 +5382,10 @@ def build(content, log=None, admin_log=None, briefs=None, look=None):
     """look: a cleaned look.json (read_look), or None to keep the page's own look."""
     global FAN
     FAN = None
-    if look and look.get("mascot") == "clawd" and not OFFER_CLAWD:
-        look = dict(look, mascot="ticket")  # a builder that does not offer Clawd draws the ticket, and the picker starts from it
+    if look:
+        look = dict(look, places=list(FF_PLACES))  # all six places, whatever the look lists
+    if look and look.get("mascot") in ("fanfan", "clawd") and (look["mascot"] == "fanfan" or not OFFER_CLAWD):
+        look = dict(look, mascot="ticket")  # an older "fanfan" mascot, or Clawd where it is not offered: the ticket, and the picker starts from it
     if look:
         try:
             FAN = Fan(look)
@@ -5478,8 +5435,7 @@ def _build(content, log, admin_log, briefs, look):
     if any(c.get("day") or c.get("lists") for c in d["chapters"]):
         css += CSS_BRIEF
     sleepy = {"icon": FAN.favicon(asleep=True) if fav else favicon_href("sleepy")}
-    tool = FAN and FAN.on("toolbar")
-    sound_on, sound_off = (FAN.ph("music"), FAN.ph("music", "is-asleep")) if tool else (ICONS["sound"], ICONS["mute"])
+    sound_on, sound_off = ICONS["sound"], ICONS["mute"]  # the top bar keeps its own sound and Look drawings, whatever the look
     tabicons = {"sad": FAN.favicon(asleep=True), "starry": favicon} if fav else {"sad": sad_icon(), "starry": favicon_href("starry")}
     js = (JS.replace("{storage_key}", storage_key).replace("{copy_header}", copy_header)
           .replace("{brief_date}", json.dumps(d["date"]))
@@ -5517,37 +5473,33 @@ def _build(content, log, admin_log, briefs, look):
     css += CSS_EXTRAS  # the quest pill fix has to beat the quest rules
     css += CSS_TODO    # Done pills, the to-do cards' quest and Jira chips, project groups
     css += CSS_STAGE   # last of all: the shell, the scene and the panels
-    ff_body, ff_fill, ff_moves, look_panel, look_btn = "", "", "", LOOK_PANEL, ICONS["palette"]
+    ff_body, ff_fill, ff_moves, look_panel = "", "", "", LOOK_PANEL
     kind = mascot_kind(look, FAN)
-    defs = mascot_defs(kind, FAN)  # before the templates are written: the animal asks for its own
-    credits = (CLAWD_CREDIT if kind == "clawd" else "") + (FF_CREDIT if FAN and (FAN.places or kind == "fanfan") else "")  # any fanfan on show, the tab icon included
+    defs = mascot_defs(kind)
+    credits = (CLAWD_CREDIT if kind == "clawd" else "") + (FF_CREDIT if FAN else "")  # the little animals are on every page with a look
     if kind != "ticket" or credits:
         css += CSS_MASCOT
-    if kind == "fanfan":
-        # the tab bar crops the rider's top; the animal's face sits higher than the ticket's, so it rides a little smaller
-        css += ".rider svg{transform:scale(.78);transform-origin:50% 100%}\n"
-    if FAN and (FAN.inline() or kind == "fanfan"):
+    if FAN:
         ff_css, ff_js = _ff_assets()
         css += ff_css + CSS_FAN  # fanfan's own motion css (its MIT header kept), then the brief's sizes for it
         ff_fill = f"<script>{JS_FAN_FILL}</script>\n"
         ff_moves = (f"<script>{ff_js}\n" + JS_FAN_MOVES.replace("{moves}", json.dumps(FAN.look["moves"]).replace("</", "<\\/"))
                     .replace("{tricks}", json.dumps(FAN.tricks).replace("</", "<\\/")) + "</script>\n")
-    if tool:
-        look_btn = FAN.ph("palette")
+    if FAN:  # the switches inside the Look panel carry the animal
         look_panel = (LOOK_PANEL.replace("<span>Dark mode</span>", f'<span>{FAN.ph("moon")}Dark mode</span>')
                       .replace("<span>Sparkles</span>", f'<span>{FAN.ph("wand")}Sparkles</span>')
                       .replace("<span>Build your fairy…</span>", f'<span>{FAN.ph("face-whole")}Build your fairy…</span>'))
     if look:
         ff_body = ' data-look-set="1"'  # the picker reads the look itself from its own settings (fairy_picker)
         if kind != "ticket":
-            cfg = {"kind": kind, "moves": look["moves"], "fbox": list(FF_BOX)}
+            cfg = {"kind": kind}
             if kind == "clawd":  # only a Clawd page names the sticker addresses
                 cfg.update(base=CLAWD_BASE, idle=CLAWD_IDLE, stickers=CLAWD_STICKERS, box=list(CLAWD_BOX))
             ff_fill += "<script>" + JS_MASCOT.replace("{cfg}", json.dumps(cfg).replace("</", "<\\/")) + "</script>\n"
     else:
         ff_body = ' data-look-set="0"'  # no look.json was found: the page keeps its own look, and a picker may offer one
     # the picker: its preview reuses the drawings this page already carries (only when they are written out below)
-    emb = [FAN.style, FAN.animal] if FAN and (FAN.inline() or kind == "fanfan") else None
+    emb = [FAN.style, FAN.animal] if FAN else None
     fairy_tpl, fairy_js = fairy_picker(look, d["date"], emb)
     window = d["window"].replace(" → ", " to ")
 
@@ -5617,7 +5569,7 @@ def _build(content, log, admin_log, briefs, look):
       <span id="msg" aria-live="polite"></span>
       <span class="ring" id="ring" role="img" aria-label="rows ticked"><span>0/0</span></span>
       <button class="icon-btn" id="sound" type="button" aria-pressed="false" aria-label="Turn sounds on"></button>
-      <button class="icon-btn" id="look" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="look-panel" aria-label="Look: choose a world and light or dark">{look_btn}</button>
+      <button class="icon-btn" id="look" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="look-panel" aria-label="Look: choose a world and light or dark">{ICONS["palette"]}</button>
       <button class="btn btn-accent" type="button" data-copy-btn>{ICONS["copy"]}<span>Copy<span class="wide-only"> ticked</span></span></button>
     </div>
     {look_panel}
@@ -5639,7 +5591,7 @@ def _build(content, log, admin_log, briefs, look):
 {fairy_tpl}
 <script type="application/json" id="stage-data">{stage_json}</script>
 <script type="application/json" id="quest-data">{quest_json}</script>
-{FAN.templates() if FAN and (FAN.inline() or kind == "fanfan") else ""}{ff_fill}<script>{JS_STAGE}</script>
+{FAN.templates() if FAN else ""}{ff_fill}<script>{JS_STAGE}</script>
 <script>{js}</script>
 {fairy_js}{ff_moves}</body></html>
 """

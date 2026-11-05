@@ -88,9 +88,17 @@ class ReadLook(unittest.TestCase):
         self.assertEqual(look["animal"], "dog")
         self.assertEqual(look["line"], "thin")
         self.assertEqual(look["eyes"], "shiny")
-        self.assertEqual(look["places"], ["tabs", "favicon"])  # unknown names dropped, fixed order
+        self.assertEqual(look["places"], list(bd.FF_PLACES))  # whatever an older file lists, all six
         self.assertEqual(look["moves"], list(bd.FF_MOVES))  # not a list: the default
         self.assertNotIn("extra", look)
+
+    def test_older_look_files_with_fewer_places_read_as_all_six(self):
+        for body in ({"mascot": "fanfan", "animal": "cat", "line": "thin", "eyes": "dots", "moves": ["wake"]},
+                     {"mascot": "fanfan", "animal": "cat", "line": "thin", "eyes": "dots", "places": ["tabs"], "moves": ["wake"]},
+                     {"mascot": "fanfan", "animal": "cat", "line": "thin", "eyes": "dots", "places": [], "moves": ["wake"]}):
+            look = bd.read_look(self.write(json.dumps(body)))
+            self.assertEqual(look["places"], list(bd.FF_PLACES))
+            self.assertEqual(look["moves"], ["wake"])
 
     def test_empty_object_gives_defaults(self):
         self.assertEqual(bd.read_look(self.write("{}")), bd.LOOK_DEFAULT)
@@ -118,7 +126,7 @@ class BuildWithLook(unittest.TestCase):
         html = self.page(FULL_LOOK)
         self.assertIn('<body data-look-set="1">', html)
         self.assertIn("MIT · by @唐幡", html)  # fanfan's own header kept
-        for noun in ("sun", "ticket", "bell", "trophy", "news", "palette", "moon", "wand", "music", "robot"):
+        for noun in ("sun", "ticket", "bell", "trophy", "news", "moon", "wand", "robot"):
             self.assertEqual(html.count(f'<template id="ff-{noun}">'), 1, noun)
         # every placeholder in the page has its drawing, and every drawing carried is used
         used = set(re.findall(r'<svg[^>]* data-ff="([a-z-]+)" aria-hidden="true">', html))
@@ -130,12 +138,15 @@ class BuildWithLook(unittest.TestCase):
         self.assertTrue(tpl)
         self.assertNotRegex(tpl, r"bb-(dog|lop|bunny)\b")  # only the chosen animal (the motion css names them all)
 
-    def test_no_places_means_no_icons_but_the_flag(self):
-        html = self.page(dict(FULL_LOOK, places=[]))
-        self.assertIn('data-look-set="1"', html)
-        self.assertNotIn("<template id=\"ff-", html)
-        self.assertNotIn("root.FanfanMotion", html)  # the motion helper itself (the mascot script only names it)
-        self.assertNotIn("MIT · by @唐幡", html)  # nor fanfan's motion css
+    def test_all_six_places_are_on_whatever_the_look_lists(self):
+        full = self.page(FULL_LOOK)
+        for places in ([], ["tabs"], ["favicon"]):
+            self.assertEqual(self.page(dict(FULL_LOOK, places=places)), full, places)
+        no_key = {k: v for k, v in FULL_LOOK.items() if k != "places"}
+        page = self.page(no_key)  # a missing "places" key is valid: same drawings, and the picker starts from all six
+        self.assertEqual(re.findall(r'<template id="ff-[a-z-]+">', page), re.findall(r'<template id="ff-[a-z-]+">', full))
+        self.assertIn('"places": ["tabs", "quests", "toolbar", "done", "empty", "favicon"]', page)
+        self.assertEqual(sorted(bd.Fan(FULL_LOOK).places), sorted(bd.FF_PLACES))
 
     def test_icons_are_decoration(self):
         # every placeholder is hidden from screen readers (what the copy button copies is checked in a browser, not here)
@@ -325,11 +336,19 @@ class Helper(unittest.TestCase):
     def test_look_refuses_bad_shapes(self):
         bad = [dict(FULL_LOOK, animal="fox"), dict(FULL_LOOK, line=["thick"]), dict(FULL_LOOK, places=["tabs", "tabs"]),
                dict(FULL_LOOK, places=["../x"]), dict(FULL_LOOK, moves="all"), dict(FULL_LOOK, extra=1),
-               {k: v for k, v in FULL_LOOK.items() if k != "eyes"}, [FULL_LOOK], "cat"]
+               {k: v for k, v in FULL_LOOK.items() if k not in ("eyes",)}, {k: v for k, v in FULL_LOOK.items() if k != "moves"},
+               [FULL_LOOK], "cat"]
         for b in bad:
             self.assertEqual(self.req("POST", "/look", b)[0], 400, b)
         self.assertEqual(self.req("POST", "/look", "{not json")[0], 400)
         self.assertFalse((self.digest / "look.json").exists())
+
+    def test_look_without_places_is_saved_with_all_six(self):
+        # the picker no longer sends places; what is written still lists them all
+        body = {k: v for k, v in FULL_LOOK.items() if k != "places"}
+        self.assertEqual(serve.clean_look(body), FULL_LOOK)
+        self.assertEqual(serve.clean_look(dict(body, places=["tabs"])), FULL_LOOK)  # an older page's shorter list: checked, then all six
+        self.assertIsNone(serve.clean_look(dict(body, places=["x"])))
 
     def test_look_saves_and_rebuilds_today(self):
         today = datetime.now().strftime("%Y-%m-%d")
@@ -343,7 +362,7 @@ class Helper(unittest.TestCase):
             d = json.loads(FIXTURE.read_text(encoding="utf-8"))
             d["date"] = today
             content.write_text(json.dumps(d), encoding="utf-8")
-            new = dict(FULL_LOOK, animal="dog", places=["tabs"])
+            new = dict(FULL_LOOK, animal="dog")
             st, ct, body = self.req("POST", "/look", new)
             self.assertEqual((st, json.loads(body)), (200, {"ok": True, "saved": True, "rebuilt": True}))
             page = (self.desk / f"{today} Morning brief and Jira digest.html").read_text(encoding="utf-8")

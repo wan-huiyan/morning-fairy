@@ -45,7 +45,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | 🌍 | **Three worlds** | Storybook garden, Cosmic orbit and Candy pop, each with a light and a dark version (6 looks), its own cursor wand and its own fairy dust. |
 | 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. |
 | 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. |
-| 🧚 | **Build your own fairy** | Pick the mascot (the ticket, Clawd or a little animal), one of 4 animals with thin or thick lines and dot or shiny eyes, the 6 places little animal icons go, and 5 moves. |
+| 🧚 | **Build your own fairy** | Pick the mascot (the ticket or Clawd), then the little animal that draws the page's icons: one of 4 animals, thin or thick lines, dot or shiny eyes, and 5 moves. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
@@ -75,7 +75,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 ## 🧚 Build your own fairy
 
 <p align="center">
-  <img src="docs/picker.png" width="760" alt="The Build your own fairy sheet: three mascot cards (the ticket, Clawd, a little animal), four animals, line and eyes, a preview row, and tick boxes for places and moves"/>
+  <img src="docs/picker.png" width="760" alt="The Build your own fairy sheet: two mascot cards (the ticket and Clawd), then the little animal icons: four animals, line and eyes, a preview row, and tick boxes for moves"/>
   <br/><sub>The picker over the demo morning, with the little cat in thick lines and shiny eyes. Clawd's card shows the
   ticket here because no Clawd picture is ever stored in this repository: online, it shows the artist's sticker. (Made-up data.)</sub>
 </p>
@@ -91,17 +91,19 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 The first time you open a brief, a sheet asks who should live in it. Later, open it again from **Look →
 Build your fairy…**.
 
-- **Three mascots:** the brief's own blue ticket; **Clawd**, as fan-art stickers loaded from the artist's own
-  repository; or **a little animal**, drawn in the same style as the icons.
-- **Four animals** (cat, dog, lop bunny, bunny), a **thin or thick line**, and **dot or shiny eyes**, with a
-  live preview.
-- **Six places** the little animals can go: tabs and signposts, quest rows, top-bar buttons, the Done box,
-  empty lists, and the browser-tab icon (asleep after 6 PM).
+- **Two mascots:** the brief's own blue ticket, or **Clawd**, as fan-art stickers loaded from the artist's own
+  repository.
+- **Little animal icons:** the animal you pick draws the little icons across the page: tabs and signposts, quest
+  rows, the Done box, empty lists and the browser-tab icon (asleep after 6 PM). Pick one of **four animals** (cat,
+  dog, lop bunny, bunny), a **thin or thick line** and **dot or shiny eyes**, with a live preview. The top bar's
+  sound and Look buttons keep their own drawings.
 - **Five moves:** wake, sleep, bounce, blush, and each icon's own trick. All of them stop under reduced motion.
 
-**Saving needs the local helper**, so open the brief from the Dock app (or `launch.sh`). The helper writes your
-pick to `~/.morning-fairy/look.json` and rebuilds today's brief in your new look; every morning after that uses
-it too. Opened straight from the file, the sheet still shows every choice but says where to open it to save.
+**Saving goes through the local helper.** Open the brief from the Dock app (or `launch.sh`) and "Save my fairy"
+writes your pick to `~/.morning-fairy/look.json` and rebuilds today's brief in your new look; every morning after
+that uses it too. Opened straight from the file, the button reads **Open the live brief to save**: it opens the
+same brief through the helper with your choices filled in, ready to save. If nothing opens, the helper is not
+running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
 
 <p align="center">
   <img src="docs/picker-phone.png" width="300" alt="The same sheet on a phone, the mascot cards stacked one above the other"/>
@@ -242,8 +244,9 @@ npm test
 
 33 checks: the demo builds, the time machine links the earlier morning, the Dock app opens the right brief (on
 macOS), the helper keeps data outside the skill folder, the demo data uses only `example.com`, and no keys or real
-email addresses appear anywhere in the repo. One of the 33 runs the 56 Python tests in
-`plugins/morning-fairy/skills/morning-fairy/digest/tests/` (the look, the three mascots, the picker, and the
+email addresses appear anywhere in the repo. One of the 33 runs the 60 Python tests in
+`plugins/morning-fairy/skills/morning-fairy/digest/tests/` (the look, the two mascots, the picker and the choices
+it carries from a file page to the live one, and the
 helper's `/fanfan` and `/look` routes: only listed icon names are served, and a look is saved only when every
 field is one of the allowed values). On their own:
 
@@ -270,6 +273,11 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.2.1** (2026-11-05): a simpler picker. The mascot is the ticket or Clawd; the little animal is now the style
+  of the page's icons rather than a third mascot, and it goes everywhere it fits (no more choosing places). The top
+  bar's sound and Look buttons keep their own drawings. On a brief opened as a file, the save button opens the live
+  brief with your choices already filled in. An older `look.json` still works: a "fanfan" mascot reads as the
+  ticket, and any list of places reads as all of them. 60 Python tests.
 - **1.2.0** (2026-11-05): build your own fairy. A picker (once on the first brief, then from Look) chooses the
   mascot (the ticket, Clawd, or a little animal), one of four animals, line and eyes, six places for little animal
   icons, and five moves. Saved by the helper to `~/.morning-fairy/look.json`, which also redraws today's brief. The
