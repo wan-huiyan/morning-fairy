@@ -44,7 +44,8 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 |---|---|---|
 | 🌍 | **Three worlds** | Storybook garden, Cosmic orbit and Candy pop, each with a light and a dark version (6 looks), its own cursor wand and its own fairy dust. |
 | 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. |
-| 🎟️ | **A mascot with moods** | One smooth vector ticket, 4 faces: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). Its eyes follow your pointer. |
+| 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. |
+| 🧚 | **Build your own fairy** | Pick the mascot (the ticket, Clawd or a little animal), one of 4 animals with thin or thick lines and dot or shiny eyes, the 6 places little animal icons go, and 5 moves. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
@@ -69,6 +70,41 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 <p align="center">
   <img src="docs/garden-dark-timemachine.png" width="760" alt="The time machine in the dark garden: a month calendar and yesterday's summary"/>
   <br/><sub>The time machine in the dark garden: yesterday had 5 to-dos, 2 marked done, and one Jira row left to tick.</sub>
+</p>
+
+## 🧚 Build your own fairy
+
+<p align="center">
+  <img src="docs/picker.png" width="760" alt="The Build your own fairy sheet: three mascot cards (the ticket, Clawd, a little animal), four animals, line and eyes, a preview row, and tick boxes for places and moves"/>
+  <br/><sub>The picker over the demo morning, with the little cat in thick lines and shiny eyes. Clawd's card shows the
+  ticket here because no Clawd picture is ever stored in this repository: online, it shows the artist's sticker. (Made-up data.)</sub>
+</p>
+
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/hello.gif" width="120" alt="Clawd waving hello"/>
+  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/sleep.gif" width="120" alt="Clawd asleep in a night cap"/>
+  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/passed.gif" width="120" alt="Clawd celebrating a green tick"/>
+  <br/><sub>Clawd as the mascot: good morning, after 6 PM, all done. These stickers load from
+  <a href="https://github.com/alwinecor/clawd-stickers">alwinecor/clawd-stickers</a> as you read this page; they are not part of this repository.</sub>
+</p>
+
+The first time you open a brief, a sheet asks who should live in it. Later, open it again from **Look →
+Build your fairy…**.
+
+- **Three mascots:** the brief's own blue ticket; **Clawd**, as fan-art stickers loaded from the artist's own
+  repository; or **a little animal**, drawn in the same style as the icons.
+- **Four animals** (cat, dog, lop bunny, bunny), a **thin or thick line**, and **dot or shiny eyes**, with a
+  live preview.
+- **Six places** the little animals can go: tabs and signposts, quest rows, top-bar buttons, the Done box,
+  empty lists, and the browser-tab icon (asleep after 6 PM).
+- **Five moves:** wake, sleep, bounce, blush, and each icon's own trick. All of them stop under reduced motion.
+
+**Saving needs the local helper**, so open the brief from the Dock app (or `launch.sh`). The helper writes your
+pick to `~/.morning-fairy/look.json` and rebuilds today's brief in your new look; every morning after that uses
+it too. Opened straight from the file, the sheet still shows every choice but says where to open it to save.
+
+<p align="center">
+  <img src="docs/picker-phone.png" width="300" alt="The same sheet on a phone, the mascot cards stacked one above the other"/>
 </p>
 
 ## Quick start
@@ -149,6 +185,7 @@ app ask:
 |---|---|
 | A new page, `2026-03-12 Morning brief and Jira digest.html` | Your Desktop. Earlier days stay there, and the time machine links them. |
 | That day's content, the streak, the admin log | `~/.morning-fairy/runs/`, outside the skill folder, so updates never touch it |
+| Your fairy (from the picker) | `~/.morning-fairy/look.json`, read by every morning's build |
 | Your Done taps (through the Dock app's helper) | `~/.morning-fairy/runs/done.jsonl`, read by the next morning's run |
 
 Nothing in that folder leaves your machine, and the page is never rebuilt over an earlier day.
@@ -161,15 +198,20 @@ Nothing in that folder leaves your machine, and the page is never rebuilt over a
 2. **Claude writes one JSON file** for the day (titles, one-line reasons, links, meeting times and weights,
    Claude quests, Jira drafts). It never writes HTML.
 3. **The builder draws the page.** `build_digest.py` is one Python file using only the standard library. It
-   escapes every text field, keeps only `https` links, and puts everything into one self-contained HTML file.
+   escapes every text field, keeps only `https` links, and puts everything into one self-contained HTML file
+   (the one exception: if you pick Clawd, its stickers load as pictures from the artist's repository).
 4. **You act.** Tick the Jira rows you agree with, accept the quests you want, tap Done on what you finished,
    then press **Copy ticked** and paste the result back to Claude. Claude applies only what you pasted.
 
 Day-to-day data (each morning's JSON, the streak, the admin log, your Done taps) lives in `~/.morning-fairy/runs/`,
-outside the skill folder, so a plugin update never loses your history. Set `MORNING_FAIRY_HOME` to move it.
+and your fairy in `~/.morning-fairy/look.json`, outside the skill folder, so a plugin update never loses them. Set
+`MORNING_FAIRY_HOME` to move both.
 
 The optional local helper, `digest/launch.sh`, starts a tiny server on `127.0.0.1:8765` so Done taps are saved
-across browsers and the next morning knows what you finished. Without it, taps stay in that one browser.
+across browsers and the next morning knows what you finished. Without it, taps stay in that one browser. It also
+saves your fairy from the picker and rebuilds today's brief with it. **After updating the plugin, restart the
+helper** (`pkill -f 'morning-fairy/digest/serve.py'`, then click the Dock app), or the one already running stays on
+the old version and cannot save a fairy.
 
 ## Limitations
 
@@ -185,8 +227,12 @@ across browsers and the next morning knows what you finished. Without it, taps s
   wrong. Every item links to its source so you can check.
 - **The time machine only knows mornings it built.** It finds earlier briefs by their file name in the output
   folder, so keep the name `YYYY-MM-DD Morning brief and Jira digest.html`.
-- **The helper only listens on your own machine** (127.0.0.1), checks the page's origin, accepts 4 KB at most,
-  and writes one file. It is not meant to be exposed to a network.
+- **Clawd needs the internet.** Its stickers load from jsDelivr each time the page opens; offline, or if a
+  picture fails to load, the ticket stands in. The little animals are bundled and work offline.
+- **The helper only listens on your own machine** (127.0.0.1), checks the page's origin and host, accepts 4 KB
+  at most, writes two files (`runs/done.jsonl` and `look.json`), and runs only the builder beside it, to redraw
+  today's brief after you save a fairy. It refuses to be shown inside another site's frame. It is not meant to
+  be exposed to a network.
 
 ## Running the tests
 
@@ -194,17 +240,41 @@ across browsers and the next morning knows what you finished. Without it, taps s
 npm test
 ```
 
-32 checks: the demo builds, the time machine links the earlier morning, the Dock app opens the right brief (on
-macOS), the helper keeps data outside the skill
-folder, the demo data uses only `example.com`, and no keys or real email addresses appear anywhere in the repo.
+33 checks: the demo builds, the time machine links the earlier morning, the Dock app opens the right brief (on
+macOS), the helper keeps data outside the skill folder, the demo data uses only `example.com`, and no keys or real
+email addresses appear anywhere in the repo. One of the 33 runs the 56 Python tests in
+`plugins/morning-fairy/skills/morning-fairy/digest/tests/` (the look, the three mascots, the picker, and the
+helper's `/fanfan` and `/look` routes: only listed icon names are served, and a look is saved only when every
+field is one of the allowed values). On their own:
+
+```bash
+python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests
+```
 
 ## Related
 
 - [jira-fairy](https://github.com/wan-huiyan/jira-fairy): applies the Jira rows you tick here, and keeps
   tickets in step with meetings, chat and merged pull requests. morning-fairy grew out of its daily digest.
 
+## Credits
+
+- **fanfan icons** by 唐幡 ([TangfanOVO/fanfan-icons](https://github.com/TangfanOVO/fanfan-icons)), MIT licence.
+  The little animals are bundled in `digest/fanfan/`, with their licence and the commit they came from.
+- **Clawd stickers** by alwinecor ([alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers)),
+  CC BY-NC-SA 4.0. They are **not included in this repository**: if you pick Clawd, your browser loads them from
+  the artist's repository (through jsDelivr, pinned to one commit) when the page opens. Clawd belongs to
+  Anthropic; these are unofficial fan art, licensed for non-commercial use only. Whether your own use fits that
+  licence is your call.
+
+See [NOTICE.md](NOTICE.md).
+
 ## Version history
 
+- **1.2.0** (2026-11-05): build your own fairy. A picker (once on the first brief, then from Look) chooses the
+  mascot (the ticket, Clawd, or a little animal), one of four animals, line and eyes, six places for little animal
+  icons, and five moves. Saved by the helper to `~/.morning-fairy/look.json`, which also redraws today's brief. The
+  fanfan icons are bundled (MIT); Clawd loads from the artist's repository and falls back to the ticket offline.
+  The helper now refuses to be framed by another site. 56 Python tests, run by `npm test`.
 - **1.1.1** (2026-11-05): the Auto layout button is gone. On a wide window it looked exactly like Tap the scene;
   the page still follows your window until you pick a layout, and the button for what's showing is the pressed one.
 - **1.1.0** (2026-11-05): a Dock app maker (`make_dock_app.sh`, macOS) with the mascot icon, a fill-in-the-blanks
