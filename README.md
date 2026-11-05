@@ -80,6 +80,14 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
   ticket here because no Clawd picture is ever stored in this repository: online, it shows the artist's sticker. (Made-up data.)</sub>
 </p>
 
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/hello.gif" width="120" alt="Clawd waving hello"/>
+  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/sleep.gif" width="120" alt="Clawd asleep in a night cap"/>
+  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/passed.gif" width="120" alt="Clawd celebrating a green tick"/>
+  <br/><sub>Clawd as the mascot: good morning, after 6 PM, all done. These stickers load from
+  <a href="https://github.com/alwinecor/clawd-stickers">alwinecor/clawd-stickers</a> as you read this page; they are not part of this repository.</sub>
+</p>
+
 The first time you open a brief, a sheet asks who should live in it. Later, open it again from **Look →
 Build your fairy…**.
 
