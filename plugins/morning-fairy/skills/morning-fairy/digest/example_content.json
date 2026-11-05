@@ -1,0 +1,350 @@
+{
+ "date": "2026-03-12",
+ "date_short": "12 Mar",
+ "date_label": "Thursday 12 Mar 2026",
+ "window": "Wed 11 Mar 08:00 to Thu 12 Mar 08:05",
+ "status_line": "built 08:12, nothing applied yet",
+ "title": "Morning brief 12 Mar",
+ "built": "12 Mar 2026, 08:12",
+ "copy_header": "Apply the ticked Jira updates (digest 12 Mar 2026):",
+ "headline_html": "The Lighthouse demo at 2 {mascot} is the day's big moment.",
+ "lede_html": "Three meetings: the standup at 9:30, the Lighthouse demo at 2 and an optional 4:30 social. Six things need you, led by the demo prep and a security training that is now overdue. Two Jira rows wait for your tick.",
+ "cta_primary": "See your day",
+ "sources_marquee": [
+  "Jira",
+  "Email",
+  "Chat",
+  "Calendar",
+  "Code host"
+ ],
+ "banner_html": "<strong>Yesterday's comment on LH-12 was not applied.</strong> It is below again, reworded for today's demo.",
+ "chapters": [
+  {
+   "id": "today",
+   "nav": "Today",
+   "title": "Your day",
+   "blurb": "Three meetings: the standup at 9:30, the Lighthouse demo at 2 and an optional 4:30 social. Six things need you, led by the demo prep and a security training that is now overdue. Two Jira rows wait for your tick.",
+   "day": {
+    "shape": "NORMAL",
+    "label": "Your day, 8 AM to 6 PM",
+    "events": [
+     {
+      "start": "09:30",
+      "end": "09:45",
+      "title": "Team standup",
+      "weight": 1,
+      "url": "https://calendar.example.com/event/standup",
+      "join": "https://calendar.example.com/event/standup/join"
+     },
+     {
+      "start": "14:00",
+      "end": "15:00",
+      "title": "Lighthouse Co: launch demo",
+      "weight": 3,
+      "accent": true,
+      "url": "https://calendar.example.com/event/lh-demo",
+      "links": [
+       {
+        "label": "Demo script",
+        "url": "https://docs.example.com/lighthouse-demo-script"
+       }
+      ]
+     },
+     {
+      "start": "16:30",
+      "end": "17:15",
+      "title": "Studio social (optional)",
+      "optional": true,
+      "url": "https://calendar.example.com/event/social"
+     }
+    ],
+    "acts": [
+     {
+      "time": "8 to 11 AM",
+      "start": "08:00",
+      "end": "11:00",
+      "text": "A short standup, then the best quiet stretch of the day for the demo prep."
+     },
+     {
+      "time": "11 AM to 3 PM",
+      "start": "11:00",
+      "end": "15:00",
+      "text": "Lunch, then the Lighthouse demo at 2."
+     },
+     {
+      "time": "3 to 6 PM",
+      "start": "15:00",
+      "end": "18:00",
+      "text": "Follow-ups from the demo, and an optional social at 4:30."
+     }
+    ]
+   },
+   "lists": [
+    {
+     "title": "Needs attention",
+     "tone": "warn",
+     "items": [
+      {
+       "title": "Prep the Lighthouse demo: three screens and one story",
+       "url": "https://calendar.example.com/event/lh-demo",
+       "stamp": "today 2:00",
+       "kind": "prep",
+       "project": "Lighthouse Co",
+       "text": "Priya asked {source} for a five-minute walk-through of the new booking flow, ending on the launch checklist.",
+       "source": "in the Lighthouse chat",
+       "source_url": "https://chat.example.com/messages/lh-42",
+       "detail": "The booking flow shipped to staging yesterday (LH-12). The checklist is LH-14, two items still open.",
+       "links": [
+        {
+         "label": "LH-12: booking flow",
+         "url": "https://jira.example.com/browse/LH-12"
+        },
+        {
+         "label": "LH-14: launch checklist",
+         "url": "https://jira.example.com/browse/LH-14"
+        }
+       ],
+       "claude": {
+        "ask": "draft a five-minute demo script for the booking flow, ending on the launch checklist",
+        "size": "about 20 min"
+       }
+      },
+      {
+       "title": "Reply to Sam about the Orchard release date",
+       "kind": "reply",
+       "project": "Orchard app",
+       "text": "Sam asked {source} whether Tuesday still works for the 2.4 release. No reply from you yet.",
+       "source": "by email",
+       "source_url": "https://mail.example.com/thread/orchard-24",
+       "claude": {
+        "ask": "draft a short reply to Sam confirming Tuesday, with the one open risk",
+        "size": "about 5 min"
+       }
+      },
+      {
+       "title": "Nightly build failed twice on the Orchard repo",
+       "kind": "alert",
+       "project": "Orchard app",
+       "text": "The nightly build has failed two nights running {source}: the same flaky login test both times.",
+       "source": "on the code host",
+       "source_url": "https://git.example.com/pebble/orchard-app/actions",
+       "claude": {
+        "ask": "find why the login test is flaky and write up a fix to review",
+        "size": "about 30 min"
+       }
+      },
+      {
+       "title": "Two security trainings still overdue",
+       "stamp": "overdue",
+       "kind": "deadline",
+       "project": "Admin",
+       "admin": "Finish two security training modules",
+       "text": "The training portal sent a second reminder {source}; the modules were due on Monday.",
+       "source": "by email",
+       "source_url": "https://mail.example.com/thread/training"
+      },
+      {
+       "title": "Book a time for the Orchard retro",
+       "kind": "ask",
+       "project": "Orchard app",
+       "text": "Leo asked {source} for a 30-minute slot next week.",
+       "source": "in a direct message",
+       "source_url": "https://chat.example.com/messages/leo",
+       "claude": {
+        "ask": "find two free 30-minute slots next week for the retro, to book once you say",
+        "size": "about 5 min"
+       }
+      },
+      {
+       "title": "Submit this week's timesheet",
+       "stamp": "due Fri",
+       "kind": "deadline",
+       "project": "Admin",
+       "text": "Timesheets close on Friday at noon {source}.",
+       "source": "by email",
+       "source_url": "https://mail.example.com/thread/timesheet"
+      }
+     ]
+    },
+    {
+     "title": "Resolved",
+     "tone": "ok",
+     "items": [
+      {
+       "title": "Lighthouse logo files arrived",
+       "project": "Lighthouse Co",
+       "text": "Priya sent the final logo pack {source}.",
+       "source": "by email",
+       "source_url": "https://mail.example.com/thread/logos"
+      },
+      {
+       "title": "Orchard 2.3 hotfix merged",
+       "project": "Orchard app",
+       "text": "The crash fix was merged {source} and is on staging.",
+       "source": "on the code host",
+       "source_url": "https://git.example.com/pebble/orchard-app/pull/88"
+      }
+     ]
+    },
+    {
+     "title": "Claude can also pick up",
+     "tone": "claude",
+     "items": [
+      {
+       "title": "Tidy the Lighthouse launch notes",
+       "project": "Lighthouse Co",
+       "text": "The launch notes {source} still list two items that shipped last week.",
+       "source": "in the shared doc",
+       "source_url": "https://docs.example.com/lighthouse-launch",
+       "claude": {
+        "ask": "mark the shipped items in the launch notes and list what is really left",
+        "size": "about 10 min"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "todo",
+   "nav": "Jira",
+   "title": "Lighthouse can see these",
+   "blurb": "Draft updates for client-visible tickets. Tick the ones you agree with, then copy.",
+   "groups": [
+    {
+     "title": "The demo settles the booking flow (LH-12)",
+     "cards": [
+      {
+       "id": "p1",
+       "key": "LH-12",
+       "url": "https://jira.example.com/browse/LH-12",
+       "title": "Booking flow: pick a time, pay, confirm",
+       "tags": [
+        [
+         "new",
+         "comment"
+        ]
+       ],
+       "copy": "LH-12: Add this public comment:",
+       "kind": "client",
+       "jira_label": "In Jira, Lighthouse will see this",
+       "jira_html": "<p>The new booking flow is on staging and will be shown at today's demo. After the demo we will note any changes here.</p>",
+       "md": "The new booking flow is on staging and will be shown at today's demo. After the demo we will note any changes here.",
+       "evidence_html": "<p>Merged pull request <q>Booking flow: confirm step</q>, yesterday 17:40. Staging deploy succeeded at 18:02.</p>",
+       "how_html": "Confidence: <strong>high</strong>. Nothing was written."
+      }
+     ]
+    },
+    {
+     "title": "One checklist item is done (LH-14)",
+     "cards": [
+      {
+       "id": "p2",
+       "key": "LH-14",
+       "url": "https://jira.example.com/browse/LH-14",
+       "title": "Launch checklist",
+       "tags": [
+        [
+         "new",
+         "status"
+        ]
+       ],
+       "copy": "LH-14: Move the sub-task \"Set up analytics\" to Done",
+       "kind": "client",
+       "jira_label": "In Jira, Lighthouse will see this",
+       "jira_html": "<p>Status: In Progress &rarr; Done</p>",
+       "md": "Status: In Progress -> Done",
+       "evidence_html": "<p>Priya confirmed in the Lighthouse chat yesterday 16:05 that events are arriving.</p>",
+       "how_html": "Confidence: <strong>medium</strong>: confirmed in chat, not yet in the analytics dashboard."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "nochange",
+   "nav": "No change",
+   "title": "Jira already matches",
+   "blurb": "Evidence that needs no update.",
+   "rows": [
+    {
+     "title": "LH-9",
+     "html": "Copy review: still waiting on Lighthouse, as Jira says.",
+     "info": false
+    },
+    {
+     "title": "LH-17",
+     "html": "Domain set-up: already Done in Jira.",
+     "info": false
+    }
+   ]
+  },
+  {
+   "id": "sources",
+   "nav": "Sources",
+   "title": "What was read",
+   "blurb": "Every source answered. Nothing was written anywhere.",
+   "rows": [
+    {
+     "title": "Jira",
+     "html": "<code>project = LH AND updated &gt;= -3d</code> returned 9 issues; comments read on LH-12, LH-14 and LH-17. Nothing was written.",
+     "info": false
+    },
+    {
+     "title": "Email",
+     "html": "everything since yesterday 08:00 not from you, reminders and deadlines, your sent mail. 14 threads opened.",
+     "info": false
+    },
+    {
+     "title": "Chat",
+     "html": "every direct and group message in the window, not only mentions. 6 conversations opened.",
+     "info": false
+    },
+    {
+     "title": "Calendar",
+     "html": "today 00:00 to tomorrow 24:00: three meetings, one of them optional.",
+     "info": false
+    },
+    {
+     "title": "Code host",
+     "html": "pull requests merged since yesterday on the two client repos: 3.",
+     "info": false
+    }
+   ]
+  }
+ ],
+ "cta_title": "Tick, copy, paste. Nothing reaches Jira until you do.",
+ "cta_text": "The button copies each ticked row's action line and its exact Jira text, never the grey evidence. Paste it into a new message and it is applied as written.",
+ "brand": "Morning brief",
+ "projects": [
+  {
+   "name": "Lighthouse Co",
+   "kind": "client",
+   "folder": "~/code/lighthouse-site"
+  },
+  {
+   "name": "Orchard app",
+   "kind": "client",
+   "folder": "~/code/orchard-app"
+  },
+  {
+   "name": "Admin",
+   "kind": "internal",
+   "folder": "~/Documents/admin"
+  }
+ ],
+ "jira_project": "Lighthouse Co",
+ "admin_project": "Admin",
+ "admin": [
+  {
+   "date": "2026-03-11",
+   "status": "done",
+   "kind": "message",
+   "what": "Asked IT for a second monitor",
+   "source": "chat",
+   "evidence": "Direct message to the IT desk, 11 Mar 15:20",
+   "url": "https://chat.example.com/messages/it-desk",
+   "time": "15:20"
+  }
+ ]
+}

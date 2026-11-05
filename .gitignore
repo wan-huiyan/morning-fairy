@@ -1,0 +1,9 @@
+# a real run's content and logs hold your email, chat and calendar: never commit them
+plugins/morning-fairy/skills/morning-fairy/digest/runs/
+__pycache__/
+*.bak*
+.DS_Store
+node_modules/
+.leakterms*
+!.leakterms.example
+.leakfigs

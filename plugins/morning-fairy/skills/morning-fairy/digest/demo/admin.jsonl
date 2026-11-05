@@ -1,0 +1,3 @@
+{"date": "2026-03-06", "status": "done", "kind": "timesheet", "what": "Logged 37.5 of 37.5 timesheet hours for 2 to 6 Mar", "source": "email", "evidence": "Timesheet reminder email, 7 Mar 07:30", "url": "https://mail.example.com/thread/ts-6"}
+{"date": "2026-03-09", "status": "due", "kind": "training", "what": "Finish two security training modules", "source": "email", "evidence": "Training portal reminder, 2 Mar 09:00", "url": "https://mail.example.com/thread/training"}
+{"date": "2026-03-13", "status": "due", "kind": "timesheet", "what": "Submit the timesheet for 9 to 13 Mar", "source": "email", "evidence": "Timesheet reminder email, 12 Mar 07:30", "url": "https://mail.example.com/thread/timesheet"}

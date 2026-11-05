@@ -1,0 +1,217 @@
+{
+ "date": "2026-03-11",
+ "date_short": "11 Mar",
+ "date_label": "Wednesday 11 Mar 2026",
+ "window": "Tue 10 Mar 08:00 to Wed 11 Mar 08:04",
+ "status_line": "built 08:12, nothing applied yet",
+ "title": "Morning brief 11 Mar",
+ "built": "11 Mar 2026, 08:12",
+ "copy_header": "Apply the ticked Jira updates (digest 11 Mar 2026):",
+ "headline_html": "A quiet Wednesday {mascot} with one review at 11.",
+ "lede_html": "One meeting: the Orchard design review at 11. Four things need you; the afternoon is open.",
+ "cta_primary": "See your day",
+ "sources_marquee": [
+  "Jira",
+  "Email",
+  "Chat",
+  "Calendar",
+  "Code host"
+ ],
+ "banner_html": "",
+ "chapters": [
+  {
+   "id": "today",
+   "nav": "Today",
+   "title": "Your day",
+   "blurb": "One meeting: the Orchard design review at 11. Four things need you; the afternoon is open.",
+   "day": {
+    "shape": "NORMAL",
+    "label": "Your day, 8 AM to 6 PM",
+    "events": [
+     {
+      "start": "11:00",
+      "end": "12:00",
+      "title": "Orchard design review",
+      "weight": 2,
+      "url": "https://calendar.example.com/event/orchard-review"
+     }
+    ],
+    "acts": [
+     {
+      "time": "8 to 11 AM",
+      "start": "08:00",
+      "end": "11:00",
+      "text": "Open until the review."
+     },
+     {
+      "time": "11 AM to 2 PM",
+      "start": "11:00",
+      "end": "14:00",
+      "text": "The Orchard design review, then lunch."
+     },
+     {
+      "time": "2 to 6 PM",
+      "start": "14:00",
+      "end": "18:00",
+      "text": "Free for the booking flow."
+     }
+    ]
+   },
+   "lists": [
+    {
+     "title": "Needs attention",
+     "tone": "warn",
+     "items": [
+      {
+       "title": "Finish the booking flow confirm step",
+       "project": "Lighthouse Co",
+       "text": "The last step of LH-12 {source}.",
+       "source": "in Jira",
+       "source_url": "https://jira.example.com/browse/LH-12",
+       "claude": {
+        "ask": "write the tests for the confirm step",
+        "size": "about 30 min"
+       }
+      },
+      {
+       "title": "Send IT the monitor request",
+       "project": "Admin",
+       "text": "Your second monitor has been out of stock since last week {source}.",
+       "source": "in a direct message",
+       "source_url": "https://chat.example.com/messages/it-desk"
+      },
+      {
+       "title": "Review Leo's onboarding screens",
+       "project": "Orchard app",
+       "text": "Leo asked for comments before the review {source}.",
+       "source": "by email",
+       "source_url": "https://mail.example.com/thread/onboarding"
+      },
+      {
+       "title": "Two security trainings still due",
+       "stamp": "due Mon",
+       "project": "Admin",
+       "text": "The portal reminder {source}.",
+       "source": "by email",
+       "source_url": "https://mail.example.com/thread/training"
+      }
+     ]
+    },
+    {
+     "title": "Resolved",
+     "tone": "ok",
+     "items": [
+      {
+       "title": "Lighthouse domain is live",
+       "project": "Lighthouse Co",
+       "text": "DNS checks passed {source}.",
+       "source": "by email",
+       "source_url": "https://mail.example.com/thread/dns"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "todo",
+   "nav": "Jira",
+   "title": "Lighthouse can see these",
+   "blurb": "Draft updates for client-visible tickets. Tick the ones you agree with, then copy.",
+   "groups": [
+    {
+     "title": "Booking flow progress (LH-12)",
+     "cards": [
+      {
+       "id": "p1",
+       "key": "LH-12",
+       "url": "https://jira.example.com/browse/LH-12",
+       "title": "Booking flow: pick a time, pay, confirm",
+       "tags": [
+        [
+         "new",
+         "comment"
+        ]
+       ],
+       "copy": "LH-12: Add this public comment:",
+       "kind": "client",
+       "jira_label": "In Jira, Lighthouse will see this",
+       "jira_html": "<p>Pick a time and pay are done; the confirm step lands today.</p>",
+       "md": "Pick a time and pay are done; the confirm step lands today.",
+       "evidence_html": "<p>Two merged pull requests on Tuesday.</p>",
+       "how_html": "Confidence: <strong>high</strong>."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "nochange",
+   "nav": "No change",
+   "title": "Jira already matches",
+   "blurb": "Evidence that needs no update.",
+   "rows": [
+    {
+     "title": "LH-9",
+     "html": "Copy review: still waiting on Lighthouse.",
+     "info": false
+    }
+   ]
+  },
+  {
+   "id": "sources",
+   "nav": "Sources",
+   "title": "What was read",
+   "blurb": "Every source answered. Nothing was written anywhere.",
+   "rows": [
+    {
+     "title": "Jira",
+     "html": "<code>project = LH AND updated &gt;= -3d</code> returned 9 issues; comments read on LH-12, LH-14 and LH-17. Nothing was written.",
+     "info": false
+    },
+    {
+     "title": "Email",
+     "html": "everything since yesterday 08:00 not from you, reminders and deadlines, your sent mail. 14 threads opened.",
+     "info": false
+    },
+    {
+     "title": "Chat",
+     "html": "every direct and group message in the window, not only mentions. 6 conversations opened.",
+     "info": false
+    },
+    {
+     "title": "Calendar",
+     "html": "today 00:00 to tomorrow 24:00: three meetings, one of them optional.",
+     "info": false
+    },
+    {
+     "title": "Code host",
+     "html": "pull requests merged since yesterday on the two client repos: 3.",
+     "info": false
+    }
+   ]
+  }
+ ],
+ "cta_title": "Tick, copy, paste. Nothing reaches Jira until you do.",
+ "cta_text": "The button copies each ticked row's action line and its exact Jira text, never the grey evidence. Paste it into a new message and it is applied as written.",
+ "brand": "Morning brief",
+ "projects": [
+  {
+   "name": "Lighthouse Co",
+   "kind": "client",
+   "folder": "~/code/lighthouse-site"
+  },
+  {
+   "name": "Orchard app",
+   "kind": "client",
+   "folder": "~/code/orchard-app"
+  },
+  {
+   "name": "Admin",
+   "kind": "internal",
+   "folder": "~/Documents/admin"
+  }
+ ],
+ "jira_project": "Lighthouse Co",
+ "admin_project": "Admin",
+ "admin": []
+}

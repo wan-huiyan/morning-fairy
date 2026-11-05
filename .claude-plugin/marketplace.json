@@ -1,0 +1,12 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "wan-huiyan-morning-fairy",
+  "description": "A cute one-screen morning brief: your day drawn as a little world, what needs you, tasks Claude can pick up, Jira updates to tick and copy, and a time machine of earlier mornings. Draft-only.",
+  "owner": { "name": "Huiyan Wan" },
+  "plugins": [{
+    "name": "morning-fairy",
+    "source": "./plugins/morning-fairy",
+    "description": "A cute one-screen morning brief: your day drawn as a little world, what needs you, tasks Claude can pick up, Jira updates to tick and copy, and a time machine of earlier mornings. Draft-only.",
+    "version": "1.0.0"
+  }]
+}

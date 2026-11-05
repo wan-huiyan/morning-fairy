@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 320" role="img" aria-label="morning-fairy: a ticket mascot standing on the hills of the day, under a smiling sun">
+<style>
+.bob{animation:bob 2.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.tw{animation:tw 2.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center;opacity:.2}
+@keyframes tw{0%,100%{opacity:.15;transform:scale(.6)}50%{opacity:1;transform:scale(1.1)}}
+.sun{animation:spin 30s linear infinite;transform-box:fill-box;transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.bob,.tw,.sun{animation:none}.tw{opacity:.8}}
+</style>
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4dd"/><stop offset="1" stop-color="#fde7e7"/></linearGradient>
+<linearGradient id="mbody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c2e0ff"/><stop offset="1" stop-color="#7cb2f6"/></linearGradient>
+</defs>
+<rect width="880" height="320" rx="28" fill="url(#sky)"/>
+<path class="tw" style="animation-delay:0s" d="M120 54L121.6 58.4 126 60 121.6 61.6 120 66 118.4 61.6 114 60 118.4 58.4Z" fill="#f59e0b"/><path class="tw" style="animation-delay:0.7s" d="M300 34L301.6 38.4 306 40 301.6 41.6 300 46 298.4 41.6 294 40 298.4 38.4Z" fill="#f472b6"/><path class="tw" style="animation-delay:1.4s" d="M560 64L561.6 68.4 566 70 561.6 71.6 560 76 558.4 71.6 554 70 558.4 68.4Z" fill="#a78bfa"/><path class="tw" style="animation-delay:2.1s" d="M760 42L761.6 46.4 766 48 761.6 49.6 760 54 758.4 49.6 754 48 758.4 46.4Z" fill="#f59e0b"/><path class="tw" style="animation-delay:1.0s" d="M690 114L691.6 118.4 696 120 691.6 121.6 690 126 688.4 121.6 684 120 688.4 118.4Z" fill="#f472b6"/><path class="tw" style="animation-delay:1.8s" d="M210 124L211.6 128.4 216 130 211.6 131.6 210 136 208.4 131.6 204 130 208.4 128.4Z" fill="#a78bfa"/>
+<g transform="translate(700 96)"><g class="sun"><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(0)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(40)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(80)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(120)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(160)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(200)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(240)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(280)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="-50" x2="0" y2="-62" transform="rotate(320)" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/></g>
+<circle r="40" fill="#fbbf24" stroke="#3b2f2a" stroke-width="3"/>
+<circle cx="-13" cy="-6" r="3.5" fill="#3b2f2a"/><circle cx="13" cy="-6" r="3.5" fill="#3b2f2a"/>
+<path d="M-14 9Q0 22 14 9" fill="none" stroke="#3b2f2a" stroke-width="3" stroke-linecap="round"/>
+<ellipse cx="-22" cy="8" rx="6" ry="3.5" fill="#f472b6" opacity=".5"/><ellipse cx="22" cy="8" rx="6" ry="3.5" fill="#f472b6" opacity=".5"/></g>
+<path d="M0 262C120 250 190 248 260 246C330 244 360 220 400 220C440 220 470 244 540 246C610 248 650 150 700 150C750 150 780 240 880 246V320H0Z" fill="#cfe3b4"/>
+<path d="M0 262C120 250 190 248 260 246C330 244 360 220 400 220C440 220 470 244 540 246C610 248 650 150 700 150C750 150 780 240 880 246" fill="none" stroke="#3b2f2a" stroke-width="3" stroke-dasharray="9 7" stroke-linecap="round"/>
+<g fill="#3b2f2a" font-family="'Comic Sans MS','Segoe Print',cursive" font-size="18" text-anchor="middle">
+<text x="120" y="300">8</text><text x="260" y="300">10</text><text x="400" y="300">12</text><text x="540" y="300">2</text><text x="700" y="300">4</text><text x="820" y="300">6</text></g>
+<g transform="translate(360 142) scale(1.25)"><g class="bob"><rect x="20" y="51" width="8" height="8" rx="4" fill="#5f97e6" stroke="#2a4d8a" stroke-width="1.6"/><rect x="36" y="51" width="8" height="8" rx="4" fill="#5f97e6" stroke="#2a4d8a" stroke-width="1.6"/><path d="M17 15H47A10 10 0 0 1 57 25V29A5.5 5.5 0 0 0 57 40V44A10 10 0 0 1 47 54H17A10 10 0 0 1 7 44V40A5.5 5.5 0 0 0 7 29V25A10 10 0 0 1 17 15Z" fill="url(#mbody)" stroke="#2a4d8a" stroke-width="2"/><path d="M47 19V50" stroke="#fff" stroke-width="1.6" stroke-dasharray="2 3.2" stroke-linecap="round" opacity=".75"/><ellipse cx="18" cy="22" rx="6" ry="3" fill="#fff" opacity=".55" transform="rotate(-18 18 22)"/><ellipse cx="22.5" cy="32" rx="3" ry="3.9" fill="#1e293b"/><ellipse cx="38.5" cy="32" rx="3" ry="3.9" fill="#1e293b"/><circle cx="21.4" cy="30.6" r="1.1" fill="#fff"/><circle cx="37.4" cy="30.6" r="1.1" fill="#fff"/><ellipse cx="16.5" cy="39" rx="3.6" ry="2.1" fill="#f472b6" opacity=".6"/><ellipse cx="44.5" cy="39" rx="3.6" ry="2.1" fill="#f472b6" opacity=".6"/><path d="M26.5 39Q30.5 43.4 34.5 39" fill="none" stroke="#1e293b" stroke-width="2" stroke-linecap="round"/><path d="M55 2.5L56.9 8.1 62.5 10 56.9 11.9 55 17.5 53.1 11.9 47.5 10 53.1 8.1Z" fill="#f59e0b" stroke="#b86e06" stroke-width=".8" stroke-linejoin="round"/></g></g>
+<text x="448" y="192" font-family="'Comic Sans MS','Segoe Print',cursive" font-size="22" fill="#3b2f2a">now</text>
+<text x="48" y="92" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="54" fill="#3b2f2a">morning-fairy</text>
+<text x="50" y="128" font-family="Georgia,'Times New Roman',serif" font-style="italic" font-size="21" fill="#7a5a4a">your day, drawn as a little world</text>
+</svg>

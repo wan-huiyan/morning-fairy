@@ -1,0 +1,8 @@
+{
+  "name": "morning-fairy",
+  "version": "1.0.0",
+  "description": "Claude Code skill: a cute one-screen morning brief with a time machine, draft-only",
+  "type": "module",
+  "scripts": { "test": "node --test tests/*.test.mjs" },
+  "license": "MIT"
+}
