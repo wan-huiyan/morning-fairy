@@ -1,4 +1,4 @@
-"""Tests for who the mascot is (look.json "mascot": ticket, clawd or fanfan) in build_digest.py.
+"""Tests for who the mascot is (look.json "mascot": ticket or clawd; an older "fanfan" reads as the ticket) in build_digest.py.
 
 Run from the repo root:  python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests -v
 Pages are built in memory from the made-up demo morning; nothing is written anywhere.
@@ -34,7 +34,7 @@ class MascotKinds(unittest.TestCase):
     # ---- the ticket ----
     def test_ticket_defs_are_unchanged(self):
         self.assertEqual(bd.mascot_defs(), bd.mascot_defs("ticket"))
-        self.assertEqual(bd.mascot_defs("fanfan", None), bd.mascot_defs())  # no animal to draw: the ticket
+        self.assertEqual(bd.mascot_defs("fanfan"), bd.mascot_defs())  # not a mascot any more: the ticket
 
     def test_ticket_look_has_no_mascot_script_and_no_clawd(self):
         from test_fairy_look import without_picker
@@ -81,58 +81,34 @@ class MascotKinds(unittest.TestCase):
         self.assertTrue(bd.CLAWD_BASE.startswith("https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@"))
         self.assertRegex(bd.CLAWD_BASE, r"@[0-9a-f]{40}/")  # pinned to one commit
 
-    def test_clawd_keeps_the_ticket_tab_icon(self):
-        look = dict(FULL_LOOK, places=["tabs"])
-        self.assertIn(f'href="{bd.favicon_href(bd.page_mood(self.content))}" id="tab-icon"', self.page(look))
+    def test_clawd_page_has_the_animal_on_the_tab_icon(self):
+        # all six places are on with any look, the browser-tab icon included, so Clawd's page carries the animal's face there
+        self.assertNotIn(f'href="{bd.favicon_href(bd.page_mood(self.content))}" id="tab-icon"', self.page(FULL_LOOK))
 
-    def test_clawd_without_fanfan_places_credits_clawd_only(self):
-        html = self.page(dict(FULL_LOOK, places=[]))
-        self.assertIn(bd.CLAWD_CREDIT, html)
-        self.assertNotIn(bd.FF_CREDIT, html)
-        self.assertNotIn("root.FanfanMotion", html)  # the motion helper itself (the mascot script only names it)
+    # ---- an older look.json that still says "fanfan" ----
+    def test_an_old_fanfan_mascot_is_the_ticket_with_the_animal_icons(self):
+        old = self.page(dict(FULL_LOOK, mascot="fanfan"))
+        new = self.page(dict(FULL_LOOK, mascot="ticket"))
+        self.assertEqual(old, new)
+        self.assertNotIn('"kind"', old)  # no mascot script
+        self.assertEqual(old.count('<template id="ff-sun">'), 1)  # the icons are still the animal's
+        self.assertIn(bd.FF_CREDIT, old)
 
-    # ---- the fanfan animal ----
-    def test_fanfan_symbols_draw_the_animal_in_the_page_ink(self):
-        html = self.page(dict(FULL_LOOK, mascot="fanfan"))
-        for sid, mark in zip(MOOD_IDS, ("bb-i-face-whole", "bb-i-alarm", None, "bb-i-trophy")):
-            s = self.symbol(html, sid)
-            self.assertIn('style="color:var(--w-ink)"', s)
-            self.assertNotIn("<image", s)
-            if mark:
-                self.assertIn(mark, s)
-        self.assertNotIn("bb-eye-a", self.symbol(html, "mascot-sleepy"))  # the still face with its eyes shut
-        self.assertNotIn("tk-mascot", html)
-        self.assertNotIn(bd.CLAWD_CREDIT, html)
-        self.assertIn('"kind": "fanfan"', html)
-
-    def test_fanfan_mascot_brings_its_drawings_and_moves_even_with_no_places(self):
-        html = self.page(dict(FULL_LOOK, mascot="fanfan", places=[]))
-        for noun in ("face-whole", "alarm", "trophy"):
-            self.assertEqual(html.count(f'<template id="ff-{noun}">'), 1, noun)
-        self.assertIn("root.FanfanMotion", html)
-        self.assertIn(bd.FF_CREDIT, html)
-        self.assertIn(".rider svg{transform:scale(.78)", html)
-        self.assertNotIn("<template id=\"ff-sun\">", html)  # the places are still off
-
-    def test_mascot_script_runs_before_the_scene(self):
-        html = self.page(dict(FULL_LOOK, mascot="fanfan"))
-        self.assertLess(html.index('"kind": "fanfan"'), html.index("var D = JSON.parse(document.getElementById('stage-data')"))
+    def test_the_fanfan_mascot_code_is_gone(self):
+        html = self.page(dict(FULL_LOOK, mascot="clawd"))
+        for gone in ("fanMood", "fanRest", "fanTo", "ff-who", "fbox"):
+            self.assertNotIn(gone, html)
 
     # ---- the list headings ----
-    def test_needs_and_resolved_headings_get_icons_with_tabs(self):
-        html = self.page(dict(FULL_LOOK, mascot="ticket", places=["tabs"]))
+    def test_needs_and_resolved_headings_get_icons_with_a_look(self):
+        html = self.page(dict(FULL_LOOK, mascot="ticket"))
         self.assertIn('<h3 class="group gh" id="needs"><span class="gi"><svg data-ff="bell" aria-hidden="true"></svg></span>Needs attention</h3>', html)
         self.assertIn('<h3 class="group gh" id="resolved"><span class="gi"><svg data-ff="trophy" aria-hidden="true"></svg></span>Resolved</h3>', html)
-        plain = self.page(dict(FULL_LOOK, mascot="ticket", places=["quests"]))
+        plain = self.page(None)  # no look: the headings keep their plain text
         self.assertIn('<h3 class="group" id="needs">Needs attention</h3>', plain)
 
-    def test_a_fanfan_tab_icon_alone_is_credited(self):
-        html = self.page(dict(FULL_LOOK, mascot="ticket", places=["favicon"]))
-        self.assertIn(bd.FF_CREDIT, html)
-        self.assertNotIn("root.FanfanMotion", html)  # nothing moves in the page itself
-
     def test_no_credit_without_borrowed_art(self):
-        html = self.page(dict(FULL_LOOK, mascot="ticket", places=[]))
+        html = self.page(None)  # no look: no animal, no sticker
         self.assertNotIn('class="foot credit"', html)
         self.assertNotIn(".who-pic", html)
 

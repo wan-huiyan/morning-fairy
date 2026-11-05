@@ -34,10 +34,11 @@ CODE = Path(__file__).resolve().parent  # the builder and the bundled fanfan ico
 FF_STYLES = ("thin", "thick", "thin-highlight", "thick-highlight")
 FF_ANIMALS = ("cat", "dog", "lop", "bunny")
 FF_NOUNS = ("sun", "bell", "ticket", "robot", "trophy", "clock", "news", "mail", "search", "file", "sparkles",
-            "palette", "moon", "music", "wand", "sleep", "star", "face-whole", "alarm", "heart")
+            "moon", "wand", "sleep", "star", "face-whole", "alarm", "heart")
 FF_PATH = re.compile(r"/fanfan/(" + "|".join(FF_STYLES) + r")/(" + "|".join(FF_ANIMALS) + r")-("
                      + "|".join(re.escape(n) for n in FF_NOUNS) + r")\.svg")
-# look.json: every key required, nothing else allowed (the builder is more forgiving; this is the one place that writes it)
+# look.json: every key required except "places", nothing else allowed (the builder is more forgiving; this is the one place that writes it).
+# "places" is no longer chosen: an older page may still send it (checked, then ignored); what gets written always lists all six.
 LOOK_ONE = {"mascot": ("ticket", "clawd", "fanfan"), "animal": FF_ANIMALS, "line": ("thin", "thick"), "eyes": ("dots", "shiny")}
 LOOK_MANY = {"places": ("tabs", "quests", "toolbar", "done", "empty", "favicon"), "moves": ("wake", "sleep", "bounce", "blush", "trick")}
 LOOK_LOCK = threading.Lock()  # one save-and-rebuild at a time
@@ -81,16 +82,19 @@ def _text(v, limit):
 
 def clean_look(r):
     """The look as look.json stores it, or None when anything is missing, unknown or the wrong type."""
-    if not isinstance(r, dict) or set(r) != set(LOOK_ONE) | set(LOOK_MANY):
+    if not isinstance(r, dict) or not (set(LOOK_ONE) | {"moves"}) <= set(r) <= set(LOOK_ONE) | set(LOOK_MANY):
         return None
     for k, allowed in LOOK_ONE.items():
         if not isinstance(r[k], str) or r[k] not in allowed:
             return None
     for k, allowed in LOOK_MANY.items():
+        if k not in r:
+            continue
         v = r[k]
         if not isinstance(v, list) or len(v) != len(set(v)) or not all(isinstance(x, str) and x in allowed for x in v):
             return None
-    return {**{k: r[k] for k in LOOK_ONE}, **{k: [x for x in allowed if x in r[k]] for k, allowed in LOOK_MANY.items()}}
+    return {**{k: r[k] for k in LOOK_ONE}, "places": list(LOOK_MANY["places"]),
+            "moves": [x for x in LOOK_MANY["moves"] if x in r["moves"]]}
 
 
 def write_look(look):

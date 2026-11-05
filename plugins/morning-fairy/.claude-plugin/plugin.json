@@ -1,7 +1,7 @@
 {
   "name": "morning-fairy",
   "description": "A cute one-screen morning brief: your day drawn as a little world, what needs you, tasks Claude can pick up, Jira updates to tick and copy, and a time machine of earlier mornings. Draft-only.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": { "name": "Huiyan Wan" },
   "repository": "https://github.com/wan-huiyan/morning-fairy",
   "license": "MIT",
