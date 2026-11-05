@@ -267,10 +267,11 @@ def _admin_key(r):
     return (r["date"], r["what"].lower().strip())
 
 
-def update_admin_log(path, d):
+def update_admin_log(path, d, todos=(), taps=None):
     # The company admin record: trainings, timesheet hours, messages sent about IT or HR. One line per record.
     # A rebuild upserts the content's "admin" records; a "done" record replaces a "due" one with the same date and wording,
-    # and a newly arrived "done" closes one matching deadline (see below).
+    # and a newly arrived "done" closes one matching deadline (see below). `todos` and `taps` (the day's to-dos and the Done
+    # taps from runs/done.jsonl) let a to-do ticked Done in the brief close its deadline too (admin_done_taps).
     p = Path(path).expanduser()
     recs, keep = {}, []
     for ln in _read_log(p):
@@ -315,6 +316,12 @@ def update_admin_log(path, d):
                           and x["date"] <= ahead and (x["date"], x["what"].lower()) not in taken)
         if open_due:
             r["closes"] = open_due[0]
+    # then the deadlines whose to-do was ticked Done in the brief, closed the way a pasted "Record as admin done" closes them
+    for r in admin_done_taps(recs, claimed(), d["date"], todos, taps or {}):
+        old = recs.get(_admin_key(r))
+        if old and old["status"] == "done":
+            continue  # a done record already there is never overwritten
+        recs[_admin_key(r)] = r
     taken = claimed()
     recs = {k: r for k, r in recs.items() if not (r["status"] == "due" and (r["date"], r["what"].lower()) in taken)}
     out = sorted(recs.values(), key=lambda r: (r["date"], r.get("time", ""), r["what"].lower()))
@@ -374,6 +381,42 @@ def _admin_todo(r, todos):
     return best[1] if best[0] >= 2 else None
 
 
+def _day_todos(ch):
+    """The to-dos an admin record can belong to: the day chapter's Needs attention and admin lists."""
+    return [it for lst in ch.get("lists", []) if lst.get("tone") == "warn" or lst.get("admin") for it in lst.get("items", [])]
+
+
+def admin_row_id(r):
+    """The page id of a record's "Admin today" row (its pin on the scene links to it): its date and wording as a slug."""
+    return "adm-" + item_id(r["date"], r["what"])
+
+
+def admin_done_taps(recs, taken, today, todos, taps):
+    """Done records for the open deadlines the page shows (overdue, or due today) whose linked to-do (_admin_todo) was
+    ticked Done in the brief: `taps` is runs/done.jsonl, the last write per id (_done_last), so an untick after a tick
+    closes nothing. Each is what section 6 of SKILL.md writes for a pasted "Record as admin done": the deadline's kind
+    and exact wording, "closes" its date, dated and timed by the tap. One tap closes one deadline (the earliest it links
+    to). A tap without a readable time is skipped rather than given one."""
+    import datetime as dt
+    out, used = [], set()
+    open_ = sorted((r for r in admin_today(recs.values(), today) if r["status"] == "due" and (r["date"], r["what"].lower()) not in taken),
+                   key=lambda r: (r["date"], r["what"].lower()))
+    for r in open_:
+        it = _admin_todo(r, todos)
+        did = it.get("_did") if it else None
+        tap = taps.get(did) if did else None
+        if not tap or tap.get("done") is not True or did in used:
+            continue
+        try:
+            at = dt.datetime.fromisoformat(str(tap.get("at") or ""))  # the helper writes local time with its offset
+        except ValueError:
+            continue
+        used.add(did)
+        out.append(_admin_clean({"date": at.date().isoformat(), "status": "done", "source": "pasted", "kind": r["kind"],
+                                 "what": r["what"], "evidence": f"Marked Done in the brief, {at:%H:%M}", "closes": r["date"]}))
+    return out
+
+
 def render_admin_today(items, today, todos=()):
     lis = []
     for st in ("over", "due", "done"):
@@ -384,7 +427,7 @@ def render_admin_today(items, today, todos=()):
             link = f'<a class="adm-link" href="{esc(url)}">Open the {"email" if r.get("source") == "email" else "Slack message" if r.get("source") == "slack" else "source"}</a>' if url else ""
             it = _admin_todo(r, todos) if st != "done" else None
             of = f' data-did-of="{esc(it["_did"])}"' if it and it.get("_did") else ""
-            lis.append(f'<li class="adm-li adm-{st}"{of}><svg class="adm-ic" viewBox="0 0 12 12" aria-hidden="true">{_glyph(st)}</svg>'
+            lis.append(f'<li class="adm-li adm-{st}" id="{esc(admin_row_id(r))}"{of}><svg class="adm-ic" viewBox="0 0 12 12" aria-hidden="true">{_glyph(st)}</svg>'
                        f'<div><span class="adm-main"><b>{label}:</b> {esc(text)}</span><span class="adm-marked">Marked done</span>{ev}{link}</div></li>')
     return f'<div class="admin-today"><h3>Admin today</h3><ul>{"".join(lis)}</ul></div>' if lis else ""
 
@@ -424,16 +467,39 @@ def _event_links(ev):
     return links + list(ev.get("links", []))
 
 
-def render_act(a, events):
-    # An act with "start"/"end" lists the meetings that begin inside it, each with its links.
+def _meet_places(day):
+    """Where Your day lists each of the day's meetings (by its index in day["events"], the order the scene's D.events keeps):
+    ({meeting: act} for the first act whose times hold its start, which gives its row the id mt-<n>, and {meeting: act}
+    for a meeting no act holds, pointing at the act nearest in time; that act gets the id act-<j>)."""
+    timed = [(j, _minutes(a["start"]), _minutes(a["end"])) for j, a in enumerate(day.get("acts", [])) if a.get("start") and a.get("end")]
+    held, near = {}, {}
+    for n, ev in enumerate(day.get("events", [])):
+        s = _minutes(ev["start"])
+        j = next((j for j, lo, hi in timed if lo <= s < hi), None)
+        if j is not None:
+            held[n] = j
+        elif timed:
+            near[n] = min(timed, key=lambda t: (max(t[1] - s, s - t[2], 0), t[1]))[0]
+    return held, near
+
+
+def _meet_target(day, n, fallback):
+    # the id a meeting's link in the scene opens: its row, else the act nearest in time, else the day's own section
+    held, near = _meet_places(day)
+    return f"mt-{n}" if n in held else f"act-{near[n]}" if n in near else fallback
+
+
+def render_act(a, events, j=None, held=None, nearest=False):
+    # An act with "start"/"end" lists the meetings that begin inside it, each with its links. With held (_meet_places), the
+    # row in the first act that holds a meeting gets the id mt-<n> its link in the scene opens; nearest gives the act act-<j>.
     mine = []
     if a.get("start") and a.get("end"):
         lo, hi = _minutes(a["start"]), _minutes(a["end"])
-        mine = [ev for ev in events if lo <= _minutes(ev["start"]) < hi]
+        mine = [(n, ev) for n, ev in enumerate(events) if lo <= _minutes(ev["start"]) < hi]
     rows = "".join(
-        f'<li><span class="meet-head"><b>{esc(ev["start"])}</b>{esc(ev["title"])}</span>'
+        "<li" + (f' id="mt-{n}"' if held is not None and held.get(n) == j else "") + f'><span class="meet-head"><b>{esc(ev["start"])}</b>{esc(ev["title"])}</span>'
         + (f'<span class="chips">{"".join(c)}</span>' if (c := _chips(_event_links(ev))) else "") + "</li>"
-        for ev in mine)
+        for n, ev in mine)
     body = (f'<ul class="meets">{rows}</ul>' if rows else "") + _paras(a.get("detail"))
     chips = _chips(a.get("links"))
     if chips:
@@ -442,12 +508,13 @@ def render_act(a, events):
     if body:
         label = _plural(len(mine), "meeting") if mine else "Details and links"
         more = _more(label, body)
-    return f'<div class="act"><b>{esc(a["time"])}</b><p>{esc(a["text"])}</p>{more}</div>'
+    return '<div class="act"' + (f' id="act-{j}"' if nearest else "") + f'><b>{esc(a["time"])}</b><p>{esc(a["text"])}</p>{more}</div>'
 
 
 def render_day(day, date="", mood="calm", admin=None, todos=()):
     # The day's drawing is the page's scene now; this is the words under it: the acts, then today's admin records.
-    acts = "".join(render_act(a, day.get("events", [])) for a in day.get("acts", []))
+    held, near = _meet_places(day)
+    acts = "".join(render_act(a, day.get("events", []), j, held, j in near.values()) for j, a in enumerate(day.get("acts", [])))
     pins = admin_today(admin, date) if admin else None
     # data-date lets the page tell the brief's own day (the scene's sun and "now" follow the clock) from a later reading.
     return f'<div class="day" data-date="{esc(date)}"><div class="acts">{acts}</div>{render_admin_today(pins, date, todos) if pins else ""}</div>'
@@ -540,13 +607,12 @@ def item_id(date, title):
     return re.sub(r"[^a-z0-9]+", "-", f"{date} {_one_line(title)}".lower()).strip("-")[:90]
 
 
-def read_done(path, date):
-    """Ids and titles marked Done in runs/done.jsonl by records dated on or before `date` (the last write per id wins).
-    The morning run uses it; build() does not."""
+def _done_last(path, date):
+    """The last record per id in runs/done.jsonl, among those dated on or before `date`: {id: record}. Read only."""
     try:
         lines = Path(path).read_text(encoding="utf-8").splitlines()
     except OSError:
-        return set()
+        return {}
     last = {}
     for ln in lines:
         try:
@@ -555,8 +621,14 @@ def read_done(path, date):
             continue
         if isinstance(r, dict) and isinstance(r.get("id"), str) and str(r.get("date") or "") <= date:
             last[r["id"]] = r
+    return last
+
+
+def read_done(path, date):
+    """Ids and titles marked Done in runs/done.jsonl by records dated on or before `date` (the last write per id wins).
+    The morning run uses it; build() reads the same file only to close admin deadlines (admin_done_taps)."""
     out = set()
-    for i, r in last.items():
+    for i, r in _done_last(path, date).items():
         if r.get("done") is True:
             out.add(i)
             if isinstance(r.get("title"), str) and r["title"]:
@@ -845,8 +917,7 @@ def render_list(lst, chips=False, admin=False, rel=None):
 def render_chapter(ch, chips=False, date="", mood="calm", admin=None, rel=None):
     groups = []
     if ch.get("day"):
-        todos = [it for lst in ch.get("lists", []) if lst.get("tone") == "warn" or lst.get("admin") for it in lst.get("items", [])]
-        groups.append(render_day(ch["day"], date, mood, admin, todos))
+        groups.append(render_day(ch["day"], date, mood, admin, _day_todos(ch)))
     groups.extend(render_list(lst, chips, admin is not None, rel) for lst in ch.get("lists", []))
     for g in ch.get("groups", []):
         title = f'<h3 class="group">{g["title"]}</h3>' if g.get("title") else ""
@@ -1921,6 +1992,13 @@ CSS_ADMIN = r"""
 .adm-over .ag-t{fill:none;stroke:var(--card-solid);stroke-width:1.5;stroke-linecap:round}
 /* the day drawing */
 .terrain .apin{transform-box:fill-box;transform-origin:50% 100%}
+/* the scene's pins: a see-through link over each (the scene is hidden from screen readers) and a small lift on hover or focus */
+.pinlinks{position:absolute;inset:0;z-index:4;pointer-events:none}
+.pinlink{position:absolute;width:32px;height:32px;margin:-16px 0 0 -16px;border-radius:10px;pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pinlink:focus-visible{outline:3px solid var(--w-accent,var(--accent));outline-offset:1px}
+.scene .apin{transform-box:fill-box;transform-origin:50% 100%;transition:transform .2s ease-out}
+.scene .apin.lift{transform:translateY(-3px) scale(1.15)}
+@media (prefers-reduced-motion:reduce){.scene .apin{transition:none}.scene .apin.lift{transform:scale(1.15)}}
 @media (max-width:640px){.terrain .apin{transform:scale(1.6)}}
 .admin-today{margin-top:14px;padding:12px 16px 14px;border-top:1.5px dashed var(--line-strong)}
 .admin-today h3{margin:0 0 8px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -2925,6 +3003,7 @@ JS = r"""
       else { uncross(el); travel(el, false); }
     });
     qa('[data-did-of="' + did + '"]').forEach(function(q){ q.classList.toggle('todo-done', on); });
+    if (window.briefStage && briefStage.pinDone) briefStage.pinDone(did, on);  // its admin pin on the scene, if it has one
   }
   function postDone(l, on){
     if (!SERVED) return;
@@ -3944,6 +4023,16 @@ html[data-mode="dark"] .seg button[aria-pressed="true"]{background:var(--w-accen
 .scrim{position:absolute;inset:0;z-index:15;background:color-mix(in srgb,var(--w-ink) 9%,transparent);opacity:0;pointer-events:none;transition:opacity .35s;border-radius:30px;margin:0 clamp(12px,2.4vw,28px) clamp(12px,2vw,24px)}
 .app[data-layout="scene"].sheet-open .scrim{opacity:1;pointer-events:auto}
 .app[data-layout="scene"].sheet-open .stage{filter:saturate(.85)}
+/* the meetings in the scene: a see-through link over each (see placeMeets), and its board lifts a little on hover or focus */
+.meetlinks{position:absolute;inset:0;z-index:4;pointer-events:none}
+.meetlink{position:absolute;display:block;pointer-events:none;border-radius:8px;-webkit-tap-highlight-color:transparent}
+.meetlink:focus-visible{outline:3px solid var(--w-accent,var(--accent));outline-offset:2px}
+.meetlink .mhit{position:absolute;display:block;pointer-events:auto;cursor:pointer}
+.scene .g-sign rect,.scene .g-sign text,.scene g:has(> .c-gum){transition:transform .2s ease-out}
+.scene .k-moon{transform-box:fill-box;transform-origin:50% 50%;transition:transform .2s ease-out}
+.scene .g-sign.mlift rect,.scene .g-sign.mlift text,.scene g.mlift:has(> .c-gum){transform:translateY(-4px)}
+.scene .k-moon.mlift{transform:translateY(-3px) scale(1.35)}
+@media (prefers-reduced-motion:reduce){.scene .g-sign.mlift rect,.scene .g-sign.mlift text,.scene g.mlift:has(> .c-gum),.scene .k-moon.mlift{transform:none}}
 .hotspots{position:absolute;inset:0;z-index:4;pointer-events:none}
 .spot{position:absolute;pointer-events:auto;transform:translate(-50%,-100%);display:grid;justify-items:center;gap:0;border:0;background:none;padding:0;cursor:pointer;
   animation:st-spotbob 3.6s ease-in-out infinite;animation-delay:var(--dl,0s)}
@@ -4158,7 +4247,7 @@ JS_STAGE = r"""
   function clockText(t){ var m = 480 + Math.round(t), h = Math.floor(m / 60), mm = m % 60; return (((h + 11) % 12) + 1) + ':' + p2(mm) + (h >= 12 ? ' PM' : ' AM'); }
   readClock(); st.t = target();
   function mins(hm){ var p = hm.split(':'); return (+p[0] - 8) * 60 + (+p[1]); }
-  var EV = D.events.map(function(e){ return {a: mins(e[0]), b: mins(e[1]), label: e[0].replace(/^0/, '').replace(':00', ''), title: e[2], opt: e[3]}; })
+  var EV = D.events.map(function(e){ return {a: mins(e[0]), b: mins(e[1]), label: e[0].replace(/^0/, '').replace(':00', ''), title: String(e[2]).replace(/[&<>"]/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }), opt: e[3]}; })  // a calendar title goes into the drawing as text, never as markup
     .filter(function(e){ return e.b > 0 && e.a < 600; });
   EV.forEach(function(e){ e.a = Math.max(0, e.a); e.b = Math.min(600, e.b); });
   // the day's load, ported from the old ridge: every meeting that counts (not an optional one) adds a smooth bump centred on its middle,
@@ -4212,17 +4301,133 @@ JS_STAGE = r"""
   };
   function hours(y){ return [[0, '8'], [120, '10'], [240, '12'], [360, '2'], [480, '4'], [600, '6']].map(function(h){ return '<text class="hr" x="' + X(h[0]).toFixed(1) + '" y="' + y.toFixed(1) + '" text-anchor="middle">' + h[1] + '</text>'; }).join(''); }
   // today's admin records stand on the timeline as little clipboards: at their time, or in a row at the right end
+  var PINS = [];  // where each pin stands (its centre, in the scene's px), so placePins can lay a link over it
+  // an open record's pin follows its to-do's Done box: ticked, it shows the done clipboard (also after a redraw)
+  function pinState(p){ var b = p.did && document.querySelector('label.dn[data-did="' + p.did + '"] > input'); return b && b.checked ? 'done' : p.s; }
+  function pinTip(p, s, txt){ var t = txt ? p.text : p.tip; return s === 'done' && p.s !== 'done' ? t + ' (marked done)' : t; }
   function pins(yAt, dy){
+    PINS = [];
     if (!D.pins || !D.pins.length) return '';
     var k = G.k * 1.2, timed = D.pins.filter(function(p){ return p.t != null; }).sort(function(a, b){ return a.t - b.t; }),
         loose = D.pins.filter(function(p){ return p.t == null; }).slice(0, 6), spots = [], last = -99;
     timed.forEach(function(p){ var cx = X(p.t); cx = Math.min(cx - last >= 20 * k ? cx : last + 20 * k, G.x1 - 8); last = cx; spots.push([cx, p]); });
     loose.forEach(function(p, i){ spots.push([G.x1 - 34 - 20 * k * i, p]); });
-    return '<g class="apins">' + spots.map(function(s){
-      var cx = s[0], p = s[1];
-      return '<g transform="translate(' + (cx - 6 * k).toFixed(1) + ' ' + (yAt(cx) + dy).toFixed(1) + ') scale(' + k.toFixed(2) + ')"><g class="apin adm-' + p.s + '"><title>' + p.tip + '</title>' + D.glyph[p.s] + '</g></g>';
+    return '<g class="apins">' + spots.map(function(s, i){
+      var cx = s[0], p = s[1], y = yAt(cx) + dy, st = pinState(p);
+      PINS.push({x: cx, y: y + 6 * k, p: p, i: i});
+      return '<g transform="translate(' + (cx - 6 * k).toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + k.toFixed(2) + ')"><g class="apin adm-' + st + '" data-pi="' + i + '"><title>' + pinTip(p, st) + '</title>' + D.glyph[st] + '</g></g>';
     }).join('') + '</g>';
   }
+  // the scene is hidden from screen readers, so each pin gets a small see-through link laid over it, like the signposts:
+  // it opens Your day at the pin's Admin today row (the page's own in-page link handler does that), in every layout
+  var pinHost = document.getElementById('pinlinks');
+  function pinLabel(a, p, s){ var t = pinTip(p, s, true); a.title = t; a.setAttribute('aria-label', t + ', show it in Your day'); }
+  function placePins(){
+    pinHost.innerHTML = '';
+    PINS.forEach(function(q){
+      if (!q.p.id || !document.getElementById(q.p.id)) return;  // no row to show (no day section): no link
+      var a = document.createElement('a'); a.className = 'pinlink'; a.href = '#' + q.p.id; a.dataset.pi = q.i;
+      a.style.left = q.x.toFixed(1) + 'px'; a.style.top = q.y.toFixed(1) + 'px';
+      pinLabel(a, q.p, pinState(q.p)); pinHost.appendChild(a);
+    });
+  }
+  function pinLift(e, on){ var a = e.target.closest && e.target.closest('.pinlink'), g = a && $('.apin[data-pi="' + a.dataset.pi + '"]', sceneEl); if (g) g.classList.toggle('lift', on); }
+  pinHost.addEventListener('mouseover', function(e){ pinLift(e, true); });
+  pinHost.addEventListener('mouseout', function(e){ pinLift(e, false); });
+  pinHost.addEventListener('focusin', function(e){ pinLift(e, true); });
+  pinHost.addEventListener('focusout', function(e){ pinLift(e, false); });
+  // the page's Done (settle) calls this: the pin linked to that to-do switches to the done clipboard at once, and back
+  function pinDone(did, on){
+    PINS.forEach(function(q){
+      if (q.p.did !== did) return;
+      var s = on ? 'done' : q.p.s, g = $('.apin[data-pi="' + q.i + '"]', sceneEl), a = $('.pinlink[data-pi="' + q.i + '"]', pinHost);
+      if (g) { g.setAttribute('class', 'apin adm-' + s + (g.classList.contains('lift') ? ' lift' : '')); g.innerHTML = '<title>' + pinTip(q.p, s) + '</title>' + D.glyph[s]; }
+      if (a) pinLabel(a, q.p, s);
+    });
+  }
+  // each meeting drawn in the scene (a signpost, a gum drop, a moon) gets a see-through link too: it opens its row in Your day.
+  // The link's own box is the board (it carries the name and the focus ring) and takes no clicks itself; three hit areas inside
+  // it are stacked in tiers across all the meetings, so a crowded stretch never hands one meeting's board or hump to a neighbour:
+  // the boards exactly as drawn on top (where two overlap, the one drawn later, as in the drawing), then each board grown to a
+  // 32 px target (upwards, and sideways only as far as half the gap to the next meeting), then the strip from the board down
+  // to the ground at its middle, then its whole stretch of the day from the board's top down to the hump (narrower stretches
+  // above wider). Pins and section signposts lie above them all (later in the page); where the sun is drawn over a meeting, a
+  // press goes to the sun (the pointerdown below), so it can always be dragged.
+  var meetHost = document.getElementById('meetlinks');
+  var MEV = []; D.events.forEach(function(e, n){ var a = mins(e[0]), b = mins(e[1]); if (b > 0 && a < 600) MEV.push({n: n, a: Math.max(0, a), b: Math.min(600, b), e: e}); });  // EV's meetings, in EV's order
+  var MSEL = {garden: '.g-sign', caterpillar: '.g-sign', candy: '.c-gum', cosmic: '.k-moon'};
+  function meetDrawn(){ var s = MSEL[world()]; return s ? $$(s, sceneEl) : []; }
+  function placeMeets(){
+    meetHost.innerHTML = '';
+    try { meetLay(); } catch (e) { meetHost.innerHTML = ''; }  // a drawing it cannot read leaves the scene without meeting links, never broken
+  }
+  function meetLay(){
+    var w = world(), drawn = meetDrawn(), k = G.k, gl = w === 'candy' ? function(x){ return GROUND.candy(x) + 12; } : GROUND[w];
+    if (!gl || drawn.length !== MEV.length) return;
+    var L = [], cx = [];
+    MEV.forEach(function(m, j){
+      var el = drawn[j], b;
+      if (w === 'garden' || w === 'caterpillar') {
+        var M = el.transform.baseVal.consolidate().matrix, r = $('rect', el), rx = +r.getAttribute('x'), ry = +r.getAttribute('y');
+        b = [M.e + M.a * rx, M.f + M.d * ry, M.e + M.a * (rx + +r.getAttribute('width')), M.f + M.d * (ry + +r.getAttribute('height'))];
+      } else if (w === 'candy') { var bb = el.getBBox(); b = [bb.x, bb.y, bb.x + bb.width, bb.y + bb.height]; }
+      else { var mx = +el.getAttribute('cx'), my = +el.getAttribute('cy'), mr = +el.getAttribute('r'); b = [mx - mr, my - mr, mx + mr, my + mr]; }
+      cx[j] = (b[0] + b[2]) / 2; L.push({m: m, j: j, b: b});
+    });
+    var grow = function(r, room){ var x = (r[0] + r[2]) / 2, dw = (r[2] - r[0]) / 2, hw = Math.max(dw, Math.min(Math.max(16, dw + 3), room)), b = r[3] + 3; return [x - hw, Math.min(r[1] - 3, b - 32), x + hw, b]; };
+    var span = function(x0, x1){ var hi = 1e9, lo = -1e9; for (var x = x0; x <= x1 + 3.9; x += 4) { var g = gl(Math.min(x, x1)); hi = Math.min(hi, g); lo = Math.max(lo, g); } return [hi, lo]; };
+    L.forEach(function(q){
+      var m = q.m, x = cx[q.j], gap = 1e9;
+      cx.forEach(function(o, i){ if (i !== q.j) gap = Math.min(gap, Math.abs(o - x)); });
+      var B = grow(q.b, gap / 2);
+      var pw = Math.max(1.5, Math.min(9 * k, gap / 2 - 1)), sx0 = Math.min(X(m.a), B[0]), sx1 = Math.max(X(m.b), B[2]), gs = span(sx0, sx1), g0 = gl(x);
+      var deep = w === 'caterpillar' ? 20 * k : w === 'candy' ? 14 : 10 * k;  // below the ground line: the caterpillar's bites, candy's thick band
+      q.B = B;
+      q.P = [x - pw, w === 'cosmic' ? g0 - 26 * k : B[3], x + pw, g0 + deep];
+      q.A = [sx0, w === 'cosmic' ? gs[0] - 26 * k : B[1], sx1, gs[1] + deep];
+    });
+    // narrower stretches go above wider ones
+    L.slice().sort(function(p, q){ return (q.A[2] - q.A[0]) - (p.A[2] - p.A[0]); }).forEach(function(q, i){ q.za = 1000 + i; });
+    L.sort(function(p, q){ return p.m.a - q.m.a || p.m.n - q.m.n; });  // Tab follows the day
+    L.forEach(function(q){
+      var e = q.m.e, B = q.B, t = e[0].replace(/^0/, '') + ' ' + e[2], a = document.createElement('a');
+      if (!e[5]) return;
+      a.className = 'meetlink'; a.href = '#' + e[5]; a.dataset.mj = q.j; a.title = t; a.setAttribute('aria-label', t + ', open in Your day');
+      a.style.left = B[0].toFixed(1) + 'px'; a.style.top = B[1].toFixed(1) + 'px'; a.style.width = (B[2] - B[0]).toFixed(1) + 'px'; a.style.height = (B[3] - B[1]).toFixed(1) + 'px';
+      [[q.b, 4000 + q.j], [B, 3000 + q.j], [q.P, 2000 + q.j], [q.A, q.za]].forEach(function(h){
+        var r = h[0], s = document.createElement('span'); s.className = 'mhit';
+        s.style.left = (r[0] - B[0]).toFixed(1) + 'px'; s.style.top = (r[1] - B[1]).toFixed(1) + 'px'; s.style.width = (r[2] - r[0]).toFixed(1) + 'px'; s.style.height = (r[3] - r[1]).toFixed(1) + 'px'; s.style.zIndex = h[1];
+        a.appendChild(s);
+      });
+      meetHost.appendChild(a);
+    });
+  }
+  // a press where the sun (or the night moon, or the lollipop on its stick) is the topmost thing drawn is the sun's: it is
+  // handed on, so the sun's own drag starts (and captures the pointer), and the link's click that would follow is dropped
+  var sunTook = false;
+  meetHost.addEventListener('pointerdown', function(e){
+    sunTook = false;
+    var top = document.elementsFromPoint(e.clientX, e.clientY).filter(function(el){ return el.closest && el.closest('#scene') && el.id !== 'scene'; })[0],
+        sun = top && top.closest('#sun');
+    if (!sun) return;
+    sunTook = true; e.preventDefault(); e.stopPropagation();
+    sun.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, cancelable: true, pointerId: e.pointerId, pointerType: e.pointerType, isPrimary: e.isPrimary,
+      clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY, button: e.button, buttons: e.buttons}));
+  });
+  meetHost.addEventListener('click', function(e){ if (sunTook) { sunTook = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  function meetLift(e, on){
+    var a = e.target.closest && e.target.closest('.meetlink'), el = a && meetDrawn()[+a.dataset.mj]; if (!el) return;
+    (el.classList.contains('c-gum') ? el.parentNode : el).classList.toggle('mlift', on);
+  }
+  meetHost.addEventListener('mouseover', function(e){ meetLift(e, true); });
+  meetHost.addEventListener('mouseout', function(e){ meetLift(e, false); });
+  meetHost.addEventListener('focusin', function(e){ meetLift(e, true); });
+  meetHost.addEventListener('focusout', function(e){ meetLift(e, false); });
+  // a meeting's row sits in its act's closed "N meetings": open that first, then the page's in-page link handler shows and flags it
+  meetHost.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('.meetlink'), el = a && document.getElementById(a.getAttribute('href').slice(1));
+    for (var d = el && el.parentElement && el.parentElement.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
+  });
   var WHO = '<g class="who" id="who"><line class="nowl" id="nowl"/><g id="whoAt"><g class="hop" id="hop"><g class="bob"><use id="whoUse" href="#mascot" x="-26" y="-50" width="52" height="52"/></g></g><text class="nowt" id="nowt" x="28" y="-24">now</text></g></g>';
 
   /* ---------- the three scenes ---------- */
@@ -4305,7 +4510,7 @@ JS_STAGE = r"""
     sceneEl.innerHTML = SCENE[world()]();
     root.style.setProperty('--m-stroke', world() === 'cosmic' ? '#3b5fa8' : (dark() ? '#0f1730' : '#2d2a32'));
     st.flowers.forEach(function(f){ addBloom(f, true); });
-    moveNow(st.t); placeSpots(); bindSun();
+    moveNow(st.t); placeSpots(); placePins(); placeMeets(); bindSun();
   }
   function moveNow(t){
     st.t = t;
@@ -4589,9 +4794,348 @@ JS_STAGE = r"""
   if (st.layout === 'stage') panel(st.sec).classList.add('on');
   requestAnimationFrame(function(){ drawScene(); moveRider(false); if (st.layout === 'deck') { deckTo(st.sec, true); deckFrame(); } });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ drawScene(); moveRider(false); if (st.layout === 'deck') { deckTo(st.sec, true); deckFrame(); } });
-  window.briefStage = {bloom: bloom, unbloom: unbloom, allDone: allDone, finale: finale, show: show, mascotRect: function(){ var u = $('#whoUse', sceneEl), r = u && u.getBoundingClientRect(); return r && r.width ? r : null; }, state: st, redraw: drawScene};
+  window.briefStage = {bloom: bloom, unbloom: unbloom, allDone: allDone, finale: finale, show: show, pinDone: pinDone, mascotRect: function(){ var u = $('#whoUse', sceneEl), r = u && u.getBoundingClientRect(); return r && r.width ? r : null; }, state: st, redraw: drawScene};
 })();
 """
+
+
+# ---- round fifteen: a fourth world, the caterpillar (5 Nov) ----
+# The caterpillar IS the day: its body is the part of the day already lived, its head munches at "now" on a big leaf.
+# Everything it adds lives in this block and goes into the page's own pieces at build time, at fixed places (CAT_INS),
+# so the code of the three older worlds is never edited: with CATERPILLAR off the page is byte for byte what it was.
+# It starts from the garden: every garden CSS rule also names the caterpillar, in place (_cat_css), so the cascade is the
+# garden's own; the rules and tokens in CSS_CATERPILLAR, which come last, then make it a world of its own.
+CATERPILLAR = True
+
+CAT_SWATCH = ('    <label class="world-opt"><input type="radio" name="brief-world" value="caterpillar"><span class="swatch" aria-hidden="true">'
+              '<svg viewBox="0 0 60 40"><rect width="60" height="40" fill="#eef6dc"/>'
+              '<path d="M0 29 Q16 22 30 27 T60 25 V40 H0Z" fill="#8cc866" stroke="#2f6a2a" stroke-width="1.4"/>'
+              '<path d="M3 35 Q30 31 58 33" fill="none" stroke="#c5e7a4" stroke-width="1.4"/>'
+              '<g stroke="#24301f" stroke-width="1"><circle cx="13" cy="22" r="3.6" fill="#a9db7a"/><circle cx="18.5" cy="21.4" r="4" fill="#7cbf52"/>'
+              '<circle cx="24.5" cy="21" r="4.4" fill="#a9db7a"/><circle cx="31" cy="20.6" r="4.8" fill="#7cbf52"/><circle cx="37.6" cy="18.4" r="5.6" fill="#7cbf52"/></g>'
+              '<path d="M35.6 13.2Q34.4 9.6 32.4 8.6M39.6 13Q41 9.4 43 8.4" fill="none" stroke="#24301f" stroke-width="1" stroke-linecap="round"/>'
+              '<circle cx="32.4" cy="8.6" r="1.4" fill="#f2789f"/><circle cx="43" cy="8.4" r="1.4" fill="#f2789f"/>'
+              '<circle cx="36.4" cy="17.6" r=".9" fill="#1f2a1b"/><circle cx="40.2" cy="17.6" r=".9" fill="#1f2a1b"/>'
+              '<circle cx="51" cy="9" r="4.6" fill="#f6c453" stroke="#24301f" stroke-width="1.2"/></svg></span>'
+              '<span class="wname">Caterpillar leaf</span></label>\n')
+
+CSS_CATERPILLAR = r"""
+/* =====================  CATERPILLAR: a leafy storybook, after the garden it starts from  ===================== */
+.look-worlds{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.look-worlds .world-opt{padding:6px 2px 8px}.look-worlds .wname{font-size:11.5px}  /* four names side by side, none cut */
+:root[data-world="caterpillar"]{
+  --bg:#eef6dc; --ink:#24301f; --muted:#4a5a3b; --line:rgba(36,48,31,.14); --line-strong:rgba(36,48,31,.34);
+  --card:#fffbea; --card-solid:#fffdf4; --glass:rgba(255,251,234,.9);
+  --accent:#a8295e; --accent-ink:#fffbea; --ok:#2b7040; --warn:#9a4f00; --violet:#6a4cb8; --pink:#a8295e;
+  --blob-a:rgba(232,111,156,.14); --blob-b:rgba(246,196,83,.16); --blob-c:rgba(124,191,82,.2);
+  --shadow:3px 4px 0 rgba(36,48,31,.18);
+  --page:radial-gradient(rgba(60,90,30,.08) 1px,transparent 1.5px) 0 0/7px 7px,#eef6dc;
+  --sky-dawn:#f6e3c4; --sky-day:#dff0d0; --sky-gold:#f3e2a0; --sky-night:#d3dccb;
+  --cloud:#fffbea; --cloud-line:rgba(36,48,31,.6); --stamp:#a8295e; --sun:#f6c453; --hill:#a9db7a; --edge:var(--ink)}
+@media (prefers-color-scheme: dark){:root[data-world="caterpillar"]:not([data-theme="light"]){
+  --bg:#0f2219; --ink:#e6f0d8; --muted:#adc29e; --line:rgba(230,240,216,.14); --line-strong:rgba(230,240,216,.3);
+  --card:#16301f; --card-solid:#1a3824; --glass:rgba(22,48,31,.88);
+  --accent:#ff8fb8; --accent-ink:#0f2219; --ok:#8fd69a; --warn:#f1b84c; --violet:#c7b5ff; --pink:#ff8fb8;
+  --blob-a:rgba(255,143,184,.10); --blob-b:rgba(241,210,122,.10); --blob-c:rgba(155,210,106,.14);
+  --shadow:3px 4px 0 rgba(0,0,0,.4);
+  --page:radial-gradient(rgba(220,255,200,.05) 1px,transparent 1.5px) 0 0/7px 7px,#0f2219;
+  --sky-dawn:#33301f; --sky-day:#173a2a; --sky-gold:#3a3a1e; --sky-night:#13262a;
+  --cloud:#21402c; --cloud-line:rgba(230,240,216,.5); --stamp:#ff8fb8; --sun:#f1d27a; --hill:#2f5a37; --edge:var(--ink)}}
+:root[data-world="caterpillar"][data-theme="dark"]{
+  --bg:#0f2219; --ink:#e6f0d8; --muted:#adc29e; --line:rgba(230,240,216,.14); --line-strong:rgba(230,240,216,.3);
+  --card:#16301f; --card-solid:#1a3824; --glass:rgba(22,48,31,.88);
+  --accent:#ff8fb8; --accent-ink:#0f2219; --ok:#8fd69a; --warn:#f1b84c; --violet:#c7b5ff; --pink:#ff8fb8;
+  --blob-a:rgba(255,143,184,.10); --blob-b:rgba(241,210,122,.10); --blob-c:rgba(155,210,106,.14);
+  --shadow:3px 4px 0 rgba(0,0,0,.4);
+  --page:radial-gradient(rgba(220,255,200,.05) 1px,transparent 1.5px) 0 0/7px 7px,#0f2219;
+  --sky-dawn:#33301f; --sky-day:#173a2a; --sky-gold:#3a3a1e; --sky-night:#13262a;
+  --cloud:#21402c; --cloud-line:rgba(230,240,216,.5); --stamp:#ff8fb8; --sun:#f1d27a; --hill:#2f5a37; --edge:var(--ink)}
+html[data-world="caterpillar"]{--w-bg:radial-gradient(rgba(60,90,30,.09) 1px,transparent 1.6px) 0 0/8px 8px,#eef6dc;--w-ink:#24301f;--w-muted:#4a5a3b;--w-card:#fffbea;--w-line:#24301f;
+  --w-accent:#a8295e;--w-on:#fffbea;--w-task:#6a4cb8;--w-hill:#8cc866;--w-hill2:#c5e7a4;--w-sun:#f6c453;--w-petal:#f29bbd;--w-violet:#9b82dc;--w-leaf:#3f7a35;--w-win:#f6c453;
+  --w-chip:#e4eecb;--w-shadow:3px 4px 0 rgba(36,48,31,.16);--w-sky:transparent;
+  --w-leafc:#8cc866;--w-leafe:#2f6a2a;--w-rib:#bfe39b;--w-seg1:#7cbf52;--w-seg2:#a9db7a;--w-tip:#f2789f;--w-blush:#f39aa8;--w-silk:#efe3bf;--w-face:#1f2a1b}
+html[data-world="caterpillar"][data-mode="dark"]{--w-bg:radial-gradient(rgba(220,255,200,.05) 1px,transparent 1.6px) 0 0/8px 8px,#0f2219;--w-ink:#e6f0d8;--w-muted:#adc29e;--w-card:#16301f;--w-line:#e6f0d8;
+  --w-accent:#ff8fb8;--w-on:#0f2219;--w-task:#c7b5ff;--w-hill:#2f5a37;--w-hill2:#24452c;--w-sun:#f1d27a;--w-petal:#ffb3cf;--w-violet:#b9a3ff;--w-leaf:#9bd26a;--w-win:#ffd36b;
+  --w-chip:#1f3d29;--w-shadow:3px 4px 0 rgba(0,0,0,.35);
+  --w-leafc:#2f5a37;--w-leafe:#8cc866;--w-rib:#4b7f4c;--w-seg1:#6fb54f;--w-seg2:#9bd26a;--w-tip:#ff8fb8;--w-blush:#f39aa8;--w-silk:#cdbf98;--w-face:#16220f}
+/* the scene: a leaf with a midrib and veins, and the caterpillar on its edge */
+html[data-world="caterpillar"] .scene .hr{fill:var(--w-ink)}
+.cl-leaf{fill:var(--w-leafc);stroke:var(--w-leafe);stroke-width:2.4;stroke-linejoin:round}
+.cl-rib{fill:none;stroke:var(--w-rib);stroke-width:calc(4.2px * var(--k,1));stroke-linecap:round}
+.cl-vein{fill:none;stroke:var(--w-rib);stroke-width:calc(2.6px * var(--k,1));stroke-linecap:round}
+.cat{pointer-events:none}
+.cat .cat-seg,.cat .cat-head{stroke:var(--w-ink);stroke-width:2}
+.cat .cs0,.cat .cat-head{fill:var(--w-seg1)}
+.cat .cs1{fill:var(--w-seg2)}
+.cat .cl-hi{fill:#fff;opacity:.5}
+.cat .cl-legs,.cat .cl-ant{fill:none;stroke:var(--w-ink);stroke-width:2;stroke-linecap:round}
+.cat .cl-tip{fill:var(--w-tip);stroke:var(--w-ink);stroke-width:1}
+.cat .cl-eye{fill:var(--w-face)}
+.cat .cl-blush{fill:var(--w-blush);opacity:.85}
+.cat .cl-mouth{fill:none;stroke:var(--w-face);stroke-width:1.8;stroke-linecap:round}
+.cat .cl-cocoon{fill:var(--w-silk);stroke:var(--w-ink);stroke-width:2}
+.cat .cl-silk{fill:none;stroke:var(--w-ink);stroke-width:1.2;opacity:.45;stroke-linecap:round}
+.cat .cl-zz{font:700 22px var(--w-hand);fill:var(--w-ink)}
+.cl-bf path{stroke:#24301f;stroke-width:1.6;stroke-linejoin:round}
+.cl-bf .w1{fill:#f6a6c9}.cl-bf .w2{fill:#ffd36b}.cl-bf .bd{fill:none;stroke-width:2.6;stroke-linecap:round}
+.cwig{animation:cl-wig 1.6s ease-in-out infinite}
+.cl-munch{transform-box:fill-box;transform-origin:center;animation:cl-munch .5s steps(2) infinite}
+.cl-wings{transform-box:fill-box;transform-origin:50% 60%;animation:cl-flap .28s ease-in-out infinite alternate}
+@keyframes cl-wig{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-1.6px * var(--k,1)))}}
+@keyframes cl-munch{50%{transform:translateY(1.2px) scale(.7,1.2)}}
+@keyframes cl-flap{to{transform:scaleX(.35)}}
+@media (prefers-reduced-motion:reduce){.cwig,.cl-munch,.cl-wings{animation:none!important}}
+"""
+
+# ---- what the caterpillar inserts, and where: (piece, the text before, the text after, what goes between) ----
+# Each "before + after" must occur exactly once in its piece; nothing is ever replaced or removed.
+CAT_JS_STAGE_WORLD = r"""  // the caterpillar's leaf: the garden's gentle wobble, lifted by the same load
+  GBASE.caterpillar = function(x){ return G.ground + 6 * Math.sin(x / G.W * Math.PI * 1.5 + .8) - 4; };
+  GROUND.caterpillar = function(x){ return GBASE.caterpillar(x) - lift(x); };
+"""
+
+CAT_JS_STAGE_SCENE = r"""
+  /* ---------- the fourth world: a caterpillar on a big leaf. Its body is the day already lived, its head munches at now ---------- */
+  SCENE.caterpillar = function(){
+    var W = G.W, H = G.H, gr = GROUND.caterpillar, k = G.k, o = '';
+    if (dark()) for (var i = 0, q; i < 26; i++) q = sky(8, G.ground - 60), o += '<circle cx="' + q[0].toFixed(0) + '" cy="' + q[1].toFixed(0) + '" r="' + rnd(.6, 1.6).toFixed(1) + '" fill="#f6efd8" opacity="' + rnd(.3, .8).toFixed(2) + '"/>';
+    o += '<g class="g-drift a"><path class="g-cloud" transform="translate(' + W * .6 + ' ' + Math.max(18, G.top - 6) + ') scale(' + (G.phone ? .7 : 1) + ')" d="M8 30C-2 30-2 16 9 16 9 6 22 2 28 10 32 0 50 2 50 14 60 12 64 30 54 30Z"/></g>';
+    // the leaf (its top edge is redrawn as the day goes, nibbled from 8 AM up to the head), its midrib and its side veins
+    o += '<path class="cl-leaf" id="cleaf" d="' + leafPath(-1e9) + '"/>';
+    // the midrib runs under the hour labels, so its veins never cross them
+    var hy = sceneLayout() ? GBASE.caterpillar(X(300)) + 24 * k : H - 16, rd = Math.max(54 * k, hy - G.ground + 30 * k);
+    var rib = function(x){ return GBASE.caterpillar(x) + rd - .3 * lift(x); }, vs = (G.phone ? 34 : 46) * k, v = '';
+    o += '<path class="cl-rib" d="' + path(rib, -10, W + 10, 12) + '"/>';
+    for (var vx = -10 + vs * .6; vx < W + 10; vx += vs) { var ry = rib(vx); v += 'M' + vx.toFixed(1) + ' ' + ry.toFixed(1) + 'q' + (12 * k).toFixed(1) + ' ' + (-9 * k).toFixed(1) + ' ' + (30 * k).toFixed(1) + ' ' + (-20 * k).toFixed(1) + 'M' + vx.toFixed(1) + ' ' + ry.toFixed(1) + 'q' + (12 * k).toFixed(1) + ' ' + (9 * k).toFixed(1) + ' ' + (30 * k).toFixed(1) + ' ' + (22 * k).toFixed(1); }
+    o += '<path class="cl-vein" d="' + v + '"/>';
+    // signposts on the leaf, as in the garden: a crowded stretch takes a taller post
+    var placed = [];
+    EV.forEach(function(e){
+      var x = X((e.a + e.b) / 2), y = gr(x) - 3, lv = 0;
+      var shape = function(l){ var t = y - (58 + l * 27) * k; return [[x - 24 * k, t - 2, x + 24 * k, t + 26 * k], [x - 2, t, x + 2, y]]; };
+      var hit = function(A, B){ return A[0] < B[2] && B[0] < A[2] && A[1] < B[3] && B[1] < A[3]; };
+      while (lv < 3 && placed.some(function(P){ return shape(lv).some(function(a){ return P.some(function(b){ return hit(a, b); }); }); })) lv++;
+      placed.push(shape(lv)); var up = lv * 27;
+      o += '<g class="g-sign' + (e.opt ? ' opt' : '') + '" transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + k.toFixed(2) + ')"><path d="M0 0V' + (-40 - up) + '"/><rect x="-22" y="' + (-58 - up) + '" width="44" height="24" rx="4"/><text x="0" y="' + (-40 - up) + '">' + e.label + '</text><title>' + e.title + '</title></g>';
+    });
+    o += hours(hy);
+    o += pins(gr, 12 * k);
+    for (var f = 0; f < 14; f++) o += '<circle class="ff" cx="' + rnd(20, W - 20).toFixed(0) + '" cy="' + (f % 2 ? rnd(G.top, G.ground) : rnd(G.ground - 20, H - 20)).toFixed(0) + '" r="2.4" style="animation-delay:' + (-f * .7) + 's"/>';
+    o += '<g id="flowers"></g>';
+    o += '<g class="sun g-sun" id="sun"><g class="rays"><path d="M0-36v-9M0 36v9M-36 0h-9M36 0h9M-25-25l-6-6M25 25l6 6M-25 25l-6 6M25-25l6-6"/></g><circle class="c" r="24"/><path class="face" d="M-9-3v3M9-3v3M-7 8q7 6 14 0"/><circle cx="-14" cy="5" r="3" fill="#f39aa8" stroke="none" opacity=".7"/><circle cx="14" cy="5" r="3" fill="#f39aa8" stroke="none" opacity=".7"/></g>';
+    o += '<g class="cat" id="cat"></g>';  // drawn by catDraw, after the sun so a low morning sun never hides the head
+    return o + WHO;
+  };
+  // the leaf's top edge, with bites taken out of it from 8 AM up to xe (the part of the day already eaten)
+  function leafPath(xe){
+    var gr = GROUND.caterpillar, b = 15 * G.k, x0 = X(0) - 4 * G.k, d = '', x;
+    for (x = -10; x < x0; x += 8) d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + gr(x).toFixed(1);
+    d += (d ? 'L' : 'M') + x0.toFixed(1) + ' ' + gr(x0).toFixed(1); x = x0;
+    // each bite is a shallow scoop pushed into the leaf square to its edge, so a bite on a steep hump stays a bite
+    for (; x + b <= xe; x += b) { var m = x + b / 2, sl = (gr(m + 1.5) - gr(m - 1.5)) / 3, L = Math.sqrt(1 + sl * sl), dp = 11 * G.k / L;
+      d += 'Q' + (m - sl / L * dp).toFixed(1) + ' ' + (gr(m) + dp / L).toFixed(1) + ' ' + (x + b).toFixed(1) + ' ' + gr(x + b).toFixed(1); }
+    for (var x2 = x + 8; x2 < G.W + 10; x2 += 8) d += 'L' + x2.toFixed(1) + ' ' + gr(x2).toFixed(1);
+    return d + 'L' + (G.W + 10) + ' ' + gr(G.W + 10).toFixed(1) + 'L' + (G.W + 10) + ' ' + G.H + 'L-10 ' + G.H + 'Z';
+  }
+  var CAT = {head: null, ride: false};
+  // the caterpillar at time t: laid BACKWARDS from its head, each round segment sitting on the leaf's edge, every centre
+  // exactly its planned distance from the one in front (a straight-line distance, so a hump or a dip never opens a gap).
+  // The neck overlaps the head, each segment overlaps the next, the body tapers a little to the tail, the head is drawn
+  // last, tilted to the slope at now. Returns where the mascot stands: on its back, just behind the head.
+  function catDraw(t, night){
+    var g = $('#cat', sceneEl), leaf = $('#cleaf', sceneEl); if (!g) return null;
+    var gr = GROUND.caterpillar, k = G.k, xh = X(t), o = '', SINK = .9, R = 15, RN = 12;
+    var slope = function(x){ return (gr(x + 1.5) - gr(x - 1.5)) / 3; };
+    var at = function(x, r){ var s = slope(x), L = Math.sqrt(1 + s * s); return [x + s / L * r, gr(x) - r / L]; };
+    var deg = function(x){ return (Math.atan(slope(x)) * 180 / Math.PI).toFixed(1); };
+    var dist = function(a, b){ return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+    var face = function(sleepy){
+      return '<path class="cl-ant" d="M-4-13Q-7-23-12-27M5-13Q9-23 14-26"/><circle class="cl-tip" cx="-12" cy="-27" r="3"/><circle class="cl-tip" cx="14" cy="-26" r="3"/>' +
+        '<circle class="cat-head" r="' + R + '"/>' +
+        (sleepy ? '<path class="cl-mouth" d="M-6-2q2.5 2.5 5 0M3-2q2.5 2.5 5 0"/>' : '<circle class="cl-eye" cx="-3.5" cy="-3" r="2.4"/><circle class="cl-eye" cx="6" cy="-3" r="2.4"/><circle cx="-2.7" cy="-3.8" r=".8" fill="#fff"/><circle cx="6.8" cy="-3.8" r=".8" fill="#fff"/>') +
+        '<circle class="cl-blush" cx="-8" cy="4.5" r="2.8"/><circle class="cl-blush" cx="10.5" cy="4.5" r="2.8"/>' +
+        '<path class="cl-mouth' + (sleepy || rm() ? '' : ' cl-munch') + '" d="' + (sleepy ? 'M0 7.5h3.4' : 'M-1 6.5q2.6 3 5.2 0') + '"/>';
+    };
+    var bfly = function(x, y, s){ return '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + s.toFixed(2) + ')"><g class="cl-bf"><g class="cl-wings"><path class="w1" d="M0 0C-22-26-34-6-18 4C-30 14-14 26 0 8Z"/><path class="w2" d="M0 0C22-26 34-6 18 4C30 14 14 26 0 8Z"/></g><path class="bd" d="M0-6v18"/></g></g>'; };
+    CAT.head = null; CAT.ride = false;
+    if (night) {
+      // after 6 PM: curled up in a cocoon where the garden keeps its house, a sleepy face peeking out; the mascot waits beside it
+      var cx = X(600) + (G.phone ? 0 : 6), cy = gr(cx);
+      leaf.setAttribute('d', leafPath(X(600)));
+      o += '<g transform="translate(' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ') rotate(' + deg(cx) + ') scale(' + k.toFixed(2) + ')">' +
+        '<ellipse class="cl-cocoon" cx="2" cy="-17" rx="27" ry="17"/><path class="cl-silk" d="M-18-24q20 9 40 0M-22-14q24 9 48 0M-16-5q18 6 36 0"/>' +
+        '<g transform="translate(-22 -21) scale(.72) rotate(-12)">' + face(true) + '</g><text class="cl-zz" x="14" y="-40">z z</text></g>';
+      g.innerHTML = o;
+      return {x: cx - 62 * k, y: gr(cx - 62 * k)};
+    }
+    if (st.real && before) {
+      // before 8 AM: just the head, peeking out from under the leaf's edge
+      leaf.setAttribute('d', leafPath(-1e9));
+      var p = at(xh, R * .1 * k);
+      o += '<defs><clipPath id="catpeek"><path d="' + path(gr, -10, G.W + 10, 6) + 'L' + (G.W + 10) + ' -400L-10 -400Z"/></clipPath></defs>' +
+        '<g clip-path="url(#catpeek)"><g transform="translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ') rotate(' + deg(xh) + ') scale(' + k.toFixed(2) + ')">' + face(false) + '</g></g>';
+      g.innerHTML = o;
+      return {x: xh + 44 * k, y: gr(xh + 44 * k)};
+    }
+    // lay the chain: a first pass counts the segments, the second tapers them over that length
+    var chain = function(nPlan){
+      var segs = [], prev = at(xh, R * k * SINK), pr = R * k, x = xh, xEnd = X(0);
+      for (var n = 0; n < 400; n++) {
+        var r = RN * k * Math.max(.7, 1 - .28 * n / Math.max(1, nPlan - 1)), want = (n ? .7 : .64) * (pr + r), xx = x, c;
+        // walk left until this centre is far enough from the one in front, then home in on exactly that distance
+        do { xx -= 2; c = at(xx, r * SINK); } while (dist(c, prev) < want && xx > x - 8 * want);
+        var a = xx, b = xx + 2;
+        for (var it = 0; it < 20; it++) { var m = (a + b) / 2; if (dist(at(m, r * SINK), prev) >= want) a = m; else b = m; }
+        if (n >= 2 && a < xEnd) break;  // the tail ends at 8 AM (neck and one segment always, so there is a body at 8)
+        c = at(a, r * SINK); segs.push({x: a, c: c, r: r}); prev = c; pr = r; x = a;
+      }
+      return segs;
+    };
+    var segs = chain(chain(60).length), hc = at(xh, R * k * SINK);
+    leaf.setAttribute('d', leafPath(xh - R * k * .5));
+    var ph = function(i){ return 'animation-delay:' + (-Math.max(0, i) * .13).toFixed(2) + 's'; };  // the head moves with its neck
+    for (var i = segs.length - 1; i >= 0; i--) {
+      var s = segs[i], rr = s.r / k;
+      o += '<g class="cwig" style="' + ph(i) + '"><g transform="translate(' + s.c[0].toFixed(2) + ' ' + s.c[1].toFixed(2) + ') scale(' + k.toFixed(3) + ')">' +
+        '<path class="cl-legs" transform="rotate(' + deg(s.x) + ')" d="M-4 ' + (rr * .7).toFixed(1) + 'l-1.6 ' + (rr * .45).toFixed(1) + 'M4 ' + (rr * .7).toFixed(1) + 'l1.6 ' + (rr * .45).toFixed(1) + '"/>' +
+        '<circle class="cat-seg cs' + (i % 2) + '" data-i="' + i + '" r="' + rr.toFixed(2) + '"/><circle class="cl-hi" cx="' + (-rr * .35).toFixed(1) + '" cy="' + (-rr * .38).toFixed(1) + '" r="' + (rr * .24).toFixed(1) + '"/></g></g>';
+    }
+    o += '<g class="cwig" style="' + ph(0) + '"><g transform="translate(' + hc[0].toFixed(2) + ' ' + hc[1].toFixed(2) + ') scale(' + k.toFixed(3) + ')"><g transform="rotate(' + deg(xh) + ')">' + face(false) + '</g></g></g>';
+    CAT.head = {x: hc[0], y: hc[1]};
+    // all done, under reduced motion: a still butterfly beside the head (with motion, the finale sends one fluttering off)
+    if (st.done && rm()) o += bfly(hc[0] + 30 * k, hc[1] - 40 * k, .7 * k);
+    g.innerHTML = o;
+    // the mascot rides on its back, on the third segment (on the second while the morning's body is that short)
+    var sr = segs[Math.min(2, segs.length - 1)]; CAT.ride = true;
+    return {x: sr.c[0], y: sr.c[1] - sr.r + 3 * k};
+  }
+"""
+
+CAT_JS_STAGE_MOVE = r"""    if (w === 'caterpillar') { var cw = catDraw(t, night); if (cw) { x = cw.x; gy = cw.y; } }  // the mascot rides the caterpillar
+"""
+CAT_JS_STAGE_NOWL = r"""    if (w === 'caterpillar') { nl.setAttribute('x1', 0); nl.setAttribute('x2', 0); nl.setAttribute('y1', 0); nl.setAttribute('y2', 0); }
+"""
+CAT_JS_STAGE_NOWT = r"""    if (w === 'caterpillar' && CAT.ride && CAT.head) { nt.setAttribute('x', ((CAT.head.x - x) / G.k).toFixed(1)); nt.setAttribute('y', ((CAT.head.y - gy) / G.k - 38).toFixed(1)); nt.setAttribute('text-anchor', 'middle'); }  // "now" floats over the munching head
+    else if (w === 'caterpillar') nt.setAttribute('y', -24);
+    if (w === 'caterpillar') nt.style.opacity = CAT.ride && CAT.head && Math.abs(CAT.head.x - sx) < 36 * G.k && Math.abs(CAT.head.y - 38 * G.k - sy) < 34 * G.k ? '0' : '';  // a low sun already marks now
+"""
+CAT_JS_STAGE_BLOOM = r"""    if (w === 'caterpillar') {  // a little flower opens on the leaf, below its edge where the caterpillar walks
+      var ly = Math.min(G.H - 8, GBASE.caterpillar(x) + (34 + f.v * 30) * G.k - .5 * lift(x));
+      host.insertAdjacentHTML('beforeend', '<g class="bl" data-b="' + f.i + '"><g transform="translate(' + x.toFixed(1) + ' ' + ly.toFixed(1) + ')"><g class="g-fl' + (f.k === 'quest' ? ' v' : '') + (quiet ? '' : ' grow') + '"><path d="M0 0V-18M0-8q-7-2-9-8M0-10q7-1 8-7"/><circle cy="-25" r="4.2"/><circle cx="5.6" cy="-21.4" r="4.2"/><circle cx="3.6" cy="-15.6" r="4.2"/><circle cx="-3.6" cy="-15.6" r="4.2"/><circle cx="-5.6" cy="-21.4" r="4.2"/><circle class="mid" cy="-20" r="3"/></g></g></g>');
+      return;
+    }
+"""
+CAT_JS_STAGE_FINALE = r"""    if (world() === 'caterpillar' && CAT.head) {  // the caterpillar's head lets a butterfly go: up and across the scene
+      var hb = CAT.head, cb = document.createElementNS('http://www.w3.org/2000/svg', 'g'), sk = (G.k * .9).toFixed(2); cb.setAttribute('class', 'cl-bfly');
+      cb.innerHTML = '<g class="cl-bf"><g class="cl-wings"><path class="w1" d="M0 0C-22-26-34-6-18 4C-30 14-14 26 0 8Z"/><path class="w2" d="M0 0C22-26 34-6 18 4C30 14 14 26 0 8Z"/></g><path class="bd" d="M0-6v18"/></g>';
+      cb.style.opacity = '0'; host.appendChild(cb); made.push(cb);
+      var path5 = [[hb.x, hb.y, .2, 0], [hb.x + 40 * G.k, hb.y - 80 * G.k, 1, 1], [X(420), G.top + 20 * G.k, 1, 1], [X(200), G.top + 70 * G.k, 1, 1], [X(20), G.top - 10, .9, 0]];
+      if (cb.animate) cb.animate(path5.map(function(p){ return {transform: 'translate(' + p[0].toFixed(0) + 'px,' + p[1].toFixed(0) + 'px) scale(' + (p[2] * sk).toFixed(2) + ')', opacity: p[3]}; }), {duration: 5000, easing: 'ease-in-out', fill: 'both'});
+    }
+"""
+CAT_JS_STAGE_DONE = r"""    if (world() === 'caterpillar') { if ($('#cat', sceneEl)) moveNow(st.t); if (all && fresh) banner('Ready to fly!'); return; }
+"""
+
+CAT_JS_SOUND = r"""  // the caterpillar plucks: a soft sine with a quick decay, a step above the garden
+  VOICE.caterpillar = {type: 'sine', gain: .13, tail: .55}; SCALE.caterpillar = [587.33, 659.25, 739.99, 880, 987.77, 1174.66, 1318.51, 1479.98];
+"""
+CAT_JS_PAL = r"""    PAL.caterpillar = {l: {main: ['#c2386f', '#e86f9c', '#5b9a3c', '#e8b23a'], petal: ['#f29bbd', '#f7c1d3', '#e57aa3', '#ffd6e4'], leaf: ['#5c9a3e', '#8cc866', '#3f8a3a']},
+                       d: {main: ['#ff8fb8', '#ffd36b', '#9bd26a', '#e6f0d8'], petal: ['#ffb3cf', '#ffd6e4', '#ff8fb8', '#f6e6c8'], leaf: ['#9bd26a', '#b6e07c', '#6fb54f']}};
+"""
+CAT_ALIAS = "    if (w === 'caterpillar') w = 'garden';  // the caterpillar's ticks, Done and all-done bursts are the garden's\n"
+CAT_ALIAS_AIR = "      if (world === 'caterpillar') world = 'garden';  // the caterpillar's air is the garden's: petals and leaves, fireflies at night\n"
+
+CAT_INS = {
+    "head": [("w==='candy'", ")r.setAttribute('data-world',w);", "||w==='caterpillar'")],
+    "look": [('<span class="wname">Candy pop</span></label>\n', "  </fieldset>", CAT_SWATCH)],
+    "js": [("candy: [783.99, 880, 987.77, 1174.66, 1318.51, 1567.98, 1760, 1975.53]};\n", "  function actx(){", CAT_JS_SOUND),
+           ("      candy:  {l: {main: ['#d6307f', '#ff6fae', '#7a4cf0', '#12a37c', '#f0b000']},\n"
+            "               d: {main: ['#ff9ccf', '#ffc2df', '#c3a2ff', '#6fdcbc', '#ffd84d']}}\n    };\n", "    function pal(){", CAT_JS_PAL),
+           ("    var w = worldNow();\n", "    flower(host, w !== 'garden' || reduce);", CAT_ALIAS),
+           ("card = l.closest('.item, .quest');\n", "    l.classList.remove('popd');", CAT_ALIAS),
+           ("    var o = origin(), w = worldNow();\n", "    if (window.briefStage) briefStage.finale();", CAT_ALIAS),
+           ("    function sprites(world, d){\n", "      var k = world + (d ? 'D' : 'L');", CAT_ALIAS_AIR),
+           ("    function recipe(world, d){\n", "      if (world === 'garden') return d ?", CAT_ALIAS_AIR)],
+    "stage": [("return GBASE.cosmic(x) - v; }\n  };\n", "  function hours(y){", CAT_JS_STAGE_WORLD),
+              ("      return o + WHO;\n    }\n  };\n", "\n  function moodRef(){", CAT_JS_STAGE_SCENE),
+              ("    st.night = night;\n", "    if (sun) {", CAT_JS_STAGE_MOVE),
+              ("nl.setAttribute('y2', (gy - 58 * G.k).toFixed(1)); }\n", "    // the \"now\" label", CAT_JS_STAGE_NOWL),
+              ("    if (left) { nt.setAttribute('x', -28); nt.setAttribute('text-anchor', 'end'); } else { nt.setAttribute('x', 28); nt.removeAttribute('text-anchor'); }\n",
+               "    $('#whoUse', sceneEl)", CAT_JS_STAGE_NOWT),
+              ("    var x = G.x0 + f.u * (G.x1 - G.x0), el;\n", "    if (w === 'garden') {", CAT_JS_STAGE_BLOOM),
+              ("    });\n", "    setTimeout(function(){ made.forEach(", CAT_JS_STAGE_FINALE),
+              ("    st.done = all; var u = $('#whoUse', sceneEl); if (u) u.setAttribute('href', moodRef());\n", "    if (all && fresh) banner(", CAT_JS_STAGE_DONE)],
+}
+
+
+def _cat(piece, s):
+    """One of the page's pieces with the caterpillar's insertions (CAT_INS), or unchanged when CATERPILLAR is off."""
+    if not CATERPILLAR:
+        return s
+    for before, after, add in CAT_INS[piece]:
+        at = before + after
+        if s.count(at) != 1:
+            raise ValueError(f"caterpillar: the place for an insertion in {piece} is gone or not unique: {at[:70]!r}")
+        i = s.index(at) + len(before)
+        s = s[:i] + add + s[i:]
+    return s
+
+
+def _cat_problems(pieces):
+    """The caterpillar's insertion places that are gone or not unique in these pieces ({piece: text}), one message per piece
+    that fails (an empty list: every one is there). The build checks this before it writes anything of the caterpillar."""
+    out = []
+    for piece, s in pieces.items():
+        try:
+            _cat(piece, s)
+        except ValueError as e:
+            out.append(str(e))
+    return out
+
+
+def _cat_sel(sel):
+    # a selector list naming the garden gets the same selectors for the caterpillar added at its end
+    parts, depth, cur = [], 0, ""
+    for ch in sel:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    adds = [p.strip().replace('data-world="garden"', 'data-world="caterpillar"') for p in parts if 'data-world="garden"' in p]
+    body = sel.rstrip()
+    return body + "," + ",".join(adds) + sel[len(body):]
+
+
+def _cat_css(css):
+    """Every rule whose selector names the garden also names the caterpillar, in the same place (so the cascade is the
+    garden's); nothing else changes. Unchanged when CATERPILLAR is off."""
+    if not CATERPILLAR:
+        return css
+    out, done, seg, i, n = [], 0, 0, 0, len(css)
+    while i < n:
+        if css.startswith("/*", i):
+            j = css.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            seg = i
+            continue
+        c = css[i]
+        if c in "};":
+            seg = i + 1
+        elif c == "{":
+            sel = css[seg:i]
+            if 'data-world="garden"' in sel:
+                out.append(css[done:seg] + _cat_sel(sel))
+                done = i
+            seg = i + 1
+        i += 1
+    out.append(css[done:])
+    return "".join(out)
 
 
 # Ends every copied task list. The tasks were written by an unattended run that read email, Slack and the
@@ -4637,15 +5181,22 @@ def _chapter_count(ch):
     return n
 
 
-def _pin_data(admin, date):
-    """Today's admin records for the scene: minutes after 8 AM (None when untimed or outside the drawn day), state, tooltip."""
+def _pin_data(admin, date, todos=()):
+    """Today's admin records for the scene: minutes after 8 AM (None when untimed or outside the drawn day), state, tooltip
+    (escaped for the drawing, plain for its link), the id of its Admin today row (the pin links there) and, while it is
+    open, the Done id of its to-do (ticking that Done flips the pin)."""
     out = []
     for r in admin_today(admin, date) if admin else []:
         st = _admin_state(r, date)
         label, text = admin_line(r, date)
         when = f" at {r['time']}" if r.get("time") else ""
         t = _minutes(r["time"]) - 480 if r.get("time") else None
-        out.append({"t": t if t is not None and 0 <= t <= 600 else None, "s": st, "tip": esc(f"{label}{when}: {text}")})
+        tip = f"{label}{when}: {text}"
+        p = {"t": t if t is not None and 0 <= t <= 600 else None, "s": st, "tip": esc(tip), "text": tip, "id": admin_row_id(r)}
+        it = _admin_todo(r, todos) if st != "done" else None
+        if it and it.get("_did"):
+            p["did"] = it["_did"]
+        out.append(p)
     return out
 
 
@@ -5346,7 +5897,7 @@ def fairy_picker(look, date, emb):
     except (OSError, ValueError):
         faces = ""  # no bundled drawings: the chips fall back to empty circles
     moves = "".join(tick("moves", v, t) for v, t in FAIRY_MOVES)
-    tpl = (f'<template id="fairy-tpl"><style>{CSS_FAIRY}</style>{faces}'
+    tpl = (f'<template id="fairy-tpl"><style>{_cat_css(CSS_FAIRY)}</style>{faces}'
            '<dialog class="fairy" aria-modal="true" aria-labelledby="fairy-title" aria-describedby="fairy-what"><div class="body">'
            '<div><h2 id="fairy-title">Build your own fairy</h2><p class="what" id="fairy-what">Pick who lives in your brief, the little '
            'animal that draws its icons, and how it moves. You can change it any time from Look.</p></div>'
@@ -5380,8 +5931,9 @@ def _ff_assets():
 
 def build(content, log=None, admin_log=None, briefs=None, look=None):
     """look: a cleaned look.json (read_look), or None to keep the page's own look."""
-    global FAN
+    global FAN, CATERPILLAR
     FAN = None
+    cat = CATERPILLAR  # _build may leave the caterpillar out of this one page (see _build); the next build starts as before
     if look:
         look = dict(look, places=list(FF_PLACES))  # all six places, whatever the look lists
     if look and look.get("mascot") in ("fanfan", "clawd") and (look["mascot"] == "fanfan" or not OFFER_CLAWD):
@@ -5395,13 +5947,13 @@ def build(content, log=None, admin_log=None, briefs=None, look=None):
         return _build(content, log, admin_log, briefs, look)
     finally:
         FAN = None
+        CATERPILLAR = cat
 
 
 def _build(content, log, admin_log, briefs, look):
-    global ADMIN_PROJECT
+    global CATERPILLAR, ADMIN_PROJECT
     d = content
     ADMIN_PROJECT = d.get("admin_project") or ADMIN_PROJECT
-    admin = update_admin_log(admin_log, d) if admin_log else None
     storage_key = json.dumps("jira-digest-" + d["date"])
     copy_header = json.dumps(d["copy_header"])
     mood = page_mood(d)
@@ -5424,6 +5976,13 @@ def _build(content, log, admin_log, briefs, look):
             if lid != base:
                 lst["id"] = lid
     todo = _tidy_ids(d["chapters"], d["date"])
+    dch = next((c for c in d["chapters"] if c.get("day")), None)
+    day_todos = _day_todos(dch) if dch else []
+    admin = None
+    if admin_log:
+        # after the to-do ids: a to-do ticked Done in the brief (runs/done.jsonl, beside the admin log) closes its deadline
+        taps = _done_last(Path(admin_log).expanduser().parent / "done.jsonl", d["date"])
+        admin = update_admin_log(admin_log, d, day_todos, taps)
     by_item, by_card = match_cards(todo, d["chapters"])
     rel = {"by_item": by_item, "by_card": by_card}
     quests = collect_quests(d["chapters"])
@@ -5500,6 +6059,15 @@ def _build(content, log, admin_log, briefs, look):
         ff_body = ' data-look-set="0"'  # no look.json was found: the page keeps its own look, and a picker may offer one
     # the picker: its preview reuses the drawings this page already carries (only when they are written out below)
     emb = [FAN.style, FAN.animal] if FAN else None
+    # An unattended morning build must never stop for the caterpillar: if a place its code goes into has moved, say so and
+    # build the page without that world at all (no whitelist, swatch, css or code), so the page never offers a world it
+    # cannot draw. Checked here, on the page's own final pieces, before the picker writes the first caterpillar css.
+    if CATERPILLAR:
+        gone = _cat_problems({"head": HEAD_SCRIPT, "look": look_panel, "js": js, "stage": JS_STAGE})
+        for why in gone:
+            print(f"warning: {why}; this page is built without the caterpillar world", file=sys.stderr)
+        if gone:
+            CATERPILLAR = False
     fairy_tpl, fairy_js = fairy_picker(look, d["date"], emb)
     window = d["window"].replace(" → ", " to ")
 
@@ -5539,11 +6107,15 @@ def _build(content, log, admin_log, briefs, look):
                    f'{_sec_icon(k, ic)}<span class="tl">{esc(nav)}</span>{f"<span class=n>{n}</span>" if n and k in ("quests", "todo") else ""}</button>'
                    for k, nav, n, _, _, ic in secs)
     panels = "".join(_panel(k, nav, title, n, body, ic) for k, nav, n, title, body, ic in secs)
-    day = next((c["day"] for c in d["chapters"] if c.get("day")), {})
+    day, day_id = next(((c["day"], c["id"]) for c in d["chapters"] if c.get("day")), ({}, None))
     stage_data = {"date": d["date"], "mood": mood, "secs": [[k, nav, n] for k, nav, n, _, _, _ in secs],
-                  "events": [[e["start"], e["end"], e["title"], bool(e.get("optional")), e.get("weight", 1)] for e in day.get("events", [])],
+                  # the sixth: the id the meeting's link in the scene opens in Your day (_meet_target)
+                  "events": [[e["start"], e["end"], e["title"], bool(e.get("optional")), e.get("weight", 1), _meet_target(day, n, day_id)]
+                             for n, e in enumerate(day.get("events", []))],
                   "shape": day.get("shape", "NORMAL"),
-                  "pins": _pin_data(admin, d["date"]), "glyph": {k: _glyph(k) for k in ("done", "due", "over")}}
+                  "pins": _pin_data(admin, d["date"], day_todos), "glyph": {k: _glyph(k) for k in ("done", "due", "over")}}
+    css = _cat_css(css) + (CSS_CATERPILLAR if CATERPILLAR else "")  # the fourth world (see CATERPILLAR)
+    look_panel, js = _cat("look", look_panel), _cat("js", js)
     stage_json = json.dumps(stage_data, ensure_ascii=False).replace("</", "<\\/")
     qd = {"guard": TASK_GUARD,
           "projects": {n: prompt_head(d, n) for n in dict.fromkeys(q["project"] for q in quests)},
@@ -5552,7 +6124,7 @@ def _build(content, log, admin_log, briefs, look):
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{esc(d["title"])}</title>
-{HEAD_SCRIPT}
+{_cat("head", HEAD_SCRIPT)}
 <link rel="icon" type="image/svg+xml" href="{favicon}" id="tab-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{fonts}&display=swap">
@@ -5578,7 +6150,9 @@ def _build(content, log, admin_log, briefs, look):
     <section class="stage" id="stage" aria-label="Your day, 8 AM to 6 PM">
       <svg class="scene" id="scene" aria-hidden="true"></svg>
       <div class="headline" id="headline"><span class="when">{esc(d["date_label"])}<span id="clockwrap"> · <b id="clock"></b></span><span id="hint"> · drag the sun</span></span><h1>{headline}</h1><p>{d["lede_html"]}</p></div>
+      <div class="meetlinks" id="meetlinks"></div>
       <div class="hotspots" id="hotspots"></div>
+      <div class="pinlinks" id="pinlinks"></div>
       <div class="finale-banner" id="finale-banner" hidden><span></span></div>
     </section>
     <div class="switch"><nav class="tabs" id="tabs" role="tablist" aria-label="Sections">{tabs}<span class="rider" id="rider" aria-hidden="true"><svg class="mascot" viewBox="0 0 64 64"><use href="#mascot"/></svg></span></nav></div>
@@ -5591,7 +6165,7 @@ def _build(content, log, admin_log, briefs, look):
 {fairy_tpl}
 <script type="application/json" id="stage-data">{stage_json}</script>
 <script type="application/json" id="quest-data">{quest_json}</script>
-{FAN.templates() if FAN else ""}{ff_fill}<script>{JS_STAGE}</script>
+{FAN.templates() if FAN else ""}{ff_fill}<script>{_cat("stage", JS_STAGE)}</script>
 <script>{js}</script>
 {fairy_js}{ff_moves}</body></html>
 """

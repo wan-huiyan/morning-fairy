@@ -42,8 +42,8 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 
 | | Feature | The specifics |
 |---|---|---|
-| 🌍 | **Three worlds** | Storybook garden, Cosmic orbit and Candy pop, each with a light and a dark version (6 looks), its own cursor wand and its own fairy dust. |
-| 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. |
+| 🌍 | **Four worlds** | Storybook garden, Cosmic orbit, Candy pop and Caterpillar, each with a light and a dark version (8 looks), its own cursor wand and its own fairy dust. In the caterpillar world the day is a leaf, the caterpillar's body is the part of the day already lived, and at 6 PM it curls into a cocoon. |
+| 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. Click a hill or its sign to open that meeting; click an admin clipboard to open its admin row. |
 | 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. |
 | 🧚 | **Build your own fairy** | Pick the mascot (the ticket or Clawd), then the little animal that draws the page's icons: one of 4 animals, thin or thick lines, dot or shiny eyes, and 5 moves. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
@@ -51,13 +51,18 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
 | 📐 | **Three layouts** | Tap the scene (signposts on the hills), Stage + tabs, and Swipe deck. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
-| 🔊 | **17 sound effects** | Off until you switch them on. Each world has its own voice: a triangle wave in the garden, a detuned sine in space, a square wave in candy. |
+| 🔊 | **17 sound effects** | Off until you switch them on. Each world has its own voice: a triangle wave in the garden, a detuned sine in space, a square wave in candy, a soft sine pluck on the leaf. |
 | 🎉 | **Small secrets** | Type `magic` anywhere for a party. Tick every box on the page and the mascot hops into an all-done finale. |
-| ♿ | **Calm when asked** | 14 reduced-motion guards: with reduced motion on, nothing flies, bobs or sparkles. |
+| ♿ | **Calm when asked** | With reduced motion on, nothing flies, bobs, wiggles or sparkles. |
 
 <p align="center">
   <img src="docs/three-worlds.png" alt="The same morning in the garden, cosmic and candy worlds"/>
   <br/><sub>One morning, three worlds: Tap the scene in the garden, Stage + tabs in space, the Quests board in candy.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/caterpillar-world.png" width="760" alt="The caterpillar world: the day is a leaf, the caterpillar's body runs from 8 AM to now with the mascot on its back, and meeting signs stand on the leaf's humps"/>
+  <br/><sub>The fourth world: the caterpillar's body is the part of the day already lived. Click a hump to open that meeting.</sub>
 </p>
 
 <table>
@@ -273,6 +278,12 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.3.0** (2026-11-05): a fourth world, Caterpillar: the day is a big leaf, the caterpillar's body is the
+  part of the day already lived with its head munching at now, it climbs over each meeting's hill, curls into a cocoon
+  after 6 PM, and the all-done finale is a butterfly. The meeting hills and the admin clipboards on the scene are now
+  links: each opens its row in Your day. Ticking Done on an admin to-do now closes its overdue or due-today deadline
+  in the admin log at the next build. Meeting titles are escaped before they reach the scene drawing (a `<` in a
+  calendar title used to break it).
 - **1.2.1** (2026-11-05): a simpler picker. The mascot is the ticket or Clawd; the little animal is now the style
   of the page's icons rather than a third mascot, and it goes everywhere it fits (no more choosing places). The top
   bar's sound and Look buttons keep their own drawings. On a brief opened as a file, the save button opens the live
