@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.1.0
+version: 1.1.1
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -106,8 +106,8 @@ python3 -I <skill>/digest/build_digest.py <home>/runs/content-<date>.json \
 All design lives in the builder; the content never sets colours, layout or motion. What the reader gets:
 
 - **Three worlds**, each light or dark: Storybook garden, Cosmic orbit, Candy pop.
-- **Four layouts**: Tap the scene (signposts on the scene), Stage + tabs, Swipe deck, and Auto (the scene
-  on a wide window, tabs on a narrow one; the button says which it picked).
+- **Three layouts**: Tap the scene (signposts on the scene), Stage + tabs and Swipe deck. Until the reader picks one,
+  the page follows the window (the scene on a wide one, tabs on a narrow one); a pick is saved in the browser.
 - **The day scene:** the sun rides 8 AM to 6 PM and can be dragged; the ground rises at each meeting by
   its weight; the mascot stands at "now" with a mood (sweat for a stamp, starry when nothing waits,
   sleepy after 6 PM).

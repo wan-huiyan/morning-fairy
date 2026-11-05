@@ -2070,7 +2070,7 @@ LOOK_PANEL = """<div class="look-panel" id="look-panel" role="dialog" aria-label
   <button type="button" class="look-switch" id="dark-switch" role="switch" aria-checked="false"><span>Dark mode</span><i class="knob" aria-hidden="true"></i></button>
   <button type="button" class="look-switch" id="sparkle-switch" role="switch" aria-checked="true"><span>Sparkles</span><i class="knob" aria-hidden="true"></i></button>
   <fieldset class="look-layout"><legend>Layout</legend>
-    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="auto">Auto</button><button type="button" data-layout="stage">Tabs</button><button type="button" data-layout="deck">Deck</button><button type="button" data-layout="scene">Scene</button></div>
+    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Tabs</button><button type="button" data-layout="deck">Deck</button><button type="button" data-layout="scene">Scene</button></div>
   </fieldset>
 </div>"""
 
@@ -4506,15 +4506,10 @@ JS_STAGE = r"""
 
   /* ---------- layout: the owner's pick (saved), or the viewport's own choice ---------- */
   function paintLayout(){
-    var cur = pick || 'auto', now = layoutNow(), wide = innerWidth >= 1100;
+    // the button for the layout on screen is the pressed one. Until one is picked the page follows the window
+    // (the scene at 1100px and wider, tabs below); a pick is saved and sticks.
+    var cur = layoutNow();
     $$('.seg [data-layout]').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.layout === cur ? 'true' : 'false'); });
-    // "Auto" shows what it picked: the scene on a wide window (1100px or more), tabs on a narrow one
-    var AUTO = {scene: 'scene', stage: 'tabs'};
-    $$('.seg [data-layout="auto"]').forEach(function(b){
-      b.textContent = pick ? 'Auto' : 'Auto: ' + (AUTO[now] || now);
-      b.title = 'Auto picks for your screen: the scene on a wide window, tabs on a narrow one. '
-        + (pick ? 'Tap to let it choose again.' : 'Now: ' + (AUTO[now] || now) + ', because this window is ' + (wide ? 'wide.' : 'narrow.'));
-    });
   }
   // switching keeps the open section: the tab/deck card that was showing, or the sheet that was open in the scene
   function applyLayout(L, instant){
@@ -4532,8 +4527,7 @@ JS_STAGE = r"""
     if (instant || rm() || !document.startViewTransition) go(); else document.startViewTransition(go);
   }
   function choose(v){
-    if (v === 'auto') { pick = null; try { localStorage.removeItem(LKEY); } catch (e) {} }
-    else { pick = v; try { localStorage.setItem(LKEY, v); } catch (e) {} }
+    pick = v; try { localStorage.setItem(LKEY, v); } catch (e) {}
     var L = layoutNow(); snd('layout');
     if (L !== st.layout) applyLayout(L); else paintLayout();
   }
@@ -4763,7 +4757,7 @@ def build(content, log=None, admin_log=None, briefs=None):
 <div class="app" data-layout="scene">
   <header class="bar">
     <div class="brand">{mascot_svg(cls="mascot logo", label="", mood=mood)}<span class="brand-name"><b>{esc(d.get("brand", "Jira digest"))}</b><small>{esc(d["date_short"])}</small></span></div>
-    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="auto" title="Scene on a wide screen, tabs on a narrow one">Auto</button><button type="button" data-layout="stage">Stage + tabs</button><button type="button" data-layout="deck">Swipe deck</button><button type="button" data-layout="scene">Tap the scene</button></div>
+    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Stage + tabs</button><button type="button" data-layout="deck">Swipe deck</button><button type="button" data-layout="scene">Tap the scene</button></div>
     <div class="nav-tools">
       <span id="msg" aria-live="polite"></span>
       <span class="ring" id="ring" role="img" aria-label="rows ticked"><span>0/0</span></span>
