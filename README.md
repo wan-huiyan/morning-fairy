@@ -46,7 +46,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. |
 | 🎟️ | **A mascot with moods** | One smooth vector ticket, 4 faces: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). Its eyes follow your pointer. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
-| 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for <project>" prompt that names the folder to open. |
+| 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
 | 📐 | **Four layouts** | Tap the scene (signposts on the hills), Stage + tabs, Swipe deck, and Auto (the scene on a wide window, tabs on a narrow one; the button says which it picked). |
