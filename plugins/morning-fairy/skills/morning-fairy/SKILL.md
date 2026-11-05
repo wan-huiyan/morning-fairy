@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.0.0
+version: 1.1.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -149,9 +149,13 @@ If the rows did not come with the message, ask which rows; never guess from the 
    names the folder to open Claude Code in. (Editing `PROJECT_FOLDERS` in the builder also works, but a plugin update
    replaces the file.)
 3. Try the demo: `digest/build_demo.sh` builds two made-up mornings and prints the newest page's path.
-4. Schedule a weekday 08:00 run (a scheduled task or cron) whose prompt is: "Run the morning-fairy brief
-   for today, build it and open it."
-5. Optional: point a Dock or desktop shortcut at `digest/launch.sh`.
+4. Schedule a weekday 08:00 run on the owner's own machine (it writes to their Desktop, so a cloud routine
+   cannot do it). The prompt to use is `routine-prompt.md` in this folder, with its four blanks filled in. In the
+   Claude desktop app, a local scheduled task runs while the app is open, and a run missed while it was closed
+   happens on the next launch.
+5. Optional, macOS: `bash digest/make_dock_app.sh` builds `~/Applications/Morning Brief.app` (the mascot icon).
+   Drag it onto the Dock; a click opens today's brief through the local helper. It finds the installed skill at
+   click time, so a plugin update needs no rebuild.
 
 ## Anti-patterns
 

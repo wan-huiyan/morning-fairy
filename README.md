@@ -97,7 +97,7 @@ bash /tmp/morning-fairy/plugins/morning-fairy/skills/morning-fairy/digest/build_
 It builds two demo mornings (11 and 12 March 2026) into a temporary folder and prints the path of the newer one.
 Open that file, then open **Time machine** to jump back to the 11th.
 
-**3. Make it yours:** ask Claude for your brief, or schedule it.
+**3. Make it yours:** ask Claude for your brief now, then [set it up to arrive every morning](#-set-up-your-daily-brief).
 
 ```
 You:    build my morning brief
@@ -107,10 +107,51 @@ Claude: [reads today's calendar, unanswered email, chat DMs, alerts, yesterday's
         Two Jira rows are waiting for your tick. Nothing was sent or written.
 ```
 
-For a weekday routine, point a scheduled task (or cron) at: *"Run the morning-fairy brief for today, build it
-and open it."*
-
 **Phrases that start it:** "morning brief", "build my brief", "what's my day", "daily digest".
+
+## 🌅 Set up your daily brief
+
+Three steps, about ten minutes, once.
+
+**1. Put the mascot on your Dock (macOS).**
+
+```bash
+bash ~/.claude/skills/morning-fairy/digest/make_dock_app.sh
+```
+
+(Installed as a plugin? Run it from the plugin folder instead:
+`bash "$(ls -dt ~/.claude/plugins/cache/*/morning-fairy/*/skills/morning-fairy | head -1)/digest/make_dock_app.sh"`.)
+
+It builds `~/Applications/Morning Brief.app` with the ticket-and-sunrise icon and opens Finder on it; drag it
+onto your Dock. One click opens today's brief, and starts the small local helper so your Done taps are kept. The
+app looks for the skill each time you click it, so updating the plugin never breaks it. Keep briefs somewhere
+other than the Desktop? Set `BRIEF_DESKTOP_DIR` when you run the script and the app remembers it. The first click
+may ask whether Morning Brief can open files in your Desktop folder: choose Allow, or the app has nothing to
+open. If you already had an app called Morning Brief that this script did not make, it is renamed to
+"Morning Brief (old)", never overwritten.
+
+**2. Schedule the morning run.** Open [`routine-prompt.md`](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md),
+fill in its four blanks (your name, email, time zone, which connectors you have), then in the Claude desktop
+app ask:
+
+> Create a scheduled task called morning-fairy that runs weekdays at 08:00 with this prompt: *(paste it)*
+
+- **It has to run on your own computer.** The brief is written to your Desktop, so a cloud routine (one that
+  runs on Anthropic's servers) cannot deliver it. Use a local scheduled task.
+- **The Claude app needs to be open.** A local task runs while the app is open; if it was closed at 08:00, the
+  run happens the next time you open it.
+- Prefer cron? `claude -p "<the filled-in prompt>"` works too, but a headless run cannot stop to ask you for
+  permission, so allow the connector tools it reads with in your Claude Code settings first.
+
+**3. That's it: every morning looks after itself.**
+
+| Each weekday at 08:00 | Where it goes |
+|---|---|
+| A new page, `2026-03-12 Morning brief and Jira digest.html` | Your Desktop. Earlier days stay there, and the time machine links them. |
+| That day's content, the streak, the admin log | `~/.morning-fairy/runs/`, outside the skill folder, so updates never touch it |
+| Your Done taps (through the Dock app's helper) | `~/.morning-fairy/runs/done.jsonl`, read by the next morning's run |
+
+Nothing in that folder leaves your machine, and the page is never rebuilt over an earlier day.
 
 ## How it works
 
@@ -136,8 +177,10 @@ across browsers and the next morning knows what you finished. Without it, taps s
   similar) are what it reads. With none, you get the demo and nothing else.
 - **Opening a brief loads fonts from Google Fonts**, so your browser makes a request to Google. The page
   falls back to system fonts offline.
-- **The launcher is written for macOS.** `launch.sh` uses `open` (or `xdg-open` on Linux); on Windows, open the
+- **The Dock app is macOS only.** On Linux, `launch.sh` opens the brief with `xdg-open`; on Windows, open the
   HTML file directly.
+- **The morning run needs your computer on and the Claude app open** (or a cron job). If the app was closed at
+  08:00, the brief arrives the next time you open it.
 - **The sort is Claude's judgement.** "Needs you" versus "resolved" comes from reading threads, so it can be
   wrong. Every item links to its source so you can check.
 - **The time machine only knows mornings it built.** It finds earlier briefs by their file name in the output
@@ -151,7 +194,8 @@ across browsers and the next morning knows what you finished. Without it, taps s
 npm test
 ```
 
-27 checks: the demo builds, the time machine links the earlier morning, the helper keeps data outside the skill
+32 checks: the demo builds, the time machine links the earlier morning, the Dock app opens the right brief (on
+macOS), the helper keeps data outside the skill
 folder, the demo data uses only `example.com`, and no keys or real email addresses appear anywhere in the repo.
 
 ## Related
@@ -161,6 +205,8 @@ folder, the demo data uses only `example.com`, and no keys or real email address
 
 ## Version history
 
+- **1.1.0** (2026-11-05): a Dock app maker (`make_dock_app.sh`, macOS) with the mascot icon, a fill-in-the-blanks
+  daily routine prompt (`routine-prompt.md`), and a "Set up your daily brief" guide. CI now also runs on macOS.
 - **1.0.0** (2026-11-05): first release. Three worlds in light and dark, four layouts, the day scene with
   meeting hills and a draggable sun, the mood mascot, the Done flight, the Quests board, Jira drafts with
   tick-to-copy, the time machine, 17 sound effects, and a local helper that remembers Done taps.
