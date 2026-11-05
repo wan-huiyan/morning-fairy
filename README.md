@@ -49,7 +49,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
-| 📐 | **Four layouts** | Tap the scene (signposts on the hills), Stage + tabs, Swipe deck, and Auto (the scene on a wide window, tabs on a narrow one; the button says which it picked). |
+| 📐 | **Three layouts** | Tap the scene (signposts on the hills), Stage + tabs, and Swipe deck. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
 | 🔊 | **17 sound effects** | Off until you switch them on. Each world has its own voice: a triangle wave in the garden, a detuned sine in space, a square wave in candy. |
 | 🎉 | **Small secrets** | Type `magic` anywhere for a party. Tick every box on the page and the mascot hops into an all-done finale. |
 | ♿ | **Calm when asked** | 14 reduced-motion guards: with reduced motion on, nothing flies, bobs or sparkles. |
@@ -205,6 +205,8 @@ folder, the demo data uses only `example.com`, and no keys or real email address
 
 ## Version history
 
+- **1.1.1** (2026-11-05): the Auto layout button is gone. On a wide window it looked exactly like Tap the scene;
+  the page still follows your window until you pick a layout, and the button for what's showing is the pressed one.
 - **1.1.0** (2026-11-05): a Dock app maker (`make_dock_app.sh`, macOS) with the mascot icon, a fill-in-the-blanks
   daily routine prompt (`routine-prompt.md`), and a "Set up your daily brief" guide. CI now also runs on macOS.
 - **1.0.0** (2026-11-05): first release. Three worlds in light and dark, four layouts, the day scene with
