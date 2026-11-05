@@ -33,6 +33,15 @@ describe("the demo builds", () => {
       assert.ok(today.includes(s), `missing ${s}`);
     }
   });
+  it("offers the caterpillar world beside the other three", () => {
+    for (const w of ["garden", "cosmic", "candy", "caterpillar"]) assert.ok(today.includes(`value="${w}"`), `no ${w} world`);
+  });
+  it("gives every demo meeting a row the scene can link to, and the link layer", () => {
+    const data = JSON.parse(today.match(/<script[^>]*id="stage-data"[^>]*>([\s\S]*?)<\/script>/)[1]);
+    assert.ok(data.events.length >= 3, "demo has no meetings");
+    for (const e of data.events) assert.ok(today.includes(`id="${String(e[5]).replace(/^#/, "")}"`), `no target for ${e[2]}`);
+    assert.ok(today.includes('id="meetlinks"'), "no meeting link layer");
+  });
   it("escapes plain-text fields (no raw <script from content)", () => {
     const scripts = (today.match(/<script/g) || []).length;
     assert.ok(scripts <= 6, `unexpected number of script tags: ${scripts}`);
