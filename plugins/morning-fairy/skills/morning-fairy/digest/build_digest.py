@@ -2402,9 +2402,6 @@ CSS_WORLDS = r"""
 :root[data-world="candy"] .nav{border:3px solid var(--rim)}
 :root[data-world="candy"] .look-panel{border:4px solid var(--rim);border-radius:26px}
 :root[data-world="candy"] .tick-face{border-radius:50%;border-color:var(--candy)}
-/* a slight alternating tilt: the individual `rotate` property, which GSAP's transform never touches */
-:root[data-world="candy"] .stack>.slot:nth-child(odd) .card,:root[data-world="candy"] .items>.item:nth-child(odd),:root[data-world="candy"] .rows>.row:nth-child(odd){rotate:-.5deg}
-:root[data-world="candy"] .stack>.slot:nth-child(even) .card,:root[data-world="candy"] .items>.item:nth-child(even),:root[data-world="candy"] .rows>.row:nth-child(even){rotate:.5deg}
 :root[data-world="candy"] .terrain .ridge{stroke:var(--candy);fill:color-mix(in srgb,var(--candy) 14%,transparent);stroke-dasharray:.011 .011;stroke-linecap:butt;filter:drop-shadow(0 1.6px 0 var(--rim))}
 :root[data-world="candy"] .terrain .sun-body{fill:var(--lemon);stroke:var(--candy);stroke-width:4.4;stroke-dasharray:7 4.5}
 :root[data-world="candy"] .terrain .sun-rays{stroke:var(--candy);stroke-width:3.4}
@@ -3652,9 +3649,14 @@ JS = r"""
   }, {passive: true, capture: true});
 
   // tilting cards (a mouse only): Jira cards are moved by GSAP, so each gets a wrapper between its slot and itself and the wrapper tilts; quests and list items tilt directly
+  // the tilt fades with size (on a big card it warped the text and made it hard to read): full on a small
+  // card, smaller and with a deeper perspective as it grows, and none at all past 560 px, where it would be a lean
   function tiltTo(el, e, max, persp){
-    var r = el.getBoundingClientRect(), px = (e.clientX - r.left) / (r.width || 1) - .5, py = (e.clientY - r.top) / (r.height || 1) - .5;
-    el.style.transform = 'perspective(' + persp + 'px) rotateX(' + (-py * 2 * max).toFixed(2) + 'deg) rotateY(' + (px * 2 * max).toFixed(2) + 'deg)';
+    var r = el.getBoundingClientRect(), size = Math.max(r.width, r.height);
+    if (size > 560) { el.style.transform = ''; return; }
+    var k = Math.min(1, 320 / (size || 1)), deep = Math.max(persp, size * 2.5);
+    var px = (e.clientX - r.left) / (r.width || 1) - .5, py = (e.clientY - r.top) / (r.height || 1) - .5;
+    el.style.transform = 'perspective(' + deep.toFixed(0) + 'px) rotateX(' + (-py * 2 * max * k).toFixed(2) + 'deg) rotateY(' + (px * 2 * max * k).toFixed(2) + 'deg)';
   }
   if (FINE && !reduce) {
     Array.prototype.forEach.call(document.querySelectorAll('.card'), function(card){
@@ -4207,6 +4209,57 @@ html[data-world="garden"] .app .btn-accent[data-copy-btn]{border:1.5px solid var
 """
 
 
+CSS_PANEL = r"""
+/* ===== the boards: the right-hand side (tabs, panels, the Copy button and its ring) takes its colours from its world, a step
+   quieter than the stage. Tinted surfaces, one restrained accent for the primary button, each count's colour as its number
+   and its dot, drawn from the world's palette (OKLCH, text 4.5:1 or more on its surface). The --p-* tokens are the boards'
+   own: the stage never reads them, so the scene keeps every colour it had. The caterpillar's are in CSS_CATERPILLAR. ===== */
+html[data-world="garden"]{--p-tile:#fbf6ec;--p-chip:#f1e9d8;--p-line:#cdc3af;--p-icon:#895a45;--p-accent:#a55a37;--p-on-accent:#fffaf0;--p-strong:#364f3b;--p-on-strong:#fffaf0;--p-jira:#965334;--p-slack:#715998;--p-mail:#954f6c;--p-other:#875d13;--p-done:#39703c;--p-client:#e1f5e4;--p-client-line:#a9d0b0;--p-client-ink:#346c42;--p-internal:#fbecd9;--p-internal-line:#dbbf99;--p-internal-ink:#7b5518;--p-box:#dcf2ff;--p-box-line:#9fcbe6;--p-box-ink:#1c6589}
+html[data-world="garden"][data-mode="dark"]{--p-tile:#223833;--p-chip:#2b4640;--p-line:#48645e;--p-icon:#e5b099;--p-accent:#efac8d;--p-on-accent:#1b2d2a;--p-strong:#c8decc;--p-on-strong:#1b2d2a;--p-jira:#edad90;--p-slack:#c6b2ed;--p-mail:#eaa7c0;--p-other:#deb67f;--p-done:#9ccd9c;--p-client:#243928;--p-client-line:#456f4e;--p-client-ink:#b6ddbd;--p-internal:#3f301b;--p-internal-line:#7b5d33;--p-internal-ink:#e9cca6;--p-box:#1d3644;--p-box-line:#386a86;--p-box-ink:#abd8f3}
+html[data-world="cosmic"]{--p-tile:#f5f6ff;--p-chip:#e7e8fa;--p-line:#c1c2d7;--p-icon:#64608c;--p-accent:#6c63ab;--p-on-accent:#f7f5ff;--p-strong:#45445f;--p-on-strong:#f7f5ff;--p-jira:#655d9d;--p-slack:#895284;--p-mail:#33689b;--p-other:#935629;--p-done:#007263;--p-client:#e5efff;--p-client-line:#b1c4ec;--p-client-ink:#445c90;--p-internal:#ffeadc;--p-internal-line:#e4bba0;--p-internal-ink:#844f27;--p-box:#e4efff;--p-box-line:#afc5ec;--p-box-ink:#415d90}
+html[data-world="cosmic"][data-mode="dark"]{--p-tile:#242439;--p-chip:#303049;--p-line:#4d4d63;--p-icon:#bbb7e9;--p-accent:#bab5f5;--p-on-accent:#17143a;--p-strong:#d4d5ee;--p-on-strong:#17143a;--p-jira:#bab6f2;--p-slack:#deaad8;--p-mail:#94c2f3;--p-other:#e9b089;--p-done:#7dd0c0;--p-client:#293348;--p-client-line:#50638c;--p-client-ink:#bed1f9;--p-internal:#432d1f;--p-internal-line:#82583b;--p-internal-ink:#f1c7ac;--p-box:#283347;--p-box-line:#4d638b;--p-box-ink:#bcd2f9}
+html[data-world="candy"]{--p-tile:#fef3fa;--p-chip:#f5e4ef;--p-line:#d2bdca;--p-icon:#885669;--p-accent:#ad5078;--p-on-accent:#ffffff;--p-strong:#563f53;--p-on-strong:#ffffff;--p-jira:#934d6a;--p-slack:#6b5999;--p-mail:#136b94;--p-other:#8a5a18;--p-done:#007255;--p-client:#efebff;--p-client-line:#c6bde8;--p-client-ink:#61538b;--p-internal:#fbecd9;--p-internal-line:#dbbf99;--p-internal-ink:#7b5518;--p-box:#ddf2ff;--p-box-line:#a1cae8;--p-box-ink:#24648b}
+html[data-world="candy"][data-mode="dark"]{--p-tile:#41304b;--p-chip:#4f3c5a;--p-line:#6a5e72;--p-icon:#e3acc0;--p-accent:#f3a2c1;--p-on-accent:#341a48;--p-strong:#e5d0e3;--p-on-strong:#341a48;--p-jira:#eaa7c0;--p-slack:#c1b3ef;--p-mail:#86c7ed;--p-other:#e1b581;--p-done:#85d0b3;--p-client:#342f45;--p-client-line:#665b87;--p-client-ink:#d3caf5;--p-internal:#3f301b;--p-internal-line:#7b5d33;--p-internal-ink:#e9cca6;--p-box:#1f3645;--p-box-line:#3b6987;--p-box-ink:#aed7f5}
+/* the old page's colour roles, pointed at the board tokens inside the boards and the tab strip */
+.app .panels,.app .switch{--accent:var(--p-accent);--accent-ink:var(--p-on-accent);--ok:var(--p-done);--warn:var(--p-other);--violet:var(--p-slack);--pink:var(--p-mail);
+  --client:var(--p-box);--client-line:var(--p-box-line);--client-ink:var(--p-box-ink);
+  --internal:var(--p-internal);--internal-line:var(--p-internal-line);--internal-ink:var(--p-internal-ink);
+  --card:var(--p-tile);--card-solid:var(--p-tile);--line-strong:var(--p-line);--glow:var(--p-accent);--candy:var(--p-accent);--stamp:var(--p-accent)}
+.app .panels :focus-visible,.app .switch :focus-visible,.app .bar :focus-visible{outline-color:var(--p-accent)}
+/* count tiles: one flat tinted surface each, the category only in the number (no colour wash) */
+.app .panels .slice{background:var(--p-tile);box-shadow:none}
+.app .panels .slice.s-clear{background:transparent}
+.app .panels .s-new .slice-big{color:var(--p-jira)}
+.app .panels .mix-jira{--c:var(--p-jira)}
+/* the Jira text stays in the page's "blue box" (the brief's own words call it that), in each world's own blue; a project's
+   Client chip is only a label, so it takes the world's own colour */
+.app .panels .proj-client .proj-kind{background:var(--p-client);color:var(--p-client-ink);border-color:var(--p-client-line)}
+.app .panels .phi{background:var(--p-chip);color:var(--p-icon)}
+.app .panels .n{background:var(--p-chip)}
+.app .panels .cta-block{background:var(--p-chip);border-color:var(--p-line)}
+/* the candy Accept pill is filled with the accent, so its text takes the accent's own ink (white on the light page, deep on the dark) */
+html[data-world="candy"] .app .panels .quest .tick .pill{color:var(--p-on-accent)}
+/* tabs: tinted, the open one in the world's deep tone rather than its accent */
+.app .switch .tab{background:var(--p-tile)}
+html[data-world="candy"] .app .switch .tab{box-shadow:0 6px 14px -10px var(--p-accent)}
+.app .switch .tab[aria-selected="true"]{background:var(--p-strong);color:var(--p-on-strong)}
+/* a tab's count badge: the deep tone on a chip, and turned over on the open tab so it never matches the tab's own fill */
+.app .switch .tab .n{background:var(--p-chip);color:var(--p-strong)}
+.app .switch .tab[aria-selected="true"] .n{background:var(--p-on-strong);color:var(--p-strong)}
+html[data-world] .app[data-layout="deck"] .switch .tab[aria-selected="true"]{background:var(--p-strong)!important;color:var(--p-on-strong)}
+/* the top bar's Copy button, its progress ring and the layout switch */
+.app .bar .btn-accent[data-copy-btn],.app .panels .btn-accent[data-copy-btn]{background:var(--p-accent);color:var(--p-on-accent);box-shadow:0 8px 18px -14px var(--p-accent)}
+.app .bar .ring{background:conic-gradient(var(--p-accent) calc(var(--p)*1turn),var(--p-line) 0)}  /* the track in the line tone: the bar itself is chip-coloured */
+.app .bar .seg button[aria-pressed="true"]{background:var(--p-strong);color:var(--p-on-strong)}
+@media (max-width:820px){
+  /* the phone's bottom bar has no tab fills: the open tab keeps the ink, its icon takes the accent */
+  .app[data-layout="stage"] .switch .tab[aria-selected="true"]{color:var(--w-ink)}
+  .app[data-layout="stage"] .switch .tab[aria-selected="true"] .ic{color:var(--p-accent)}
+  .app[data-layout="stage"] .switch .tab .n{background:var(--p-accent);color:var(--p-on-accent)}
+}
+"""
+
+
 JS_STAGE = r"""
 (function(){
   var D = JSON.parse(document.getElementById('stage-data').textContent);
@@ -4266,17 +4319,28 @@ JS_STAGE = r"""
     G.hl = {x0: hl.left - r.left - 12, y0: hl.top - r.top - 8, x1: hl.right - r.left + 12, y1: hl.bottom - r.top + 10};
     G.x0 = side ? Math.min(W * .62, Math.max(hl.right - r.left + 40, W * .44)) : pad; G.x1 = W - pad - (phone ? 6 : 26);
     G.top = side ? 40 : (hl.bottom - r.top) + (phone ? 34 : 40);
-    if (sc) G.ground = phone ? Math.max(G.top + 130, H * .5) : H * .56;
+    if (sc) G.ground = (phone ? Math.max(G.top + 130, H * .5) : H * .56) + (G.extra || 0);  // G.extra: more sky for the sun (drawScene)
     else if (stg && !phone) G.ground = H * .86;
     else G.ground = H - (phone ? 46 : 64);
     if (G.ground - G.top < 90) G.top = G.ground - 90;
     // how high the ground may rise on the heaviest day: a share of the scene's own height, never past what the sun, the mascot under it and the night moon need
     var sc0 = SHAPE_SCALE[D.shape] || SHAPE_SCALE.NORMAL;
     G.amp = sc0 / 92 * Math.min(64 * G.k, .36 * (G.ground - G.top));
-    G.liftCap = Math.max(0, Math.min(.62 * (G.ground - G.top), G.ground - G.top - 54 * G.k - 10));
+    // (in a world with signposts, also the board that has to stand clear above the figure on the hill: see boardTop)
+    G.liftCap = Math.max(0, Math.min(.62 * (G.ground - G.top), G.ground - G.top - (BOARD[world()] ? BOARD[world()] + 30 : 54) * G.k - 10));
   }
   function X(t){ return G.x0 + (G.x1 - G.x0) * t / 600; }
   function arcY(t){ var p = t / 600, lo = G.ground - 52 * G.k, hi = G.top + 26 * G.k; return lo - (lo - hi) * 4 * p * (1 - p); }
+  // The sun (or the moon after 6 PM) passes OVER every meeting's board and post, never through them. SUNR is its reach in units
+  // (the rays end at 45, plus their stroke); where a board stands under the sun's columns the sun's centre rises to clear the
+  // board's top by SUNGAP px, and a 1.5 slope either side makes the climb smooth while the sun is dragged. It never rises past
+  // the headline (or the scene's top); signCeil keeps every board low enough that this room exists. G.SG is the boards' plan.
+  var SUNR = 47, SUNGAP = 6;
+  function sunY(x, y0){
+    var r = SUNR * G.k * G.ss + SUNGAP, y = y0;
+    (G.SG || []).forEach(function(s){ var d = Math.max(0, Math.abs(x - s.x) - 24 * G.sk - r); y = Math.min(y, s.top - r + 1.5 * d); });
+    return y < y0 ? Math.max(y, Math.min(y0, (x + r > G.hl.x0 && x - r < G.hl.x1 ? G.hl.y1 : 0) + r)) : y0;  // a world without boards keeps its arc exactly
+  }
   function smin(a, b, s){ return -s * Math.log(Math.exp(-a / s) + Math.exp(-b / s)); }
   // how far the ground is lifted at x (px): the day's load, softly capped so the sun on its arc, with the mascot standing under it, always clears the ground
   function lift(x){
@@ -4287,6 +4351,65 @@ JS_STAGE = r"""
   }
   function sky(y0, y1){ for (var n = 0; n < 12; n++){ var x = rnd(6, G.W - 6), y = rnd(y0, y1); if (!(x > G.hl.x0 && x < G.hl.x1 && y > G.hl.y0 && y < G.hl.y1)) return [x, y]; } return [-50, -50]; }
   function path(fn, x0, x1, step){ var d = '', x; for (x = x0; x <= x1 + .1; x += step) d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + fn(x).toFixed(1); return d; }
+  // A meeting's board stands clear of what stands at "now" under it. BOARD[w] is how high that figure reaches above the ground
+  // in a world with signposts (the mascot; a Clawd sticker is the tallest, 56 units, plus its bob), and boardTop lifts a board's
+  // bottom over it wherever the figure's box would overlap the board's columns. Without it a tall hill beside a sign carried
+  // the mascot up over the board, and the board went under the mascot.
+  var BOARD = {garden: 60};
+  function boardTop(x, y, gr){ var k = G.k, s = G.sk, w = BOARD[world()] || 60, foot = y; for (var m = x - (32 + 24 * s / k) * k; m <= x + (32 + 24 * s / k) * k; m += 4) foot = Math.min(foot, gr(m) - (w + 4) * k); return Math.min(y - 58 * s, foot - 26 * s - 2); }
+  // Where each meeting's signpost stands: a board (44 x 24) on a post at the meeting's middle, its bottom clear of the mascot
+  // (boardTop) unless fitSigns found no room for it (G.low); a crowded stretch takes the next height up until neither board nor post meets one already standing.
+  function signPlan(gr){
+    var placed = [], out = [], k = G.sk;  // a board's own size (always G.k: only the sun ever shrinks, fitSigns)
+    EV.forEach(function(e, i){
+      var x = X((e.a + e.b) / 2), y = gr(x) - 3, lv = 0, t0 = G.low[i] ? y - 58 * k : boardTop(x, y, gr);
+      var shape = function(l){ var t = t0 - l * 27 * k; return [[x - 24 * k, t - 2, x + 24 * k, t + 26 * k], [x - 2, t, x + 2, y]]; };
+      var hit = function(A, B){ return A[0] < B[2] && B[0] < A[2] && A[1] < B[3] && B[1] < A[3]; };
+      var clash = function(l, boards){ return placed.some(function(P){ return (boards ? shape(l).slice(0, 1) : shape(l)).some(function(a){ return (boards ? P.slice(0, 1) : P).some(function(b){ return hit(a, b); }); }); }); };
+      while (lv < 3 && clash(lv)) lv++;
+      // two meetings closer than a board's width: one post has to pass another board, so only the boards must be kept apart
+      if (clash(lv)) for (lv = 0; lv < 6 && clash(lv, true); lv++);
+      var meets = clash(lv, true); placed.push(shape(lv)); out.push({e: e, i: i, x: x, y: y, top: t0 - lv * 27 * k - 2, clash: meets, up: Math.round(((y - t0) / k - 58 + lv * 27) * 10) / 10});
+    });
+    return out;
+  }
+  function signs(gr){
+    return signPlan(gr).map(function(p){ var e = p.e, up = p.up;
+      return '<g class="g-sign' + (e.opt ? ' opt' : '') + '" transform="translate(' + p.x.toFixed(1) + ' ' + p.y.toFixed(1) + ') scale(' + G.sk.toFixed(2) + ')"><path d="M0 0V' + (-40 - up) + '"/><rect x="-22" y="' + (-58 - up) + '" width="44" height="24" rx="4"/><text x="0" y="' + (-40 - up) + '">' + e.label + '</text><title>' + e.title + '</title></g>';
+    }).join('');
+  }
+  // the highest a board may reach: one whole sun (sunY) below the headline wherever the sun passing over this board would reach
+  // under the headline (its centre comes within 24sk + r of the board, its box r further), else one whole sun below the
+  // scene's top, so the sun always has room to pass above it
+  // (G.sunRoom 0: no sky for even the smallest sun, so only the board itself must stay under the headline, as on a roomy scene)
+  function signCeil(x){
+    if (!G.sunRoom) return x + 24 * G.sk > G.hl.x0 && x - 24 * G.sk < G.hl.x1 ? G.hl.y1 + 4 : 4;
+    var r = SUNR * G.k * G.ss + SUNGAP, h = 24 * G.sk + 2 * r; return (x + h > G.hl.x0 && x - h < G.hl.x1 ? G.hl.y1 : 0) + 2 * r;
+  }
+  // boards lifted over the mascot need sky above them for the sun. The SUN gets smaller first (to .55 of its size;
+  // shrink only the sun, never the boards, posts or mascot); fitSigns(false) then reports how many px of sky are still short,
+  // and drawScene gives the scene that much more sky where it can. On the last try (fitSigns(true)) the hill is lowered
+  // for the sun; and where even that leaves no room for the smallest sun (a swipe deck), the boards are fitted under the headline
+  // and clear of the mascot (the hill stays lowered, the boards are drawn a little smaller only if they still do
+  // not fit, then G.low), and the sun passes as high as the headline lets it, where it may touch the top board.
+  function fitSigns(last){
+    var w = world(), cap = G.liftCap, plan = function(){ return signPlan(GROUND[w]); }, bad = function(p){ return signCeil(p.x) > p.top || p.clash; },
+        over = function(){ var o = 0; plan().forEach(function(p){ o = Math.max(o, signCeil(p.x) - p.top, p.clash ? 27 * G.sk : 0); }); return o; };
+    G.sk = G.k; G.ss = 1; G.sunRoom = 1; G.low = {};
+    if (!BOARD[w] || !EV.length) return 0;
+    for (var f = 1; f >= .549; f -= .05) { G.ss = Math.max(.55, f); if (over() <= 0) return 0; }
+    if (!last) return over();
+    for (var i = 0; i < 8 && G.liftCap > 0; i++) { var o = over(); if (o <= 0) return 0; G.liftCap = Math.max(0, G.liftCap - o - 1); }
+    if (over() <= 0) return 0;
+    G.sunRoom = 0;  // the hill stays as low as the sun needed it, which leaves the sun the most room
+    if (over() <= 0) return 1;
+    for (var b = 1; b >= .75; b -= .05) { G.sk = G.k * b; if (over() <= 0) return 1; }
+    G.sk = G.k; G.liftCap = cap;
+    for (var n = 0; n < EV.length; n++) { var ps = plan().filter(bad); if (!ps.length) return 1; ps.sort(function(x, y){ return x.top - y.top; }); G.low[ps[0].i] = 1; }
+    for (var j = 0; j < 8 && G.liftCap > 0; j++) { var q = over(); if (q <= 0) return 1; G.liftCap = Math.max(0, G.liftCap - q - 1); }
+    for (var g = 1; g >= .75 && over() > 0; g -= .05) G.sk = G.k * g;
+    return 1;
+  }
   // GBASE is the resting ground (the gentle wobble); GROUND is that minus the day's load, and is what everything stands on
   var GBASE = {
     garden: function(x){ return G.ground + 7 * Math.sin(x / G.W * Math.PI * 1.7 + .5) - 4; },
@@ -4442,17 +4565,6 @@ JS_STAGE = r"""
       var hatch = ''; for (var k = 0; k < (G.phone ? 10 : 22); k++){ var hx = rnd(10, W - 10), hy = gr(hx) + rnd(16, Math.max(18, H - gr(hx) - 30)); hatch += 'M' + hx.toFixed(0) + ' ' + hy.toFixed(0) + 'l-6 7'; }
       o += '<path class="g-hatch" d="' + hatch + '"/>';
       o += '<path class="g-trail" d="' + path(function(x){ return gr(x) - 3; }, X(0) - 20, X(600), 8) + '"/>';
-      // signs on a crowded stretch take a taller post, so two meetings an hour apart never wear one board
-      var placed = [];
-      EV.forEach(function(e){
-        var x = X((e.a + e.b) / 2), y = gr(x) - 3, lv = 0, k = G.k;
-        // a sign is a board (44 x 24) on a post; try each height until neither its board nor its post meets one already standing
-        var shape = function(l){ var t = y - (58 + l * 27) * k; return [[x - 24 * k, t - 2, x + 24 * k, t + 26 * k], [x - 2, t, x + 2, y]]; };
-        var hit = function(A, B){ return A[0] < B[2] && B[0] < A[2] && A[1] < B[3] && B[1] < A[3]; };
-        while (lv < 3 && placed.some(function(P){ return shape(lv).some(function(a){ return P.some(function(b){ return hit(a, b); }); }); })) lv++;
-        placed.push(shape(lv)); var up = lv * 27;
-        o += '<g class="g-sign' + (e.opt ? ' opt' : '') + '" transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + G.k.toFixed(2) + ')"><path d="M0 0V' + (-40 - up) + '"/><rect x="-22" y="' + (-58 - up) + '" width="44" height="24" rx="4"/><text x="0" y="' + (-40 - up) + '">' + e.label + '</text><title>' + e.title + '</title></g>';
-      });
       var hx2 = X(600) + (G.phone ? 0 : 6), hy2 = gr(hx2) - 2;
       if (dark()) o += '<defs><radialGradient id="lamp"><stop offset="0" stop-color="#ffd36b" stop-opacity=".42"/><stop offset="1" stop-color="#ffd36b" stop-opacity="0"/></radialGradient></defs><circle cx="' + hx2.toFixed(0) + '" cy="' + (hy2 - 24 * G.k).toFixed(0) + '" r="' + (120 * G.k).toFixed(0) + '" fill="url(#lamp)"/>';
       o += '<g class="g-house" transform="translate(' + hx2.toFixed(1) + ' ' + hy2.toFixed(1) + ') scale(' + G.k.toFixed(2) + ')"><path d="M-20 0V-28L0-46 20-28V0Z"/><path d="M-24-25L0-49 24-25" fill="none"/><path d="M8-40V-50H14V-34" /><rect class="win" x="-8" y="-24" width="11" height="11" rx="2"/><path class="smoke" d="M11-54q-5-6 0-12"/></g>';
@@ -4461,6 +4573,8 @@ JS_STAGE = r"""
       for (var f = 0; f < 14; f++) o += '<circle class="ff" cx="' + rnd(20, W - 20).toFixed(0) + '" cy="' + (f % 2 ? rnd(G.top, G.ground) : rnd(G.ground - 20, H - 20)).toFixed(0) + '" r="2.4" style="animation-delay:' + (-f * .7) + 's"/>';
       o += '<g id="flowers"></g>';
       o += '<g class="sun g-sun" id="sun"><g class="rays"><path d="M0-36v-9M0 36v9M-36 0h-9M36 0h9M-25-25l-6-6M25 25l6 6M-25 25l-6 6M25-25l6-6"/></g><circle class="c" r="24"/><path class="face" d="M-9-3v3M9-3v3M-7 8q7 6 14 0"/><circle cx="-14" cy="5" r="3" fill="#f39aa8" stroke="none" opacity=".7"/><circle cx="14" cy="5" r="3" fill="#f39aa8" stroke="none" opacity=".7"/></g>';
+      // the signposts (signPlan) come after the sun; the sun's path already clears them (sunY), this order is only a backstop
+      o += signs(gr);
       return o + WHO;
     },
     candy: function(){
@@ -4505,7 +4619,16 @@ JS_STAGE = r"""
 
   function moodRef(){ var m = st.night ? 'sleepy' : st.done ? 'starry' : D.mood; return m === 'calm' ? '#mascot' : '#mascot-' + m; }
   function drawScene(){
-    geo(); seed = 7;
+    // more sky for the sun: where the scene can have it, it gets just enough for a sun of at least .55 to clear every
+    // board and post, at most 35% of its height. A phone's stage row grows (the panel row below gives up that height); the scene
+    // layout's box already fills the screen, so its ground sits lower in it; a swipe deck's box and a desktop stage are fixed.
+    var main = stage.parentElement, row = function(){ main.style.gridTemplateRows = G.extra && st.layout === 'stage' && G.phone ? 'minmax(250px, calc(40% + ' + G.extra.toFixed(0) + 'px)) 1fr auto' : ''; };
+    G.extra = 0; row(); geo();
+    var short = fitSigns(false), room = st.layout === 'stage' && G.phone ? .35 * G.H : sceneLayout() ? Math.max(0, Math.min(.35 * G.H, G.H - G.ground - 90 * G.k)) : 0;
+    for (var gn = 0; short > 0 && room > 0 && gn < 8; gn++) { if (G.extra >= room) break; G.extra = Math.min(room, G.extra + short + 2); row(); geo(); short = fitSigns(false); }
+    if (short > 0) fitSigns(true);  // still short at the cap: keep the extra sky, and lower the hill for the rest (fitSigns)
+    seed = 7;
+    G.SG = BOARD[world()] && EV.length ? signPlan(GROUND[world()]) : [];  // where the boards stand, so the sun's path clears them (sunY)
     sceneEl.setAttribute('viewBox', '0 0 ' + G.W.toFixed(0) + ' ' + G.H.toFixed(0)); sceneEl.style.setProperty('--k', G.k.toFixed(2));
     sceneEl.innerHTML = SCENE[world()]();
     root.style.setProperty('--m-stroke', world() === 'cosmic' ? '#3b5fa8' : (dark() ? '#0f1730' : '#2d2a32'));
@@ -4515,26 +4638,44 @@ JS_STAGE = r"""
   function moveNow(t){
     st.t = t;
     // after 6 PM the sun becomes a moon high in the sky and the mascot waits by the house
-    var night = live && after && st.real, w = world(), x = night ? X(w === 'garden' ? 440 : 596) : X(t), gy = GROUND[w](x), sy = night ? G.top + 30 * G.k : arcY(t),
-        sun = $('#sun', sceneEl), sx = night ? X(470) : x;
+    var night = live && after && st.real, w = world(), x = night ? X(w === 'garden' ? 440 : 596) : X(t), gy = GROUND[w](x),
+        sun = $('#sun', sceneEl), sx = night ? X(470) : x, sy = sunY(sx, night ? G.top + 30 * G.k : arcY(t));
     st.night = night;
-    if (sun) { sun.classList.toggle('night', night); sun.setAttribute('transform', 'translate(' + sx.toFixed(1) + ' ' + sy.toFixed(1) + ') scale(' + G.k.toFixed(2) + ')'); }
+    if (sun) { sun.classList.toggle('night', night); sun.setAttribute('transform', 'translate(' + sx.toFixed(1) + ' ' + sy.toFixed(1) + ') scale(' + (G.k * G.ss).toFixed(2) + ')'); }
     var stick = $('#stick', sceneEl); if (stick) stick.setAttribute('y2', ((gy - 12 - sy) / G.k).toFixed(1));
     $('#whoAt', sceneEl).setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + gy.toFixed(1) + ') scale(' + G.k.toFixed(2) + ')');
     var nl = $('#nowl', sceneEl);
     if (w === 'candy' || night) { nl.setAttribute('x1', 0); nl.setAttribute('x2', 0); nl.setAttribute('y1', 0); nl.setAttribute('y2', 0); }
-    else if (gy - 58 * G.k - (sy + 30 * G.k) < 6) { nl.setAttribute('x1', 0); nl.setAttribute('x2', 0); nl.setAttribute('y1', 0); nl.setAttribute('y2', 0); }
-    else { nl.setAttribute('x1', x.toFixed(1)); nl.setAttribute('x2', x.toFixed(1)); nl.setAttribute('y1', (sy + 30 * G.k).toFixed(1)); nl.setAttribute('y2', (gy - 58 * G.k).toFixed(1)); }
+    else if (gy - 58 * G.k - (sy + 30 * G.k * G.ss) < 6) { nl.setAttribute('x1', 0); nl.setAttribute('x2', 0); nl.setAttribute('y1', 0); nl.setAttribute('y2', 0); }
+    else { nl.setAttribute('x1', x.toFixed(1)); nl.setAttribute('x2', x.toFixed(1)); nl.setAttribute('y1', (sy + 30 * G.k * G.ss).toFixed(1)); nl.setAttribute('y2', (gy - 58 * G.k).toFixed(1)); }
     // the "now" label goes on whichever side the ground is lower, so it never sits on a hump
     var nt = $('#nowt', sceneEl), clearAt = function(xx){ return GROUND[w](xx) > gy - 12 * G.k; },
         left = x > G.W - 100 * G.k || (!night && !clearAt(x + 52 * G.k) && clearAt(x - 52 * G.k));
     if (left) { nt.setAttribute('x', -28); nt.setAttribute('text-anchor', 'end'); } else { nt.setAttribute('x', 28); nt.removeAttribute('text-anchor'); }
     $('#whoUse', sceneEl).setAttribute('href', moodRef());
     nt.textContent = !live ? '' : st.real ? (after ? 'home time' : before ? 'not yet' : 'now') : 'then';
+    placeNow(nt, x, gy);
     var ck = document.getElementById('clock'), wrap = document.getElementById('clockwrap');
     if (wrap) wrap.hidden = !live;
     if (ck) ck.textContent = st.real ? (after ? 'After 6 PM' : clockText(st.t)) : clockText(st.t);
-    var ss = $('.sunspot'); if (ss) { var lft = sx > G.W - 180; ss.classList.toggle('l', lft); ss.style.left = (sx + (lft ? -1 : 1) * 46 * G.k) + 'px'; ss.style.top = sy + 'px'; }
+    var ss = $('.sunspot'); if (ss) { var lft = sx > G.W - 180; ss.classList.toggle('l', lft); ss.style.left = (sx + (lft ? -1 : 1) * 46 * G.k * G.ss) + 'px'; ss.style.top = sy + 'px'; }
+  }
+  // the "now" label keeps the place given above when that place is inside the scene and clear of the headline, the mascot and
+  // every meeting's board, post, gumdrop or moon; else it takes the first such place of a few around the mascot, else the one it overlaps least. Measured,
+  // not assumed, so a big sticker, a tall hill or a board lifted over the mascot all count as drawn.
+  function placeNow(nt, x, gy){
+    if (!nt.textContent || nt.style.opacity === '0') return;
+    // (a post is a vertical line, so its box has no width: it is given its line's width, 1.5 px either side, or it would never count)
+    var sr = sceneEl.getBoundingClientRect(), box = function(e){ var q = e.getBoundingClientRect(), d = q.width < 3 ? 1.5 : 0; return [q.left - sr.left - d, q.top - sr.top, q.right - sr.left + d, q.bottom - sr.top]; };
+    var hop = $('#hop', sceneEl), walls = [].map.call(sceneEl.querySelectorAll('.g-sign rect, .g-sign path, .c-gum, .k-moon'), box).concat([[G.hl.x0, G.hl.y0, G.hl.x1, G.hl.y1]]); if (hop) walls.push(box(hop));
+    walls.push([x - 30 * G.k, gy - 59 * G.k, x + 30 * G.k, gy + 3 * G.k]);  // and the frame a Clawd sticker fills once it loads (CLAWD_BOX)
+    var ov = function(a, b){ return Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1])); };
+    var put = function(p){ nt.setAttribute('x', p[0]); nt.setAttribute('y', p[1]); if (p[2]) nt.setAttribute('text-anchor', p[2]); else nt.removeAttribute('text-anchor'); };
+    var cost = function(){ var b = box(nt), out = Math.max(0, 2 - b[0]) + Math.max(0, b[2] - G.W + 2) + Math.max(0, 2 - b[1]) + Math.max(0, b[3] - G.H + 2);
+      return 1e4 * out + walls.reduce(function(s, w){ return s + ov(b, w); }, 0); };
+    var tries = [[nt.getAttribute('x'), nt.getAttribute('y'), nt.getAttribute('text-anchor')], [32, -24], [-32, -24, 'end'], [32, -66], [-32, -66, 'end'], [0, -80, 'middle'], [56, -40], [-56, -40, 'end'], [80, -24], [-80, -24, 'end'], [32, -100], [-32, -100, 'end'], [0, -110, 'middle']], best = null;
+    for (var i = 0; i < tries.length; i++) { put(tries[i]); var c = cost(); if (c < 2) return; if (!best || c < best.c) best = {c: c, p: tries[i]}; }
+    put(best.p);
   }
   function hint(on){ var h = document.getElementById('hint'); if (h) h.textContent = !live ? '' : on ? ' · let go to snap back' : ' · drag the sun'; }
   function bindSun(){
@@ -4853,11 +4994,13 @@ CSS_CATERPILLAR = r"""
 html[data-world="caterpillar"]{--w-bg:radial-gradient(rgba(60,90,30,.09) 1px,transparent 1.6px) 0 0/8px 8px,#eef6dc;--w-ink:#24301f;--w-muted:#4a5a3b;--w-card:#fffbea;--w-line:#24301f;
   --w-accent:#a8295e;--w-on:#fffbea;--w-task:#6a4cb8;--w-hill:#8cc866;--w-hill2:#c5e7a4;--w-sun:#f6c453;--w-petal:#f29bbd;--w-violet:#9b82dc;--w-leaf:#3f7a35;--w-win:#f6c453;
   --w-chip:#e4eecb;--w-shadow:3px 4px 0 rgba(36,48,31,.16);--w-sky:transparent;
-  --w-leafc:#8cc866;--w-leafe:#2f6a2a;--w-rib:#bfe39b;--w-seg1:#7cbf52;--w-seg2:#a9db7a;--w-tip:#f2789f;--w-blush:#f39aa8;--w-silk:#efe3bf;--w-face:#1f2a1b}
+  --w-leafc:#8cc866;--w-leafe:#2f6a2a;--w-rib:#bfe39b;--w-seg1:#7cbf52;--w-seg2:#a9db7a;--w-tip:#f2789f;--w-blush:#f39aa8;--w-silk:#efe3bf;--w-face:#1f2a1b;
+  --p-tile:#f4f9ee;--p-chip:#e6eddb;--p-line:#bfc8b3;--p-icon:#4e6d47;--p-accent:#477b3b;--p-on-accent:#fffbea;--p-strong:#3b4e37;--p-on-strong:#fffbea;--p-jira:#994e5e;--p-slack:#715998;--p-mail:#136b94;--p-other:#8a5a18;--p-done:#416f37;--p-client:#e3f4e2;--p-client-line:#adcfad;--p-client-ink:#3a6b3d;--p-internal:#f9edd9;--p-internal-line:#d9c099;--p-internal-ink:#785715;--p-box:#d9f4fd;--p-box-line:#99cedf;--p-box-ink:#006981}
 html[data-world="caterpillar"][data-mode="dark"]{--w-bg:radial-gradient(rgba(220,255,200,.05) 1px,transparent 1.6px) 0 0/8px 8px,#0f2219;--w-ink:#e6f0d8;--w-muted:#adc29e;--w-card:#16301f;--w-line:#e6f0d8;
   --w-accent:#ff8fb8;--w-on:#0f2219;--w-task:#c7b5ff;--w-hill:#2f5a37;--w-hill2:#24452c;--w-sun:#f1d27a;--w-petal:#ffb3cf;--w-violet:#b9a3ff;--w-leaf:#9bd26a;--w-win:#ffd36b;
   --w-chip:#1f3d29;--w-shadow:3px 4px 0 rgba(0,0,0,.35);
-  --w-leafc:#2f5a37;--w-leafe:#8cc866;--w-rib:#4b7f4c;--w-seg1:#6fb54f;--w-seg2:#9bd26a;--w-tip:#ff8fb8;--w-blush:#f39aa8;--w-silk:#cdbf98;--w-face:#16220f}
+  --w-leafc:#2f5a37;--w-leafe:#8cc866;--w-rib:#4b7f4c;--w-seg1:#6fb54f;--w-seg2:#9bd26a;--w-tip:#ff8fb8;--w-blush:#f39aa8;--w-silk:#cdbf98;--w-face:#16220f;
+  --p-tile:#28372b;--p-chip:#334536;--p-line:#506353;--p-icon:#a6c99f;--p-accent:#9fcc95;--p-on-accent:#16301f;--p-strong:#ccdec8;--p-on-strong:#16301f;--p-jira:#eea7b3;--p-slack:#c6b2ed;--p-mail:#86c7ed;--p-other:#e1b581;--p-done:#a1cc98;--p-client:#263826;--p-client-line:#496e4a;--p-client-ink:#b9dcb9;--p-internal:#3e311a;--p-internal-line:#785f32;--p-internal-ink:#e6cda5;--p-box:#193841;--p-box-line:#2e6d7f;--p-box-ink:#a5dbec}
 /* the scene: a leaf with a midrib and veins, and the caterpillar on its edge */
 html[data-world="caterpillar"] .scene .hr{fill:var(--w-ink)}
 .cl-leaf{fill:var(--w-leafc);stroke:var(--w-leafe);stroke-width:2.4;stroke-linejoin:round}
@@ -4892,6 +5035,7 @@ html[data-world="caterpillar"] .scene .hr{fill:var(--w-ink)}
 CAT_JS_STAGE_WORLD = r"""  // the caterpillar's leaf: the garden's gentle wobble, lifted by the same load
   GBASE.caterpillar = function(x){ return G.ground + 6 * Math.sin(x / G.W * Math.PI * 1.5 + .8) - 4; };
   GROUND.caterpillar = function(x){ return GBASE.caterpillar(x) - lift(x); };
+  BOARD.caterpillar = 80;  // the rider stands on the caterpillar's back, about 20 units up, so its boards stand that much higher
 """
 
 CAT_JS_STAGE_SCENE = r"""
@@ -4908,22 +5052,13 @@ CAT_JS_STAGE_SCENE = r"""
     o += '<path class="cl-rib" d="' + path(rib, -10, W + 10, 12) + '"/>';
     for (var vx = -10 + vs * .6; vx < W + 10; vx += vs) { var ry = rib(vx); v += 'M' + vx.toFixed(1) + ' ' + ry.toFixed(1) + 'q' + (12 * k).toFixed(1) + ' ' + (-9 * k).toFixed(1) + ' ' + (30 * k).toFixed(1) + ' ' + (-20 * k).toFixed(1) + 'M' + vx.toFixed(1) + ' ' + ry.toFixed(1) + 'q' + (12 * k).toFixed(1) + ' ' + (9 * k).toFixed(1) + ' ' + (30 * k).toFixed(1) + ' ' + (22 * k).toFixed(1); }
     o += '<path class="cl-vein" d="' + v + '"/>';
-    // signposts on the leaf, as in the garden: a crowded stretch takes a taller post
-    var placed = [];
-    EV.forEach(function(e){
-      var x = X((e.a + e.b) / 2), y = gr(x) - 3, lv = 0;
-      var shape = function(l){ var t = y - (58 + l * 27) * k; return [[x - 24 * k, t - 2, x + 24 * k, t + 26 * k], [x - 2, t, x + 2, y]]; };
-      var hit = function(A, B){ return A[0] < B[2] && B[0] < A[2] && A[1] < B[3] && B[1] < A[3]; };
-      while (lv < 3 && placed.some(function(P){ return shape(lv).some(function(a){ return P.some(function(b){ return hit(a, b); }); }); })) lv++;
-      placed.push(shape(lv)); var up = lv * 27;
-      o += '<g class="g-sign' + (e.opt ? ' opt' : '') + '" transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + k.toFixed(2) + ')"><path d="M0 0V' + (-40 - up) + '"/><rect x="-22" y="' + (-58 - up) + '" width="44" height="24" rx="4"/><text x="0" y="' + (-40 - up) + '">' + e.label + '</text><title>' + e.title + '</title></g>';
-    });
     o += hours(hy);
     o += pins(gr, 12 * k);
     for (var f = 0; f < 14; f++) o += '<circle class="ff" cx="' + rnd(20, W - 20).toFixed(0) + '" cy="' + (f % 2 ? rnd(G.top, G.ground) : rnd(G.ground - 20, H - 20)).toFixed(0) + '" r="2.4" style="animation-delay:' + (-f * .7) + 's"/>';
     o += '<g id="flowers"></g>';
     o += '<g class="sun g-sun" id="sun"><g class="rays"><path d="M0-36v-9M0 36v9M-36 0h-9M36 0h9M-25-25l-6-6M25 25l6 6M-25 25l-6 6M25-25l6-6"/></g><circle class="c" r="24"/><path class="face" d="M-9-3v3M9-3v3M-7 8q7 6 14 0"/><circle cx="-14" cy="5" r="3" fill="#f39aa8" stroke="none" opacity=".7"/><circle cx="14" cy="5" r="3" fill="#f39aa8" stroke="none" opacity=".7"/></g>';
     o += '<g class="cat" id="cat"></g>';  // drawn by catDraw, after the sun so a low morning sun never hides the head
+    o += signs(gr);  // signposts as in the garden, after the sun and the caterpillar, each board clear of the rider (signPlan)
     return o + WHO;
   };
   // the leaf's top edge, with bites taken out of it from 8 AM up to xe (the part of the day already eaten)
@@ -4977,6 +5112,8 @@ CAT_JS_STAGE_SCENE = r"""
       g.innerHTML = o;
       return {x: xh + 44 * k, y: gr(xh + 44 * k)};
     }
+    // where the body and its rider must stop on the left: the scene's edge, or a headline standing beside the timeline down to the leaf
+    var edge = G.hl.x1 < X(0) && G.hl.y1 > G.ground - 100 * k ? G.hl.x1 : 0;
     // lay the chain: a first pass counts the segments, the second tapers them over that length
     var chain = function(nPlan){
       var segs = [], prev = at(xh, R * k * SINK), pr = R * k, x = xh, xEnd = X(0);
@@ -4987,6 +5124,7 @@ CAT_JS_STAGE_SCENE = r"""
         var a = xx, b = xx + 2;
         for (var it = 0; it < 20; it++) { var m = (a + b) / 2; if (dist(at(m, r * SINK), prev) >= want) a = m; else b = m; }
         if (n >= 2 && a < xEnd) break;  // the tail ends at 8 AM (neck and one segment always, so there is a body at 8)
+        if (a - r < edge + 1) break;  // ...but never past the scene's left edge or under a headline beside it (at 8 AM the head may come alone)
         c = at(a, r * SINK); segs.push({x: a, c: c, r: r}); prev = c; pr = r; x = a;
       }
       return segs;
@@ -5005,8 +5143,11 @@ CAT_JS_STAGE_SCENE = r"""
     // all done, under reduced motion: a still butterfly beside the head (with motion, the finale sends one fluttering off)
     if (st.done && rm()) o += bfly(hc[0] + 30 * k, hc[1] - 40 * k, .7 * k);
     g.innerHTML = o;
-    // the mascot rides on its back, on the third segment (on the second while the morning's body is that short)
-    var sr = segs[Math.min(2, segs.length - 1)]; CAT.ride = true;
+    // the mascot rides on its back, on the third segment (on the second while the morning's body is that short), never so near
+    // the left edge that half of it is cut off: early on it moves up the body, and at 8 AM onto the head
+    var mx = edge + 30 * k, sr = null; CAT.ride = true;
+    for (var j = Math.min(2, segs.length - 1); j >= 0 && !sr; j--) if (segs[j].c[0] >= mx) sr = segs[j];
+    if (!sr) return {x: Math.max(mx, hc[0]), y: hc[1] - R * k + 3 * k};
     return {x: sr.c[0], y: sr.c[1] - sr.r + 3 * k};
   }
 """
@@ -6032,6 +6173,7 @@ def _build(content, log, admin_log, briefs, look):
     css += CSS_EXTRAS  # the quest pill fix has to beat the quest rules
     css += CSS_TODO    # Done pills, the to-do cards' quest and Jira chips, project groups
     css += CSS_STAGE   # last of all: the shell, the scene and the panels
+    css += CSS_PANEL   # the boards in their world's colours, after the shell rules they recolour
     ff_body, ff_fill, ff_moves, look_panel = "", "", "", LOOK_PANEL
     kind = mascot_kind(look, FAN)
     defs = mascot_defs(kind)

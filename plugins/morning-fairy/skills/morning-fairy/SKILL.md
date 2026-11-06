@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.3.0
+version: 1.4.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,

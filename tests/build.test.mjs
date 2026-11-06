@@ -42,6 +42,21 @@ describe("the demo builds", () => {
     for (const e of data.events) assert.ok(today.includes(`id="${String(e[5]).replace(/^#/, "")}"`), `no target for ${e[2]}`);
     assert.ok(today.includes('id="meetlinks"'), "no meeting link layer");
   });
+  it("gives the boards their own colours in every world, light and dark", () => {
+    const tok = (w, dark) => {
+      const re = new RegExp(`html\\[data-world="${w}"\\]${dark ? '\\[data-mode="dark"\\]' : ""}[,{][^{}]*\\{?[^}]*--p-accent:(#[0-9a-f]{6})`, "g");
+      // the caterpillar starts from the garden's rule and overrides it later, so the last rule for a world is the one in force
+      const all = [...today.matchAll(re)]; assert.ok(all.length, `no board accent for ${w}${dark ? " dark" : ""}`);
+      return all[all.length - 1][1];
+    };
+    const light = ["garden", "cosmic", "candy", "caterpillar"].map((w) => tok(w, false));
+    const dark = ["garden", "cosmic", "candy", "caterpillar"].map((w) => tok(w, true));
+    assert.equal(new Set(light).size, 4, `light accents not distinct: ${light}`);
+    assert.equal(new Set(dark).size, 4, `dark accents not distinct: ${dark}`);
+  });
+  it("stops tilting a card once it is big", () => {
+    assert.ok(/function tiltTo\(el, e, max, persp\)\{[\s\S]{0,200}if \(size > 560\) \{ el\.style\.transform = ''; return; \}/.test(today), "no size cap on the tilt");
+  });
   it("escapes plain-text fields (no raw <script from content)", () => {
     const scripts = (today.match(/<script/g) || []).length;
     assert.ok(scripts <= 6, `unexpected number of script tags: ${scripts}`);

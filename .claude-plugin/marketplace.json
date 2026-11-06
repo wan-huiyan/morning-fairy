@@ -7,6 +7,6 @@
     "name": "morning-fairy",
     "source": "./plugins/morning-fairy",
     "description": "A cute one-screen morning brief: your day drawn as a little world, what needs you, tasks Claude can pick up, Jira updates to tick and copy, and a time machine of earlier mornings. Draft-only.",
-    "version": "1.3.0"
+    "version": "1.4.0"
   }]
 }
