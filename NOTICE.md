@@ -35,14 +35,19 @@ SOFTWARE.
 The same notice is in `digest/fanfan/LICENSE`, and the builder keeps fanfan's own MIT header on the motion
 CSS and script it copies into a page.
 
-## Clawd stickers (not included)
+## Clawd stickers (loaded from the artist, plus two screenshots)
 
 If you pick Clawd as your mascot, the page shows stickers by alwinecor from
 [alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers), licensed
 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
-- **No Clawd file is in this repository.** Your browser loads each sticker as a picture from the artist's
+- **The code bundles no Clawd file.** Your browser loads each sticker as a picture from the artist's
   repository through jsDelivr, pinned to commit `516f40536c9e3aaaa9995c267daad6e4d45e3d80`, when the page opens.
 - The page credits the artist wherever Clawd appears.
 - Clawd is a character that belongs to Anthropic. These stickers are unofficial fan art, and their licence
   allows non-commercial use only. Whether your own use fits that licence is your call.
+- **Two screenshots show one sticker.** `docs/picker.png` and `docs/picker-phone.png` picture the picker with
+  `dev-life/theme/clawd-dev-life/assets/idle.svg` (same commit) on its Clawd card. Because they contain the
+  artist's work, these two images are licensed
+  [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), not MIT: credit alwinecor, no commercial
+  use, and share any adaptation under the same licence. The rest of the repository stays MIT.
