@@ -278,6 +278,12 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.4.0** (2026-11-06): calmer and roomier. The right-hand panel (count tiles, project cards, tabs and buttons)
+  now takes its colours from its world, light and dark, a step quieter than the scene. Cards tilt less as they grow
+  and not at all past 560 px, so big cards stay easy to read. A tall meeting hill no longer pushes signs into the sun:
+  the sun rides above every board, getting smaller first, and on a phone the scene gets up to 35% more sky rather than
+  shrinking the signs. In the swipe deck, where the scene's height is fixed by the screen, the sun can still touch the
+  top sign on a very tall day. The "now" label no longer sits on a signpost.
 - **1.3.0** (2026-11-05): a fourth world, Caterpillar: the day is a big leaf, the caterpillar's body is the
   part of the day already lived with its head munching at now, it climbs over each meeting's hill, curls into a cocoon
   after 6 PM, and the all-done finale is a butterfly. The meeting hills and the admin clipboards on the scene are now
