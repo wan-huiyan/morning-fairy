@@ -82,7 +82,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 <p align="center">
   <img src="docs/picker.png" width="760" alt="The Build your own fairy sheet: two mascot cards (the ticket and Clawd), then the little animal icons: four animals, line and eyes, a preview row, and tick boxes for moves"/>
   <br/><sub>The picker over the demo morning, with the little cat in thick lines and shiny eyes. Clawd's card shows the
-  ticket here because no Clawd picture is ever stored in this repository: online, it shows the artist's sticker. (Made-up data.)</sub>
+  artist's sticker, fan art by alwinecor (CC BY-NC-SA 4.0; see Credits). (Made-up data.)</sub>
 </p>
 
 <p align="center">
@@ -269,8 +269,10 @@ python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy
 - **fanfan icons** by 唐幡 ([TangfanOVO/fanfan-icons](https://github.com/TangfanOVO/fanfan-icons)), MIT licence.
   The little animals are bundled in `digest/fanfan/`, with their licence and the commit they came from.
 - **Clawd stickers** by alwinecor ([alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers)),
-  CC BY-NC-SA 4.0. They are **not included in this repository**: if you pick Clawd, your browser loads them from
-  the artist's repository (through jsDelivr, pinned to one commit) when the page opens. Clawd belongs to
+  CC BY-NC-SA 4.0. The code does not bundle them: if you pick Clawd, your browser loads them from the artist's
+  repository (through jsDelivr, pinned to one commit) when the page opens. The only copies here are inside two
+  screenshots, `docs/picker.png` and `docs/picker-phone.png`, which show one sticker on the picker's Clawd card;
+  those two pictures are under CC BY-NC-SA 4.0 (see [NOTICE.md](NOTICE.md)). Clawd belongs to
   Anthropic; these are unofficial fan art, licensed for non-commercial use only. Whether your own use fits that
   licence is your call.
 
@@ -278,6 +280,8 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.4.1** (2026-11-06): the README's picker pictures show Clawd's real sticker on the Clawd card, instead of
+  the ticket the card falls back to offline. Those two pictures carry the sticker's CC BY-NC-SA 4.0 licence.
 - **1.4.0** (2026-11-06): calmer and roomier. The right-hand panel (count tiles, project cards, tabs and buttons)
   now takes its colours from its world, light and dark, a step quieter than the scene. Cards tilt less as they grow
   and not at all past 560 px, so big cards stay easy to read. A tall meeting hill no longer pushes signs into the sun:
