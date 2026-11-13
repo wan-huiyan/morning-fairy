@@ -220,8 +220,37 @@ saves your fairy from the picker and rebuilds today's brief with it. **After upd
 helper** (`pkill -f 'morning-fairy/digest/serve.py'`, then click the Dock app), or the one already running stays on
 the old version and cannot save a fairy.
 
+## ⏱ Timesheet hours (optional, off by default)
+
+If you fill in a timesheet, the brief can work out where your week went and show you the days you have
+not logged yet — the last seven days up to yesterday, never today.
+
+It is **off until you turn it on**, because it needs to know which folder belongs to which project:
+
+```bash
+cp <skill>/digest/clients.example.json <skill>/digest/clients.json
+# then edit clients.json for your own projects
+```
+
+The repo ships only the example. A filled-in map would put someone else's project names in your
+timesheet, and a map that quietly defaulted to empty would report every project as zero hours.
+
+How it measures: every Claude session transcript carries a timestamp per message, so messages less than
+15 minutes apart are one stretch of work and a longer gap is dropped. Stretches are merged per project
+per day, scheduled runs are excluded, and a day where two projects ran at once is split rather than
+summed — otherwise the parts add up to more hours than you actually sat there.
+
+**It is a proxy, not a measurement of your day.** Work away from the keyboard is missing, and a long
+agent run inside an attended session is counted. It ranks the days and shows the shape of the week; you
+decide the hours. It never writes to your timesheet: it proposes, and you save in a session you are
+watching.
+
 ## Limitations
 
+- **The hours step is a proxy.** If you turn on timesheet hours, the figures come from how long Claude
+  sessions were active, not from watching you work: time away from the keyboard is missing and an agent
+  running alone is counted. Treat them as a ranking of your days, never as the answer, and never set a
+  single project's figure beside a weekly target.
 - **It needs connectors to be useful.** Calendar, email and chat connectors (Google, Slack, Atlassian or
   similar) are what it reads. With none, you get the demo and nothing else.
 - **Opening a brief loads fonts from Google Fonts**, so your browser makes a request to Google. The page
@@ -280,6 +309,10 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.5.0** (2026-11-13): an optional timesheet-hours step. With a `digest/clients.json` in place, the
+  run measures the last seven days from your session transcripts, proposes the per-day gap against what
+  is already logged, and stops there — it reads and proposes, it never saves a timesheet entry. Off by
+  default; the repo ships only `clients.example.json`.
 - **1.4.1** (2026-11-06): the README's picker pictures show Clawd's real sticker on the Clawd card, instead of
   the ticket the card falls back to offline. Those two pictures carry the sticker's CC BY-NC-SA 4.0 licence.
 - **1.4.0** (2026-11-06): calmer and roomier. The right-hand panel (count tiles, project cards, tabs and buttons)

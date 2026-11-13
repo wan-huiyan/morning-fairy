@@ -1,0 +1,20 @@
+{
+  "_comment": "Copy this to clients.json and edit it for your own work. The hours step does not run until you do, so nobody gets a timesheet built from someone else's project names. `labels` are matched against the brief's own header (\"Morning brief tasks for <X>\") and WIN over `patterns`, because a brief is routinely opened in whichever repo is to hand and the folder would then bill it to that project. `patterns` are case-insensitive substrings of a session's working directory; first match wins, so put narrow patterns above wide ones. A session matching nothing is 'unattributed': reported for a person to attribute by hand, never proposed as a timesheet entry. A project absent from this file is silently invisible, not zero, so add one the first time work for it appears.",
+  "clients": [
+    {
+      "name": "acme",
+      "patterns": ["/acme-platform", "/acme-api"],
+      "labels": ["Acme Corp"]
+    },
+    {
+      "name": "zephyr",
+      "patterns": ["/zephyr"],
+      "labels": ["Zephyr"]
+    },
+    {
+      "name": "internal",
+      "patterns": ["/admin", "/tooling", "/.claude/skills"],
+      "labels": ["Internal", "Admin"]
+    }
+  ]
+}

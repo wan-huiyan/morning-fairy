@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.4.1
+version: 1.5.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -203,6 +203,73 @@ If the rows did not come with the message, ask which rows; never guess from the 
 5. Optional, macOS: `bash digest/make_dock_app.sh` builds `~/Applications/Morning Brief.app` (the mascot icon).
    Drag it onto the Dock; a click opens today's brief through the local helper. It finds the installed skill at
    click time, so a plugin update needs no rebuild.
+
+## 6. Timesheet hours (optional)
+
+**Off by default.** Nothing here runs until `<skill>/digest/clients.json` exists, and the repo ships
+only `clients.example.json`. That is deliberate: a filled-in map would put someone else's project
+names into your timesheet, and a map that quietly defaulted to empty would report every project as
+zero. Copy the example, edit it for your own work, and the step turns on:
+
+```bash
+cp <skill>/digest/clients.example.json <skill>/digest/clients.json
+```
+
+With it in place, the run proposes the hours for the **last seven days up to yesterday** — never
+today, never a single day, because the point is to catch the days that were missed.
+
+```bash
+python3 -I <skill>/digest/measure_session_hours.py \
+  --start <yesterday minus 6 days> --end <yesterday> --json
+```
+
+Add `--meetings` with the window's calendar meetings as `{"client","start","end"}` so a meeting
+attended with no session open still counts; the run already fetched the calendar.
+
+**What the number is.** Every session transcript carries a timestamp per message. Messages less than
+`--gap` minutes apart (15 by default) are one stretch of work; a longer gap ends it and the idle time
+is dropped. Stretches are unioned per project per day, so two sessions on one project count once.
+Runs started by a scheduled task are excluded — nobody was at the keyboard.
+
+**What it is not.** Not a floor and not a ceiling. Off-keyboard work is missing, which reads low; a
+long unattended agent run inside an attended session counts, which reads high. So:
+
+- Never present it as the answer. It ranks the days and shows the shape of the week; the owner
+  decides the hours.
+- Never set it beside a weekly target. That target covers every project, and a single-project figure
+  next to it invites billing the whole week to one client.
+- Report `unattributed` as a pile to attribute by hand, never as zero. A project missing from the map
+  is **silently invisible**, not zero.
+- `--require-typed` counts only stretches holding a message the owner actually typed. Run both and
+  compare before proposing a week.
+
+**Four rules that decide whether the figures are right.**
+
+1. **Attribute by what a session DID, not by the folder it sat in.** The brief's own header
+   ("Morning brief tasks for <X>") wins over the directory, because a brief is opened in whichever
+   repo is to hand. Scratch workspaces and worktrees hide real work behind names that say nothing,
+   and a session's transcript does not live under its own working directory — find it by its cwd:
+   `cd ~/.claude/projects && find . -name '*.jsonl' -newermt '<date>' -print0 | xargs -0 grep -l '<cwd-leaf>'`
+2. **On a day where two things ran at once, split the WALL CLOCK.** Per-project unions overlap, so
+   they sum to more hours than anyone sat there. Client-billable work keeps its full measured union
+   and internal work divides what is left; never dilute a client's hours because internal work ran
+   beside them.
+3. **Propose the whole day, every project**, plus the meetings the session measure cannot see. Which
+   meetings ran is a question for that day's calendar, never a hardcoded rule — "the standup, every
+   weekday" is wrong the first week someone skips one.
+4. **Round each entry to 5 minutes.** Nothing goes into a timesheet as 4h 42m.
+
+**Checking what is already logged.** A timesheet tool's API may not answer "are *my* hours in?" — in
+Tempo, for instance, the worklog it syncs into Jira is authored by the Tempo app account, never the
+person, so a `worklogAuthor = currentUser()` filter can never match and a zero there is **not** an
+empty timesheet. Where that is so, the page itself is the only per-day answer: open it, read it, and
+where you cannot, say so in one line. **Never imply a day is empty because you could not look.**
+
+**This step reads and proposes. It does not write.** Put the per-day table on the brief — measured,
+already logged, the gap — and give the item a `claude` ask carrying the gap in its `detail`, so an
+attended session can fill it. Saving a timesheet entry belongs in a session the owner is watching:
+on a week page a click is often a write with no confirmation step, and there is nobody at 08:00 to
+catch a mis-click.
 
 ## Anti-patterns
 
