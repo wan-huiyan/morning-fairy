@@ -224,7 +224,9 @@ class TestMeetingsAndOptIn(Base):
             m.load_clients(os.path.join(self.root, "nope.json"))
         self.assertIn("opt-in", str(caught.exception))
 
-    def test_the_shipped_example_map_parses_and_has_no_real_client_names(self):
+    def test_the_shipped_example_map_parses_and_has_the_keys_classify_reads(self):
+        """Shape only. It does NOT check that the example names are made up —
+        that is a reading job before publishing, not an assertion."""
         clients = m.load_clients(m.EXAMPLE_MAP)
         self.assertTrue(clients)
         for c in clients:
