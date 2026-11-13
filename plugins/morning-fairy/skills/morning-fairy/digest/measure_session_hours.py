@@ -58,7 +58,7 @@ def classify(cwd, clients, first_text=""):
     """Which client a session's hours belong to.
 
     The morning brief's own header is checked FIRST, because the folder lies: a
-    brief headed "Monks admin (internal)" is routinely opened in whichever repo
+    brief headed "Admin (internal)" is routinely opened in whichever repo
     happens to be to hand, and the directory would then bill internal work to
     that client. Where no header says otherwise, fall back to the directory.
     First matching pattern wins in both passes; no match is 'unattributed'.
