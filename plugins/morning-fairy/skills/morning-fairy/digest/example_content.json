@@ -280,6 +280,98 @@
    ]
   },
   {
+   "id": "hours",
+   "nav": "Hours",
+   "title": "Hours for Tempo, 9 to 11 Mar",
+   "blurb": "Measured from session logs and the calendar, rounded to 5 minutes. A guide for you to decide from, not the answer.",
+   "hours": {
+    "days": [
+     {
+      "date": "2026-03-09",
+      "label": "Mon 9",
+      "entries": [
+       {
+        "project": "Lighthouse Co",
+        "what": "Client work",
+        "key": "LH-10",
+        "minutes": 405,
+        "billable": true
+       },
+       {
+        "project": "Lighthouse Co",
+        "what": "Kick-off workshop",
+        "key": "LH-1",
+        "minutes": 30,
+        "billable": false
+       },
+       {
+        "project": "Admin",
+        "what": "Team standup",
+        "key": "ADMIN-8",
+        "minutes": 30,
+        "billable": false
+       }
+      ],
+      "unattributed": 0,
+      "logged": 465
+     },
+     {
+      "date": "2026-03-10",
+      "label": "Tue 10",
+      "entries": [
+       {
+        "project": "Lighthouse Co",
+        "what": "Client work",
+        "key": "LH-10",
+        "minutes": 190,
+        "billable": true
+       },
+       {
+        "project": "Orchard app",
+        "what": "Release checks",
+        "key": "ORC-4",
+        "minutes": 120,
+        "billable": true
+       },
+       {
+        "project": "Admin",
+        "what": "Weekly planning",
+        "key": "ADMIN-8",
+        "minutes": 60,
+        "billable": false
+       }
+      ],
+      "unattributed": 45,
+      "logged": 240,
+      "note": "45m came from a scratch folder: say which project it was for."
+     },
+     {
+      "date": "2026-03-11",
+      "label": "Wed 11",
+      "entries": [
+       {
+        "project": "Orchard app",
+        "what": "Release checks",
+        "key": "ORC-4",
+        "minutes": 255,
+        "billable": true
+       },
+       {
+        "project": "Admin",
+        "what": "Team standup",
+        "key": "ADMIN-8",
+        "minutes": 30,
+        "billable": false
+       }
+      ],
+      "unattributed": 0,
+      "logged": null
+     }
+    ],
+    "logged_note": "Already in Tempo comes from the Timesheet view, read at 08:10."
+   }
+  },
+  {
    "id": "sources",
    "nav": "Sources",
    "title": "What was read",

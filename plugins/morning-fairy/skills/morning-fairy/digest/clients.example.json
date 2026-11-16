@@ -16,5 +16,11 @@
       "patterns": ["/admin", "/tooling", "/.claude/skills"],
       "labels": ["Internal", "Admin"]
     }
-  ]
+  ],
+  "_comment_fill_tempo": "Optional, macOS: the brief's Fill Tempo button (Hours tab). `tempo_url` is your own Tempo timesheet page and is required: without it the button does not show. `work_items` is one sentence the session is told about where internal work goes. `folder` is where the Terminal session opens (your home folder when it is not a folder). Delete the block to turn the button off.",
+  "fill_tempo": {
+    "tempo_url": "https://your-site.atlassian.net/plugins/servlet/ac/io.tempo.jira/tempo-app#!/my-work/week",
+    "work_items": "Internal meetings go on ADMIN-8; R&D and knowledge sharing on ADMIN-3.",
+    "folder": "~/Documents/admin"
+  }
 }

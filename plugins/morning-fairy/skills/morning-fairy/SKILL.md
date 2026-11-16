@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.5.0
+version: 1.6.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -265,11 +265,35 @@ person, so a `worklogAuthor = currentUser()` filter can never match and a zero t
 empty timesheet. Where that is so, the page itself is the only per-day answer: open it, read it, and
 where you cannot, say so in one line. **Never imply a day is empty because you could not look.**
 
-**This step reads and proposes. It does not write.** Put the per-day table on the brief — measured,
-already logged, the gap — and give the item a `claude` ask carrying the gap in its `detail`, so an
-attended session can fill it. Saving a timesheet entry belongs in a session the owner is watching:
-on a week page a click is often a write with no confirmation step, and there is nobody at 08:00 to
-catch a mis-click.
+**This step reads and proposes. It does not write.** Put the week on the brief as a chapter with
+`"id": "hours"` and an `hours` object; the builder draws one stacked bar per day, in the content's
+`projects` order (the first four projects get their own colour, later ones share grey):
+
+```json
+{"id": "hours", "nav": "Hours", "title": "Hours for Tempo, 9 to 13 Mar", "blurb": "...",
+ "hours": {"days": [{"date": "2026-03-09", "label": "Mon 9",
+   "entries": [{"project": "Acme Corp", "what": "Client work", "key": "ACME-10", "minutes": 405, "billable": true}],
+   "unattributed": 45, "logged": 300, "note": "45m came from a scratch folder: say which project."}],
+  "logged_note": "Already in Tempo comes from the Timesheet view, read at 08:10."}}
+```
+
+`minutes` are proposed and already rounded; `unattributed` is that day's pile with no project;
+`logged` is what the timesheet already holds, and `null` means it was not read (the page says so
+rather than showing zero). Give the chapter's item a `claude` ask carrying the gap, too.
+
+Saving a timesheet entry belongs in a session the owner is watching: on a week page a click is often a
+write with no confirmation step, and there is nobody at 08:00 to catch a mis-click. The Hours tab's
+**Fill Tempo** button starts that session. It asks the local helper (`digest/serve.py`,
+`POST /fill-hours`, a date only) to open Terminal running Claude Code on `digest/fill_hours_prompt.txt`
+for one day: from 4 PM today, before that the last working day. Without the helper, or off macOS, it
+copies the same prompt. The Tempo page, a sentence about where internal work goes, and the folder
+Terminal opens in come from the `fill_tempo` block of `clients.json`; no block, no button. Change what
+the session does in that prompt file, never in the page.
+
+**Guard rails for the attended session.** Show one proposed entry per work item, every project
+included, and wait for the owner's OK on the hours. Then log one entry per click and read the week
+total back after each save. In Tempo, never use Log All Activities, never use Submit Period, and
+never click a worklog card anywhere but its pencil.
 
 ## Anti-patterns
 

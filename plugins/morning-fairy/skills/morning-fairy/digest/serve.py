@@ -2,9 +2,12 @@
 """A tiny local helper for the morning brief: serves the newest brief from the Desktop and saves Done taps to
 ~/.morning-fairy/runs/done.jsonl (MORNING_FAIRY_HOME overrides the folder).
 
-127.0.0.1 only, port 8765. Writes that done.jsonl, and look.json in the same folder (beside runs/) when the brief saves
-a new look, after which it rebuilds today's brief with the builder beside this file. Also serves the bundled fanfan
-icons (fanfan/ beside this file) for the look picker's previews. Python standard library only.
+127.0.0.1 only, port 8765. POST /fill-hours {"date"} opens Terminal (macOS) with an attended Claude session that fills
+that day's Tempo hours: the prompt is fill_hours_prompt.txt beside this file, filled from the "fill_tempo" block of
+clients.json beside this file (no block, no route); the page only sends a date. Writes that done.jsonl, and look.json
+in the same folder (beside runs/) when the brief saves a new look, after which it rebuilds today's brief with the
+builder beside this file. Also serves the bundled fanfan icons (fanfan/ beside this file) for the look picker's
+previews. Python standard library only.
 Start it with: python3 -I serve.py   (the launcher script does this when it is not already running)
 Tests may point it elsewhere with BRIEF_DIGEST_DIR and BRIEF_DESKTOP_DIR.
 """
@@ -12,11 +15,13 @@ import fnmatch
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
 import threading
-from datetime import datetime
+import time
+from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
@@ -42,6 +47,13 @@ FF_PATH = re.compile(r"/fanfan/(" + "|".join(FF_STYLES) + r")/(" + "|".join(FF_A
 LOOK_ONE = {"mascot": ("ticket", "clawd", "fanfan"), "animal": FF_ANIMALS, "line": ("thin", "thick"), "eyes": ("dots", "shiny")}
 LOOK_MANY = {"places": ("tabs", "quests", "toolbar", "done", "empty", "favicon"), "moves": ("wake", "sleep", "bounce", "blush", "trick")}
 LOOK_LOCK = threading.Lock()  # one save-and-rebuild at a time
+# /fill-hours: the page sends a date and nothing else; the prompt is this fixed file with the config and the date filled in
+FILL_PROMPT = CODE / "fill_hours_prompt.txt"
+FILL_CONFIG = CODE / "clients.json"  # its "fill_tempo" block: tempo_url (required), work_items, folder
+FILL_DAYS = 14  # how far back a day may be filled
+FILL_GAP = 20  # seconds: a double tap opens one session, not two
+FILL_LOCK = threading.Lock()
+_fill_last = [None]  # time.monotonic() of the last launch; None until the first
 
 
 def briefs():
@@ -130,6 +142,63 @@ def rebuild_today(path):
     return True
 
 
+
+def fill_config():
+    """The "fill_tempo" block of clients.json, or None (no file, no block, or no tempo_url): then /fill-hours is off."""
+    try:
+        f = json.loads(FILL_CONFIG.read_text(encoding="utf-8")).get("fill_tempo")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(f, dict) or not isinstance(f.get("tempo_url"), str) or not f["tempo_url"].strip():
+        return None
+    return f
+
+
+def fill_template(cfg):
+    """The prompt as one line with the config filled in and {date} and {day} left; the builder's fill_prompt_template
+    does the same for the page (a test compares the two)."""
+    t = FILL_PROMPT.read_text(encoding="utf-8")
+    items = cfg.get("work_items")
+    val = {"skill_md": str(CODE.parent / "SKILL.md"), "measure": str(CODE / "measure_session_hours.py"),
+           "tempo_url": cfg["tempo_url"].strip(), "work_items": items if isinstance(items, str) else ""}
+    t = re.sub(r"\{(skill_md|measure|tempo_url|work_items)\}", lambda m: val[m.group(1)], t)
+    return " ".join(t.split())
+
+
+def fill_date(s, today=None):
+    """A YYYY-MM-DD from the page, as a date: today or up to FILL_DAYS back, else None."""
+    if not isinstance(s, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return None
+    try:
+        d = date.fromisoformat(s)
+    except ValueError:
+        return None
+    today = today or date.today()
+    return d if timedelta(0) <= today - d <= timedelta(days=FILL_DAYS) else None
+
+
+def fill_prompt(d, cfg):
+    """The prompt for one day, on one line (Terminal types it as a single command)."""
+    return fill_template(cfg).replace("{date}", d.isoformat()).replace("{day}", f"{d:%A} {d.day} {d:%B %Y}")
+
+
+def fill_folder(cfg):
+    """Where the Terminal session opens: the config's "folder" when it is a folder, else your home folder."""
+    f = cfg.get("folder")
+    if isinstance(f, str) and f.strip():
+        p = Path(f.strip()).expanduser()
+        if p.is_dir():
+            return p
+    return Path.home()
+
+
+def launch_fill(prompt, folder):
+    """Open a Terminal window running Claude Code on the prompt, in the folder. macOS only. Tests replace this."""
+    cmd = f"cd {shlex.quote(str(folder))} && claude {shlex.quote(prompt)}"
+    script = 'tell application "Terminal"\nactivate\ndo script "' + cmd.replace("\\", "\\\\").replace('"', '\\"') + '"\nend tell'
+    subprocess.run(["osascript", "-e", script], check=True, capture_output=True, timeout=20)
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "BriefHelper"
     protocol_version = "HTTP/1.1"
@@ -199,7 +268,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.close_connection = True  # a refused body is never read, so the connection is not reused
         route = urlsplit(self.path).path
-        if route not in ("/done", "/look"):
+        if route not in ("/done", "/look", "/fill-hours"):
             return self._send(404, "not found")
         if self.headers.get("Origin", "") not in ORIGINS or not self._host_ok():
             return self._send(403, "forbidden")
@@ -213,6 +282,25 @@ class Handler(BaseHTTPRequestHandler):
             r = json.loads(self.rfile.read(n).decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
             return self._send(400, "bad json")
+        if route == "/fill-hours":
+            cfg = fill_config()
+            if cfg is None:
+                return self._send(404, "not set up")  # no "fill_tempo" block in clients.json
+            d = fill_date(r.get("date") if isinstance(r, dict) else None)
+            if d is None:
+                return self._send(400, "bad date")
+            with FILL_LOCK:
+                if _fill_last[0] is not None and time.monotonic() - _fill_last[0] < FILL_GAP:
+                    return self._send(429, '{"ok":false,"why":"just opened"}', "application/json")
+                try:
+                    launch_fill(fill_prompt(d, cfg), fill_folder(cfg))
+                except subprocess.TimeoutExpired:
+                    _fill_last[0] = time.monotonic()  # Terminal may well have opened: a quick retry must not open a second session
+                    return self._send(500, '{"ok":false}', "application/json")
+                except (OSError, subprocess.SubprocessError):
+                    return self._send(500, '{"ok":false}', "application/json")
+                _fill_last[0] = time.monotonic()
+            return self._send(200, json.dumps({"ok": True, "date": d.isoformat()}), "application/json")
         if route == "/look":
             look = clean_look(r)
             if look is None:

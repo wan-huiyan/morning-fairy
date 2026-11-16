@@ -245,6 +245,29 @@ agent run inside an attended session is counted. It ranks the days and shows the
 decide the hours. It never writes to your timesheet: it proposes, and you save in a session you are
 watching.
 
+**The Hours tab.** The brief draws the week as one stacked bar per day: each project in its own colour,
+billable work solid, non-billable striped, sessions with no project yet dotted grey, and a tick on each
+bar for what Tempo already holds. Week totals sit above the bars and every entry is one tap away as a table.
+
+**The Fill Tempo button** (macOS, optional) opens Terminal with a Claude session that measures one day,
+shows you the proposed entries and the gap against Tempo, and logs them one at a time only after you say
+yes. From 4 PM it offers today; before that, the last working day. It turns on when `clients.json` has a
+`fill_tempo` block (see `clients.example.json`):
+
+```json
+"fill_tempo": {
+  "tempo_url": "https://your-site.atlassian.net/plugins/servlet/ac/io.tempo.jira/tempo-app#!/my-work/week",
+  "work_items": "Internal meetings go on ADMIN-8; R&D and knowledge sharing on ADMIN-3.",
+  "folder": "~/Documents/admin"
+}
+```
+
+`tempo_url` is your own timesheet page, `work_items` is a sentence the session is told about where
+internal work goes, and `folder` is where Terminal opens. The button only works when the brief is opened
+through the local helper (`serve.py`); the page sends nothing but the date, and the helper refuses other
+sites, a second tap within 20 seconds, and any day more than 14 days back. Opened any other way, or off
+macOS, the button copies the prompt for you to paste into a Claude session instead.
+
 ## Limitations
 
 - **The hours step is a proxy.** If you turn on timesheet hours, the figures come from how long Claude
@@ -309,6 +332,12 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.6.0** (2026-11-16): the Hours tab. An `hours` chapter draws one stacked bar per day (each project
+  its own colour; billable solid, non-billable striped, unattributed dotted grey; a tick for what Tempo
+  already holds), with week totals and a table view. A Fill Tempo button asks the local helper
+  (`POST /fill-hours`, a date only) to open Terminal on an attended Claude session for one day, or copies
+  the prompt without the helper. Its Tempo page, work-item note and folder come from a `fill_tempo` block
+  in `clients.json`; without one the button does not show.
 - **1.5.0** (2026-11-13): an optional timesheet-hours step. With a `digest/clients.json` in place, the
   run measures the last seven days from your session transcripts, proposes the per-day gap against what
   is already logged, and stops there — it reads and proposes, it never saves a timesheet entry. Off by
