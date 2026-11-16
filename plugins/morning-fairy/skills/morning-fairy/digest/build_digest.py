@@ -749,6 +749,59 @@ def project_prompts(d, accepted=None):
     return out
 
 
+def _dedupe_list_ids(chapters):
+    """Two lists with the same id (or none) would put one id on two elements: the first keeps it, a repeat gets -2, -3.
+    The page and the helper's Start in Claude both run this, so a quest id means the same quest in both."""
+    taken = set()
+    for ch in chapters:
+        for lst in ch.get("lists", []):
+            base = list_id(lst) or "list"
+            lid, k = base, 1
+            while lid in taken:
+                k += 1
+                lid = f"{base}-{k}"
+            taken.add(lid)
+            if lid != base:
+                lst["id"] = lid
+
+
+START_CONFIG_FILE = Path(__file__).resolve().parent / "start.json"  # serve.py reads the same file
+
+
+def start_on():
+    """Whether Start in Claude is set up: a start.json beside the builder naming the folder sessions may open under
+    ("root"). Without one the Start buttons are not drawn and the Quests board offers Copy only."""
+    try:
+        root = json.loads(START_CONFIG_FILE.read_text(encoding="utf-8")).get("root")
+    except (OSError, ValueError, AttributeError):
+        return False
+    return isinstance(root, str) and bool(root.strip())
+
+
+def start_prompts(d, ids, notes=None, asks=None):
+    """[(project, folder, prompt)] for the quests with these ids, one per project in page order: the helper's Start in
+    Claude (serve.py /start-quests). The same text the page's Copy builds, with any notes added, so the page only ever
+    sends ids (and notes), never prompt text. An id that is unknown or already done raises KeyError."""
+    _dedupe_list_ids(d["chapters"])
+    open_ = {_qid(q): q for q in collect_quests(d["chapters"]) if not q["a"].get("done")}
+    for i in ids:
+        if i not in open_:
+            raise KeyError(i)
+    for i, ask in (asks or {}).items():  # the page's own wording: a brief rebuilt since the page loaded may have moved the ids
+        if i in open_ and " ".join(str(ask).split()) != " ".join(open_[i]["ask"].split()):
+            raise LookupError(i)
+    notes = notes or {}
+    picked = sorted((open_[i] for i in dict.fromkeys(ids)), key=lambda q: q["qo"])
+    out = []
+    for name in dict.fromkeys(q["project"] for q in picked):
+        lines = []
+        for q in (q for q in picked if q["project"] == name):
+            note = " ".join(str(notes.get(_qid(q)) or "").split())
+            lines.append(quest_lines(q) + ([f"My notes: {note}"] if note else []))
+        out.append((name, project_meta(d, name)["folder"], assemble_prompt(prompt_head(d, name), lines)))
+    return out
+
+
 def done_pill(did, title, project, merged_rec=None):
     """The Done pill. On an admin-project item it IS the old "Done, record it" box (same input, same copy), just labelled Done."""
     t, proj = esc(_one_line(title)), esc(project or "")
@@ -760,7 +813,7 @@ def done_pill(did, title, project, merged_rec=None):
             f'aria-label="Done: {t}"><span class="dn-pill"><span class="d-off">Done</span><span class="d-on">{ok}Done</span></span></label>')
 
 
-def render_quest(q):
+def render_quest(q, start=False):
     it, a, ask = q["it"], q["a"], q["ask"]
     qid, title = _qid(q), _one_line(it.get("title"))
     cap = ask[:1].upper() + ask[1:]
@@ -783,6 +836,8 @@ def render_quest(q):
     own = f' data-did="{esc(it["_did"])}"' if dn else (f' data-did-of="{esc(it["_did"])}"' if it.get("_dn") else "")
     return (f'<div class="ask quest" id="quest-{esc(qid)}" data-ask="{esc(ask)}" data-re="{esc(title)}" data-min="{pts}" data-qo="{q["qo"]}"{own}>'
             f'{quest_icon(ask)}<div class="qbody"><h4>{esc(cap)}</h4>{ctx}<div class="qmeta">{xp}{dn}'
+            + (f'<button type="button" class="qstart" data-start-quest="{esc(qid)}" hidden title="Open a Claude session on this quest in its project folder">'
+               f'{ICONS["spark"]}<span>Start</span></button>' if start else "") +
             f'<label class="tick qaccept"><input type="checkbox" id="{esc(qid)}" aria-label="Accept quest: {esc(ask)}">'
             f'<span class="pill"><span class="p-off">Accept</span><span class="p-on">Accepted</span></span></label></div></div>'
             f'<span class="stampq" aria-hidden="true">Accepted</span></div>')
@@ -796,19 +851,24 @@ def render_quests(qs, mood="calm", d=None):
         label = f"Claude's day: 0 of {pts} min accepted" if pts else f"0 of {len(open_)} quests accepted"
         meter = (f'<div class="meter"><span id="meterText" aria-live="polite">{esc(label)}</span>'
                  f'<span class="track"><i id="meterFill"></i></span></div>')
-    groups = []
+    groups, on = [], start_on()
     for name in dict.fromkeys(q["project"] for q in qs):
         mine = [q for q in qs if q["project"] == name]
         m = project_meta(d or {}, name)
         kind = f'<span class="qg-kind">{esc(m["kind"])}</span>' if m["kind"] else ""
         folder = (f'Open Claude Code in <code>{esc(m["folder"])}</code>' if m["folder"] else "Any folder will do")
-        btn = (f'<button class="btn btn-accent qg-copy" type="button" data-copy-project="{esc(name)}">{ICONS["copy"]}'
-               f'<span>Copy for {esc(name)}</span></button>') if any(not q["a"].get("done") for q in mine) else ""
+        btn = (f'<div class="qg-acts">' + (f'<button class="btn btn-accent qg-start" type="button" data-start-project="{esc(name)}" hidden>'
+               f'{ICONS["spark"]}<span>Start in Claude</span></button>' if on else "") +
+               f'<button class="btn btn-accent qg-copy" type="button" data-copy-project="{esc(name)}">{ICONS["copy"]}'
+               f'<span>Copy for {esc(name)}</span></button></div>') if any(not q["a"].get("done") for q in mine) else ""
         groups.append(f'<section class="qgroup" data-project="{esc(name)}"><header class="qg-head"><div><h3>{esc(name)}{kind}</h3>'
                       f'<p class="qg-folder">{folder}</p></div>{btn}</header>'
-                      f'<div class="quest-grid">{"".join(render_quest(q) for q in mine)}</div></section>')
-    return ('<p class="intro">Accept the ones you want, then press Copy for that project and paste it into a Claude session opened '
-            'in its folder. Claude drafts; nothing is sent.</p>' f'{meter}{"".join(groups)}')
+                      f'<div class="quest-grid">{"".join(render_quest(q, on) for q in mine)}</div></section>')
+    intro = ("Accept the ones you want, then press Start in Claude to open a session in that project's folder, or Copy to paste "
+             "it into one yourself. Start shows when the brief is opened through the local helper." if on else
+             "Accept the ones you want, then press Copy for that project and paste it into a Claude session opened in its folder.")
+    return (f'<p class="intro">{esc(intro)} Claude drafts; nothing is sent.</p>'
+            f'{meter}{"".join(groups)}')
 
 
 def render_chip(it, qid):
@@ -3440,6 +3500,52 @@ JS = r"""
     });
   });
 
+  // Start in Claude: the helper rebuilds the prompt from the saved brief and opens Terminal in the project's folder.
+  // Only quest ids and their wording leave the page; without the helper (or without start.json) there is no Start, only Copy.
+  function startIds(ids, label, btn){
+    var aa = {};
+    ids.forEach(function(id){
+      var card = document.getElementById('quest-' + id); if (card && card.getAttribute('data-ask')) aa[id] = card.getAttribute('data-ask');
+    });
+    btn.disabled = true;
+    function tell(m){ say(m); toast(m); }
+    fetch('/start-quests', {method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'same-origin', redirect: 'error',
+                            body: JSON.stringify({date: BRIEF_DATE, ids: ids, asks: aa})})
+      .then(function(r){
+        if (r.ok) {
+          tell('A Claude session for ' + label + ' is opening in Terminal.');
+          ids.forEach(function(id){ var b = document.getElementById(id); if (b && !b.checked) b.click(); });
+          return;
+        }
+        return r.json().catch(function(){ return {}; }).then(function(j){
+          if (r.status === 429) tell(j.why === 'too many' ? 'Eight sessions opened in the last minute: wait a moment, then press Start again.' : 'That session opened a moment ago: look for it in Terminal.');
+          else if (r.status === 409) tell('This brief changed since the page loaded: reload the page, then press Start again.');
+          else if (r.status === 404) tell('The helper has no saved brief for this day, or Start is not set up: use Copy instead.');
+          else if (r.status === 400) tell('The helper refused this request (a quest may be done): use Copy instead.');
+          else if (j.opened) tell(j.opened + ' session(s) opened, then Terminal failed for the rest: use Copy for those.');
+          else tell('The helper could not open Terminal: use Copy instead.');
+        });
+      }, function(){ tell('The brief helper is not answering: use Copy instead.'); })
+      .then(function(){ btn.disabled = false; });
+  }
+  if (SERVED) {
+    qa('[data-start-quest]').forEach(function(b){
+      b.hidden = false;
+      b.addEventListener('click', function(){ startIds([b.getAttribute('data-start-quest')], 'this quest', b); });
+    });
+    qa('[data-start-project]').forEach(function(b){
+      b.hidden = false;
+      var cp = b.parentNode.querySelector('.qg-copy'); if (cp) cp.classList.remove('btn-accent');  // one accent button: Start
+      b.addEventListener('click', function(){
+        var name = b.getAttribute('data-start-project'), grp = b.closest('.qgroup');
+        var qs = qa('.quest:not(.quest-done)', grp), on = qs.filter(function(q){ return q.querySelector('.tick input').checked; });
+        var pick = on.length ? on : qs.filter(function(q){ return !q.classList.contains('is-done') && !q.classList.contains('todo-done'); });
+        if (!pick.length) { say('Everything for ' + name + ' is marked Done.'); toast('Everything for ' + name + ' is marked Done.'); return; }
+        startIds(pick.map(function(q){ return q.querySelector('.tick input').id; }), name, b);
+      });
+    });
+  }
+
   // the time machine (the Calendar): pick a day in the month grid or the recent row to show that morning's card;
   // the arrows step months; today's card counts the Done pills as they are tapped
   (function(){
@@ -4165,6 +4271,16 @@ CSS_TODO = r"""
 .qg-folder{margin:4px 0 0;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .qg-folder code{font-family:"Geist Mono",ui-monospace,monospace;font-size:12.5px;color:var(--ink)}
 .qg-copy{flex:none}
+.qg-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:0 1 auto;min-width:0;max-width:100%}
+.qg-acts .btn[hidden],.qstart[hidden]{display:none}
+.qg-acts .qg-copy:not(.btn-accent){background:var(--card-solid);color:var(--ink);border:1px solid var(--line-strong)}
+.qg-acts .qg-copy:not(.btn-accent):hover{border-color:var(--accent)}
+.qstart{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-strong);background:var(--card-solid);color:var(--ink);
+  border-radius:999px;padding:5px 11px;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer}
+.qstart svg{width:14px;height:14px}
+.qstart:hover{border-color:var(--accent);color:var(--accent)}
+.qstart:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.qstart:disabled,.qg-start:disabled{opacity:.6;cursor:progress}
 .quest .qmeta{flex-wrap:wrap}
 .nc-list{margin:8px 0 0;padding-left:20px;font-size:14px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
 .nc-list li{margin:6px 0}
@@ -6483,17 +6599,7 @@ def _build(content, log, admin_log, briefs, look):
     # One mascot above the fold: the headline's inline one is dropped, the top bar and the scene keep theirs.
     headline = " ".join(d["headline_html"].replace("{mascot}", "").split())
     # Two lists with the same id (or none) would put one id on two elements: the first keeps it, a repeat gets -2, -3.
-    taken = set()
-    for ch in d["chapters"]:
-        for lst in ch.get("lists", []):
-            base = list_id(lst) or "list"
-            lid, k = base, 1
-            while lid in taken:
-                k += 1
-                lid = f"{base}-{k}"
-            taken.add(lid)
-            if lid != base:
-                lst["id"] = lid
+    _dedupe_list_ids(d["chapters"])
     todo = _tidy_ids(d["chapters"], d["date"])
     dch = next((c for c in d["chapters"] if c.get("day")), None)
     day_todos = _day_todos(dch) if dch else []
