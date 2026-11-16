@@ -48,6 +48,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | 🧚 | **Build your own fairy** | Pick the mascot (the ticket or Clawd), then the little animal that draws the page's icons: one of 4 animals, thin or thick lines, dot or shiny eyes, and 5 moves. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. Optionally, a **Start in Claude** button opens the session for you. |
+| 🔭 | **Scout: worth a look** | Optional. A chapter of web finds (new repos, a tool's changelog, Hacker News) that could improve your work, each saying which of your projects it helps and why. They are offers, not to-dos: nothing waits on you, no Done pill, and each ask is read-and-assess only. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
 | 📐 | **Three layouts** | Tap the scene (signposts on the hills), Stage + tabs, and Swipe deck. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
@@ -249,6 +250,20 @@ What keeps it contained:
 - The buttons appear only when the brief is opened through the helper (`serve.py`) and `start.json` exists.
   Without either, the board offers Copy only.
 
+## 🔭 Scout (optional, off by default)
+
+The Scout tab, "Worth a look", is a short list of things the morning run found on the web this week that could
+improve your work, with a line on which project each helps, why, and how you might use it. It reads GitHub (one
+search per topic), a tool's changelog and Hacker News, never shows the same link twice in 14 mornings, and lists
+only what that run actually opened, with its real link.
+
+It is off until you ask for it, because it searches the web: keep step 7 in `routine-prompt.md` and fill in one
+line about your projects and their stack. The finds are **offers, not to-dos**. They are left out of every count of
+what waits on you (the mascot's mood, the summary blocks, the tab badges, the time machine) and have no Done pill.
+Each one may carry a read-and-assess ask ("read this README and say whether it beats what I use now"); an ask never
+installs, clones, runs or changes anything, because installing is your call, in a session you are watching. Web
+pages are treated as data, never as instructions. See SKILL.md section 7.
+
 ## ⏱ Timesheet hours (optional, off by default)
 
 If you fill in a timesheet, the brief can work out where your week went and show you the days you have
@@ -361,6 +376,11 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.8.0** (2026-11-16): the Scout tab. An optional `scout` list (tone `scout`) shows web finds as offers: no Done
+  pill, left out of every count of what waits on you, asks read-and-assess only, and `read_scouted` keeps a link from
+  being shown twice in 14 mornings. The routine prompt gains an optional step for it. Quest prompts now say the
+  tasks may come from "email, Slack, calendar and the web". On a phone, the seven tab labels wrap instead of
+  overlapping.
 - **1.7.0** (2026-11-16): Start in Claude. With `digest/start.json` in place and the brief opened through the
   local helper, each project and quest on the Quests board can open a Claude Code session in Terminal, in its
   project folder (`POST /start-quests`, quest ids only; folders limited to `root`). It runs in your own default
