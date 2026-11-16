@@ -312,6 +312,11 @@ through the local helper (`serve.py`); the page sends nothing but the date, and 
 sites, a second tap within 20 seconds, and any day more than 14 days back. Opened any other way, or off
 macOS, the button copies the prompt for you to paste into a Claude session instead.
 
+The session starts as `claude --chrome`, because a Terminal session only gets the Claude in Chrome tools with that
+flag, and it reads your Tempo page in Chrome. So the Claude in Chrome extension must be installed and signed in to
+Tempo. Only Fill Tempo gets `--chrome`: sessions started from the Quests board do not, since they can come from mail,
+chat or web finds and should not have your signed-in browser.
+
 ## Limitations
 
 - **The hours step is a proxy.** If you turn on timesheet hours, the figures come from how long Claude
@@ -376,6 +381,9 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.8.1** (2026-11-16): Fill Tempo opens its Terminal session as `claude --chrome`, so it can reach the Claude in
+  Chrome extension to read your Tempo page (without the flag the session has no Chrome tools). Start in Claude
+  sessions stay without it.
 - **1.8.0** (2026-11-16): the Scout tab. An optional `scout` list (tone `scout`) shows web finds as offers: no Done
   pill, left out of every count of what waits on you, asks read-and-assess only, and `read_scouted` keeps a link from
   being shown twice in 14 mornings. The routine prompt gains an optional step for it. Quest prompts now say the

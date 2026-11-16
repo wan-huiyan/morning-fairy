@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.8.0
+version: 1.8.1
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -295,7 +295,9 @@ write with no confirmation step, and there is nobody at 08:00 to catch a mis-cli
 for one day: from 4 PM today, before that the last working day. Without the helper, or off macOS, it
 copies the same prompt. The Tempo page, a sentence about where internal work goes, and the folder
 Terminal opens in come from the `fill_tempo` block of `clients.json`; no block, no button. Change what
-the session does in that prompt file, never in the page.
+the session does in that prompt file, never in the page. The session starts as `claude --chrome` (a terminal
+session has no Claude in Chrome tools without the flag), so the extension must be installed and signed in to
+Tempo; Start in Claude sessions never get `--chrome`.
 
 **Guard rails for the attended session.** Show one proposed entry per work item, every project
 included, and wait for the owner's OK on the hours. Then log one entry per click and read the week
