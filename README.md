@@ -332,6 +332,8 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.6.1** (2026-11-16): the Hours tab's bars take each world's own colours (garden, cosmic, candy,
+  caterpillar; light and dark), and the greys follow each world's muted ink.
 - **1.6.0** (2026-11-16): the Hours tab. An `hours` chapter draws one stacked bar per day (each project
   its own colour; billable solid, non-billable striped, unattributed dotted grey; a tick for what Tempo
   already holds), with week totals and a table view. A Fill Tempo button asks the local helper

@@ -1157,9 +1157,22 @@ def render_hours(h, order=()):
 
 CSS_HOURS = r"""
 /* Hours for Tempo: four project hues validated for colour-blind separation on light and dark (dataviz, 16 Nov 2026) */
-:root{--h1:#2f62f5;--h2:#db2777;--h3:#c27c0e;--h4:#6d4ef0;--h0:#8a8d96;--hun:#9a9ca3}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--h1:#5f86f2;--h2:#e2559a;--h3:#c4811c;--h4:#8e72f2;--h0:#6b6f78;--hun:#80838c}}
-:root[data-theme="dark"]{--h1:#5f86f2;--h2:#e2559a;--h3:#c4811c;--h4:#8e72f2;--h0:#6b6f78;--hun:#80838c}
+:root{--h1:#2f62f5;--h2:#db2777;--h3:#c27c0e;--h4:#6d4ef0;--h0:color-mix(in srgb,var(--muted) 70%,var(--card-solid));--hun:var(--muted)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--h1:#5f86f2;--h2:#e2559a;--h3:#c4811c;--h4:#8e72f2;--h0:color-mix(in srgb,var(--muted) 70%,var(--card-solid));--hun:var(--muted)}}
+:root[data-theme="dark"]{--h1:#5f86f2;--h2:#e2559a;--h3:#c4811c;--h4:#8e72f2;--h0:color-mix(in srgb,var(--muted) 70%,var(--card-solid));--hun:var(--muted)}
+/* each world's own hues, in the same four slots (dataviz validator, light and dark against that world's card colour, 16 Nov 2026) */
+:root[data-world="garden"]{--h1:#b9501f;--h2:#0c7ea8;--h3:#a8801c;--h4:#6f50c0}
+@media (prefers-color-scheme: dark){:root[data-world="garden"]:not([data-theme="light"]){--h1:#c8733d;--h2:#2f97b5;--h3:#b58a22;--h4:#8c74dc}}
+:root[data-world="garden"][data-theme="dark"]{--h1:#c8733d;--h2:#2f97b5;--h3:#b58a22;--h4:#8c74dc}
+:root[data-world="cosmic"]{--h1:#5b3fe0;--h2:#d01f6e;--h3:#c27c0e;--h4:#0f88a8}
+@media (prefers-color-scheme: dark){:root[data-world="cosmic"]:not([data-theme="light"]){--h1:#8f78ff;--h2:#e2559a;--h3:#c4811c;--h4:#2fa3c4}}
+:root[data-world="cosmic"][data-theme="dark"]{--h1:#8f78ff;--h2:#e2559a;--h3:#c4811c;--h4:#2fa3c4}
+:root[data-world="candy"]{--h1:#d6307f;--h2:#7a4cf0;--h3:#1f8fb0;--h4:#d07a10}
+@media (prefers-color-scheme: dark){:root[data-world="candy"]:not([data-theme="light"]){--h1:#e0539a;--h2:#9a78f5;--h3:#3aa3c2;--h4:#c4811c}}
+:root[data-world="candy"][data-theme="dark"]{--h1:#e0539a;--h2:#9a78f5;--h3:#3aa3c2;--h4:#c4811c}
+:root[data-world="caterpillar"]{--h1:#a8295e;--h2:#4f8a2a;--h3:#6a4cb8;--h4:#c27c0e}
+@media (prefers-color-scheme: dark){:root[data-world="caterpillar"]:not([data-theme="light"]){--h1:#e2559a;--h2:#62a03b;--h3:#8c74dc;--h4:#c4811c}}
+:root[data-world="caterpillar"][data-theme="dark"]{--h1:#e2559a;--h2:#62a03b;--h3:#8c74dc;--h4:#c4811c}
 .hours{display:grid;gap:18px;margin-top:6px}
 .hseg,.hkey{--c:var(--h0)}
 .hs1{--c:var(--h1)}.hs2{--c:var(--h2)}.hs3{--c:var(--h3)}.hs4{--c:var(--h4)}.hs0{--c:var(--h0)}
