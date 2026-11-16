@@ -28,6 +28,7 @@ to act on.
    `--admin-log ~/.morning-fairy/runs/admin.jsonl`. Then open it.
 6. Timesheet hours, only if `<skill>/digest/clients.json` exists (it does not by default): follow the skill's
    section 6 and propose the hours for the last seven days up to yesterday, with the per-day gap against what
-   is already logged. Read, never write — the saving happens in a session I am watching.
+   is already logged, as the `hours` chapter that section describes. Read, never write — the saving happens
+   in a session I am watching (the Hours tab's Fill Tempo button starts one).
 7. Finish with three lines: what needs me today, how many Jira updates are proposed, and anything waiting on my
    decision. If nothing came in, still build the page: "Nothing needs you this morning".

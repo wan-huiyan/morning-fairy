@@ -7,3 +7,5 @@ node_modules/
 .leakterms*
 !.leakterms.example
 .leakfigs
+# your own project map and Tempo page (copy clients.example.json): never commit it
+plugins/morning-fairy/skills/morning-fairy/digest/clients.json

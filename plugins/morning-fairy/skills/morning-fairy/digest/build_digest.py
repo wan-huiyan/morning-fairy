@@ -928,6 +928,10 @@ def render_chapter(ch, chips=False, date="", mood="calm", admin=None, rel=None):
         done = "".join(render_done(c, by_card.get(_card_dom(c))) for c in cards if c.get("applied"))
         groups.append(title + (f'<div class="stack">{todo}</div>' if todo else "")
                       + (f'<ul class="done-list">{done}</ul>' if done else ""))
+    if ch.get("hours"):
+        groups.append(render_hours(ch["hours"], ch["hours"].get("_order", ())))
+    elif ch.get("id") == "hours":
+        groups.append('<div class="hours">' + render_fill() + '<div class="htip" role="tooltip" hidden></div></div>')  # an older page's rows still get the button
     rows = ch.get("rows")
     if rows:
         groups.append('<div class="rows">' + "".join(
@@ -938,6 +942,367 @@ def render_chapter(ch, chips=False, date="", mood="calm", admin=None, rel=None):
     # "What was read" shows every row in full: no fold, no "show more".
     blurb = f'<p class="intro">{ch["blurb"]}</p>' if ch.get("blurb") else ""
     return blurb + body
+
+
+# ---- Hours for Tempo: a week strip of stacked day bars ----
+# A chapter with "hours" draws one bar per day: each project its own hue in the content's "projects" order, billable work
+# solid, non-billable striped, sessions with no client dotted grey; a tick on the bar marks what Tempo already holds.
+# Above it, "Fill Tempo" asks the local helper to open an attended Claude session for one day (serve.py /fill-hours);
+# without the helper it copies the same prompt. The prompt is fill_hours_prompt.txt with the "fill_tempo" block of
+# clients.json filled in: the same two files the helper reads. No such block, no button.
+HOURS_SLOTS = 4  # four validated hues (dataviz validator, light and dark); a fifth project and later share the grey
+FILL_PROMPT_FILE = Path(__file__).resolve().parent / "fill_hours_prompt.txt"
+FILL_CONFIG_FILE = Path(__file__).resolve().parent / "clients.json"  # its "fill_tempo" block; serve.py reads the same
+
+
+def fill_config():
+    """The "fill_tempo" block of clients.json, or None (no file, no block, or no tempo_url): then the button is off."""
+    try:
+        f = json.loads(FILL_CONFIG_FILE.read_text(encoding="utf-8")).get("fill_tempo")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(f, dict) or not isinstance(f.get("tempo_url"), str) or not f["tempo_url"].strip():
+        return None
+    return f
+
+
+def fill_prompt_template():
+    """The fill-hours prompt as one line, the config filled in and {date} and {day} still to fill; "" when it is off.
+    Kept in step with serve.fill_template (a test compares the two)."""
+    cfg = fill_config()
+    if cfg is None:
+        return ""
+    try:
+        t = FILL_PROMPT_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    here = FILL_PROMPT_FILE.parent
+    items = cfg.get("work_items")
+    val = {"skill_md": str(here.parent / "SKILL.md"), "measure": str(here / "measure_session_hours.py"),
+           "tempo_url": cfg["tempo_url"].strip(), "work_items": items if isinstance(items, str) else ""}
+    # one pass, so text from the config is never itself searched for placeholders
+    t = re.sub(r"\{(skill_md|measure|tempo_url|work_items)\}", lambda m: val[m.group(1)], t)
+    return " ".join(t.split())
+
+
+def _hm(m):
+    m = int(round(m or 0))
+    h, r = divmod(m, 60)
+    if not h:
+        return f"{r}m"
+    return f"{h}h" if not r else f"{h}h{r:02d}"
+
+
+def _hours_order(h, order):
+    seen = []
+    for dd in h.get("days") or []:
+        for e in dd.get("entries") or []:
+            if e.get("project") and e["project"] not in seen:
+                seen.append(e["project"])
+    ordered = [p for p in order if p in seen] + [p for p in seen if p not in order]
+    return {p: (i + 1 if i < HOURS_SLOTS else 0) for i, p in enumerate(ordered)}, ordered
+
+
+def _day_total(dd):
+    return sum(e.get("minutes", 0) for e in dd.get("entries") or []) + (dd.get("unattributed") or 0)
+
+
+def _seg(cls, width, tip):
+    return f'<span class="hseg {cls}" style="width:{width:.3f}%" data-tip="{esc(tip)}"></span>'
+
+
+def render_fill():
+    """The Fill Tempo panel: JS_HOURS names the day and wires the button (serve.py /fill-hours, else a copied prompt).
+    Nothing at all when the button is off (no "fill_tempo" block in clients.json), so there is never a dead button."""
+    if not fill_prompt_template():
+        return ""
+    return (
+        '<div class="hfill" data-fill>'
+        '<div class="hfill-copy"><h3 class="hfill-h">Fill Tempo</h3>'
+        '<p class="hfill-p">Opens a Claude session that measures <b data-fill-day>the day</b>, shows you the hours to check, '
+        'then logs them one entry at a time once you say yes.</p></div>'
+        '<div class="hfill-act"><button type="button" class="btn btn-accent hfill-go" data-fill-go>Fill hours</button>'
+        '<button type="button" class="hfill-alt" data-fill-alt></button></div>'
+        '<p class="hfill-st" role="status" aria-live="polite" data-fill-status></p>'
+        '<textarea class="hfill-out" data-fill-out aria-label="The fill-hours prompt" hidden></textarea></div>')
+
+
+def _mins(v):
+    try:
+        return max(0, int(round(float(v or 0))))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _clean_hours(h):
+    """One bad entry must never stop the brief: minutes become whole, non-negative numbers; an entry with no project joins
+    that day's to-attribute pile; logged stays None when Tempo was not read."""
+    days = []
+    for dd in h.get("days") or []:
+        if not isinstance(dd, dict):
+            continue
+        ents, un = [], _mins(dd.get("unattributed"))
+        for e in dd.get("entries") or []:
+            if not isinstance(e, dict):
+                continue
+            m = _mins(e.get("minutes"))
+            if not (isinstance(e.get("project"), str) and e["project"].strip()):
+                un += m
+                continue
+            ents.append(dict(e, minutes=m, project=e["project"].strip()))
+        logged = None if dd.get("logged") is None else _mins(dd.get("logged"))
+        days.append(dict(dd, entries=ents, unattributed=un, logged=logged))
+    return dict(h, days=days)
+
+
+def render_hours(h, order=()):
+    h = _clean_hours(h)
+    days = h["days"]
+    slot, ordered = _hours_order(h, list(order))
+    scale = max([_day_total(dd) for dd in days] + [dd.get("logged") or 0 for dd in days] + [60])
+    bill = sum(e.get("minutes", 0) for dd in days for e in dd.get("entries") or [] if e.get("billable"))
+    nonb = sum(e.get("minutes", 0) for dd in days for e in dd.get("entries") or [] if not e.get("billable"))
+    unat = sum(dd.get("unattributed") or 0 for dd in days)
+    allm = bill + nonb + unat
+    per = {p: [0, 0] for p in ordered}
+    for dd in days:
+        for e in dd.get("entries") or []:
+            per[e["project"]][0 if e.get("billable") else 1] += e.get("minutes", 0)
+
+    fill = render_fill()
+
+    def key(cls):
+        return f'<span class="hkey {cls}" aria-hidden="true"></span>'
+    stats = [("Billable", bill, "hs1"), ("Non-billable", nonb, "hs1 nb"), ("To attribute", unat, "un")]
+    summary = ('<div class="hsum">' + "".join(
+        f'<div class="hstat">{key(c)}<span class="hstat-v">{_hm(m)}</span><span class="hstat-l">{l}</span></div>'
+        for l, m, c in stats) + "</div>")
+
+    week = ""
+    if allm:
+        parts = []
+        for p in ordered:
+            b, n = per[p]
+            if b:
+                parts.append(_seg(f"hs{slot[p]}", 100 * b / allm, f"{p}, billable: {_hm(b)}"))
+            if n:
+                parts.append(_seg(f"hs{slot[p]} nb", 100 * n / allm, f"{p}, non-billable: {_hm(n)}"))
+        if unat:
+            parts.append(_seg("un", 100 * unat / allm, f"To attribute: {_hm(unat)}"))
+        label = "The week by project: " + "; ".join(
+            f"{p} {_hm(per[p][0])} billable and {_hm(per[p][1])} non-billable" for p in ordered) + (f"; {_hm(unat)} to attribute" if unat else "")
+        week = f'<div class="hweek" role="img" aria-label="{esc(label)}">{"".join(parts)}</div>'
+    legend = '<ul class="hleg">' + "".join(
+        f'<li>{key("hs" + str(slot[p]))}<span class="hleg-n">{esc(p)}</span>'
+        f'<span class="hleg-v">{_hm(sum(per[p]))}'
+        + (f'<small>{_hm(per[p][0])} billable, {_hm(per[p][1])} non-billable</small>' if per[p][0] and per[p][1]
+           else f'<small>{"billable" if per[p][0] else "non-billable"}</small>')
+        + "</span></li>" for p in ordered) + (
+        f'<li>{key("un")}<span class="hleg-n">To attribute</span><span class="hleg-v">{_hm(unat)}<small>no client yet</small></span></li>'
+        if unat else "") + "</ul>"
+
+    rows = []
+    for dd in days:
+        tot, logged = _day_total(dd), dd.get("logged")
+        label = dd.get("label") or dd.get("date", "")
+        segs, says = [], []
+        for e in sorted(dd.get("entries") or [], key=lambda e: (ordered.index(e["project"]), not e.get("billable"))):
+            m = e.get("minutes", 0)
+            if m <= 0:
+                continue
+            kind = "billable" if e.get("billable") else "non-billable"
+            what = ", ".join(x for x in (e["project"], e.get("what"), e.get("key")) if x)
+            segs.append(_seg(f"hs{slot[e['project']]}{'' if e.get('billable') else ' nb'}", 100 * m / scale, f"{what}, {kind}: {_hm(m)}"))
+            says.append(f"{what} {_hm(m)} {kind}")
+        if dd.get("unattributed"):
+            segs.append(_seg("un", 100 * dd["unattributed"] / scale, f"To attribute: {_hm(dd['unattributed'])}"))
+            says.append(f"{_hm(dd['unattributed'])} to attribute")
+        mark = ""
+        if logged:
+            mark = f'<span class="hlog" style="left:{min(100, 100 * logged / scale):.3f}%" data-tip="Already in Tempo: {_hm(logged)}"></span>'
+        if not tot:
+            state = '<small>nothing measured</small>'
+        elif logged is None:
+            state = '<small>Tempo not read</small>'
+        elif logged >= tot:
+            state = f'<small class="hok">all in Tempo</small>'
+        else:
+            state = f'<small class="hgap">gap {_hm(tot - logged)}</small>'
+        aria = f"{label}: {_hm(tot)} proposed" + (f". {'; '.join(says)}" if says else "") + (
+            f". Tempo already has {_hm(logged)}" if logged is not None else ". Tempo not read")
+        note = f'<p class="hday-note">{esc(dd["note"])}</p>' if dd.get("note") else ""
+        rows.append(f'<li class="hday{" hday-empty" if not tot else ""}"><span class="hday-l">{esc(label)}</span>'
+                    f'<span class="htrack" role="img" aria-label="{esc(aria)}">{"".join(segs)}{mark}</span>'
+                    f'<span class="hday-t"><b>{_hm(tot) if tot else "0"}</b>{state}</span>{note}</li>')
+    days_html = f'<ol class="hdays">{"".join(rows)}</ol>'
+    keyline = (f'<p class="hkeys"><span>{key("hs1")}billable</span><span>{key("hs1 nb")}non-billable</span>'
+               f'<span>{key("un")}to attribute</span><span><span class="hkey hkey-log" aria-hidden="true"></span>already in Tempo</span></p>')
+
+    trs = []
+    for dd in days:
+        for e in dd.get("entries") or []:
+            trs.append(f'<tr><td>{esc(dd.get("label") or dd.get("date", ""))}</td><td>{esc(e["project"])}</td>'
+                       f'<td>{esc(e.get("what", ""))}</td><td>{esc(e.get("key", ""))}</td>'
+                       f'<td>{"yes" if e.get("billable") else "no"}</td><td class="num">{_hm(e.get("minutes", 0))}</td></tr>')
+        if dd.get("unattributed"):
+            trs.append(f'<tr><td>{esc(dd.get("label") or dd.get("date", ""))}</td><td>To attribute</td><td></td><td></td>'
+                       f'<td></td><td class="num">{_hm(dd["unattributed"])}</td></tr>')
+    table = ('<details class="htable"><summary>Every entry as a table</summary><div class="htable-w"><table>'
+             '<thead><tr><th>Day</th><th>Project</th><th>What</th><th>Work item</th><th>Billable</th><th class="num">Proposed</th></tr></thead>'
+             f'<tbody>{"".join(trs)}</tbody></table></div></details>') if trs else ""
+    foot = f'<p class="hfoot">{esc(h["logged_note"])}</p>' if h.get("logged_note") else ""
+    tip = '<div class="htip" role="tooltip" hidden></div>'
+    return f'<div class="hours">{fill}{summary}{week}{legend}{keyline}{days_html}{foot}{table}{tip}</div>'
+
+
+CSS_HOURS = r"""
+/* Hours for Tempo: four project hues validated for colour-blind separation on light and dark (dataviz, 16 Nov 2026) */
+:root{--h1:#2f62f5;--h2:#db2777;--h3:#c27c0e;--h4:#6d4ef0;--h0:#8a8d96;--hun:#9a9ca3}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--h1:#5f86f2;--h2:#e2559a;--h3:#c4811c;--h4:#8e72f2;--h0:#6b6f78;--hun:#80838c}}
+:root[data-theme="dark"]{--h1:#5f86f2;--h2:#e2559a;--h3:#c4811c;--h4:#8e72f2;--h0:#6b6f78;--hun:#80838c}
+.hours{display:grid;gap:18px;margin-top:6px}
+.hseg,.hkey{--c:var(--h0)}
+.hs1{--c:var(--h1)}.hs2{--c:var(--h2)}.hs3{--c:var(--h3)}.hs4{--c:var(--h4)}.hs0{--c:var(--h0)}
+.hseg,.hkey{background:var(--c)}
+.hseg.nb,.hkey.nb{background:repeating-linear-gradient(45deg,var(--c) 0 2.5px,color-mix(in srgb,var(--c) 26%,var(--card-solid)) 2.5px 6px)}
+.hseg.un,.hkey.un{background:radial-gradient(var(--hun) 1.1px,transparent 1.5px) 0 0/5px 5px,color-mix(in srgb,var(--hun) 16%,var(--card-solid))}
+/* the action: one panel, the day it will fill named in words */
+.hfill[hidden]{display:none}
+.hfill{display:grid;grid-template-columns:1fr auto;gap:10px 18px;align-items:center;padding:16px 18px;border-radius:18px;
+  background:color-mix(in srgb,var(--accent) 7%,var(--card-solid));border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line))}
+.hfill-h{margin:0 0 3px;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.hfill-p{margin:0;color:var(--muted);font-size:14px;line-height:1.45;max-width:52ch}
+.hfill-p b{color:var(--ink);font-weight:650}
+.hfill-act{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.hfill-go{white-space:nowrap}
+.hfill-go[aria-busy="true"]{opacity:.7;cursor:progress}
+.hfill-alt{border:0;background:none;padding:2px 0;font:inherit;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.hfill-alt:hover{color:var(--ink)}
+.hfill-alt:focus-visible,.hfill-go:focus-visible,.htable summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+.hfill-st{grid-column:1/-1;margin:0;font-size:13.5px;color:var(--ink)}
+.hfill-st:empty{display:none}
+.hfill-out{grid-column:1/-1;width:100%;min-height:96px;font:13px/1.45 "Geist Mono",monospace;border:1px solid var(--line-strong);border-radius:10px;padding:10px;background:var(--card-solid);color:var(--ink)}
+/* the week in three figures, then one bar split by project */
+.hsum{display:flex;flex-wrap:wrap;gap:6px 28px;align-items:baseline}
+.hstat{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:8px;align-items:center}
+.hstat .hkey{grid-row:1/3;align-self:center}
+.hstat-v{font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.hstat-l{font-size:12.5px;color:var(--muted)}
+.hkey{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;flex:none}
+.hweek{display:flex;gap:2px;height:28px;border-radius:6px;overflow:hidden}
+.hweek .hseg{height:100%;min-width:3px}
+.hleg{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px 28px}
+.hleg li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline}
+.hleg .hkey{align-self:center}
+.hleg-n{font-weight:600;font-size:14px}
+.hleg-v{text-align:right;font-variant-numeric:tabular-nums;font-weight:650;font-size:14px}
+.hleg-v small{display:block;font-weight:500;font-size:11.5px;color:var(--muted)}
+.hkeys{margin:2px 0 -6px;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+.hkeys>span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.hkeys .hkey{width:12px;height:12px}
+.hkey-log{width:3px!important;height:14px!important;border-radius:2px;background:var(--ink)}
+/* one row per day: name, bar, figure */
+.hdays{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.hday{display:grid;grid-template-columns:4.6em 1fr 7.2em;gap:4px 12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.hday:first-child{border-top:0}
+.hday-l{font-weight:650;font-size:14px}
+.htrack{position:relative;display:flex;gap:2px;height:22px;align-items:stretch}
+.htrack .hseg{height:100%;border-radius:2px}
+.htrack .hseg:last-of-type{border-radius:2px 5px 5px 2px}
+.hday-empty .htrack{background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 100%);background-size:25% 100%;opacity:.6}
+.hlog{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--card-solid)}
+.hday-t{display:grid;justify-items:end;line-height:1.15;font-variant-numeric:tabular-nums}
+.hday-t b{font-size:15px;font-weight:700}
+.hday-t small{font-size:12px;color:var(--muted);white-space:nowrap}
+.hday-t small.hgap{color:var(--warn);font-weight:650}
+.hday-t small.hok{color:var(--ok);font-weight:650}
+.hday-empty .hday-l,.hday-empty .hday-t b{color:var(--muted)}
+.hday-note{grid-column:2/-1;margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.hfoot{margin:0;font-size:13px;color:var(--muted)}
+.htable summary{cursor:pointer;font-size:13.5px;color:var(--muted);width:max-content}
+.htable-w{overflow-x:auto;margin-top:8px}
+.htable table{border-collapse:collapse;width:100%;font-size:13px}
+.htable th,.htable td{text-align:left;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.htable th{font-weight:600;color:var(--muted)}
+.htable .num{text-align:right;font-variant-numeric:tabular-nums}
+.htip{position:fixed;z-index:60;pointer-events:none;max-width:260px;padding:7px 10px;border-radius:10px;font-size:12.5px;line-height:1.35;
+  background:var(--ink);color:var(--bg);box-shadow:0 10px 24px -12px rgba(0,0,0,.5)}
+@media (max-width:640px){
+  .hfill{grid-template-columns:1fr}
+  .hfill-act{align-items:stretch}
+  .hfill-go{justify-content:center}
+  .hfill-alt{text-align:left}
+  .hsum{gap:6px 18px}
+  .hstat-v{font-size:22px}
+  .hday{grid-template-columns:3.6em 1fr 6.8em;gap:4px 10px}
+}
+@media (forced-colors: active){.hseg,.hkey{forced-color-adjust:none;border:1px solid CanvasText}}
+"""
+
+JS_HOURS = r"""
+(function(){
+  var box = document.querySelector('[data-fill]');
+  var tip = document.querySelector('.htip');
+  // the tooltip: one floating label for every bar segment and Tempo tick
+  if (tip) {
+    var show = function(el, x, y){ tip.textContent = el.getAttribute('data-tip'); tip.hidden = false;
+      var r = tip.getBoundingClientRect(), L = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8);
+      tip.style.left = L + 'px'; tip.style.top = Math.max(8, y - r.height - 12) + 'px'; };
+    document.addEventListener('pointermove', function(ev){
+      var el = ev.target && ev.target.closest ? ev.target.closest('.hours [data-tip]') : null;
+      if (el) show(el, ev.clientX, ev.clientY); else tip.hidden = true;
+    });
+    document.addEventListener('scroll', function(){ tip.hidden = true; }, true);
+  }
+  if (!box) return;
+  var P = ''; try { P = JSON.parse(document.getElementById('fill-prompt').textContent); } catch (e) {}
+  if (!P) { box.hidden = true; return; }
+  var go = box.querySelector('[data-fill-go]'), alt = box.querySelector('[data-fill-alt]'), st = box.querySelector('[data-fill-status]'),
+      dayEl = box.querySelector('[data-fill-day]'), out = box.querySelector('[data-fill-out]');
+  var SERVED = /^http:\/\/(127\.0\.0\.1|localhost):8765$/.test(location.origin);
+  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var MONL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function iso(d){ return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function nice(d){ return WD[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()]; }
+  function longDay(d){ return WDL[d.getDay()] + ' ' + d.getDate() + ' ' + MONL[d.getMonth()] + ' ' + d.getFullYear(); }
+  function prevWork(d){ var p = new Date(d.getTime()); do { p.setDate(p.getDate() - 1); } while (p.getDay() === 0 || p.getDay() === 6); return p; }
+  var main, other, today;
+  // End of the day (from 4 PM) it fills today; before that, the last working day. The other day is one tap away.
+  function pick(){
+    var now = new Date(); today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var late = now.getHours() >= 16;
+    main = late ? today : prevWork(today); other = late ? prevWork(today) : today;
+    go.textContent = main.getTime() === today.getTime() ? "Fill today's hours" : 'Fill ' + nice(main);
+    alt.textContent = other.getTime() === today.getTime() ? 'or today so far' : 'or ' + nice(other) + ' instead';
+    dayEl.textContent = main.getTime() === today.getTime() ? 'today, ' + nice(main) : nice(main);
+  }
+  pick();
+  function promptFor(d){ return P.split('{date}').join(iso(d)).split('{day}').join(longDay(d)); }
+  function copy(text, why){
+    function shown(){ out.hidden = false; out.value = text; out.focus(); out.select(); st.textContent = why + ' Copy it from the box below.'; }
+    try { navigator.clipboard.writeText(text).then(function(){ out.hidden = true; st.textContent = why + ' Paste it into a new Claude session.'; }, shown); }
+    catch (e) { shown(); }
+  }
+  function busy(on){ go.setAttribute('aria-busy', on ? 'true' : 'false'); go.disabled = on; alt.disabled = on; }
+  function run(d){
+    var text = promptFor(d);
+    if (!SERVED) { copy(text, 'This page is not open through the brief helper, so the prompt for ' + nice(d) + ' is copied.'); return; }
+    busy(true); st.textContent = 'Opening a Claude session for ' + nice(d) + '…';
+    fetch('/fill-hours', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({date: iso(d)}),
+                          credentials: 'same-origin', redirect: 'error'})
+      .then(function(r){
+        if (r.ok) { out.hidden = true; st.textContent = 'A Claude session for ' + nice(d) + ' is opening in Terminal. It shows you the hours before it logs anything.'; }
+        else if (r.status === 429) st.textContent = 'A session opened a moment ago: look for it in Terminal before starting another.';
+        else copy(text, 'The helper could not open Terminal, so the prompt for ' + nice(d) + ' is copied.');
+      }, function(){ copy(text, 'The brief helper is not answering, so the prompt for ' + nice(d) + ' is copied.'); })
+      .then(function(){ busy(false); });
+  }
+  go.addEventListener('click', function(){ pick(); run(main); });
+  alt.addEventListener('click', function(){ pick(); run(other); });
+})();
+"""
 
 
 def render_glance(items):
@@ -6134,6 +6499,9 @@ def _build(content, log, admin_log, briefs, look):
              "&family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Fredoka:wght@500;600;700")
     if any(c.get("day") or c.get("lists") for c in d["chapters"]):
         css += CSS_BRIEF
+    has_hours = any(c.get("hours") or c.get("id") == "hours" for c in d["chapters"])
+    if has_hours:
+        css += CSS_HOURS
     sleepy = {"icon": FAN.favicon(asleep=True) if fav else favicon_href("sleepy")}
     sound_on, sound_off = ICONS["sound"], ICONS["mute"]  # the top bar keeps its own sound and Look drawings, whatever the look
     tabicons = {"sad": FAN.favicon(asleep=True), "starry": favicon} if fav else {"sad": sad_icon(), "starry": favicon_href("starry")}
@@ -6231,6 +6599,9 @@ def _build(content, log, admin_log, briefs, look):
     if nc is not None and not any(g.get("cards") for c in d["chapters"] if c is not nc for g in c.get("groups", [])):
         nc = None
     shown = [c for c in d["chapters"] if c is not nc]
+    for c in shown:
+        if c.get("hours"):
+            c["hours"]["_order"] = [p["name"] for p in d.get("projects", []) if p.get("name")]  # the hues follow the projects list
     for i, c in enumerate(shown):
         body = render_chapter(c, names_n, d["date"], mood, admin, rel)
         if i == 0:
@@ -6263,6 +6634,8 @@ def _build(content, log, admin_log, briefs, look):
           "projects": {n: prompt_head(d, n) for n in dict.fromkeys(q["project"] for q in quests)},
           "quests": {_qid(q): quest_lines(q) for q in quests if not q["a"].get("done")}}
     quest_json = json.dumps(qd, ensure_ascii=False).replace("</", "<\\/")
+    hours_js = ('<script type="application/json" id="fill-prompt">' + json.dumps(fill_prompt_template(), ensure_ascii=False).replace("</", "<\\/")
+                + f"</script>\n<script>{JS_HOURS}</script>\n") if has_hours else ""
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{esc(d["title"])}</title>
@@ -6307,7 +6680,7 @@ def _build(content, log, admin_log, briefs, look):
 {fairy_tpl}
 <script type="application/json" id="stage-data">{stage_json}</script>
 <script type="application/json" id="quest-data">{quest_json}</script>
-{FAN.templates() if FAN else ""}{ff_fill}<script>{_cat("stage", JS_STAGE)}</script>
+{hours_js}{FAN.templates() if FAN else ""}{ff_fill}<script>{_cat("stage", JS_STAGE)}</script>
 <script>{js}</script>
 {fairy_js}{ff_moves}</body></html>
 """
