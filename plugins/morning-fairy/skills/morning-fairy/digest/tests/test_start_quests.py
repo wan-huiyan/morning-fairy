@@ -166,6 +166,13 @@ class Launch(Config, unittest.TestCase):
             serve.launch_claude(folder, prompt)
         return run.call_args[0][0][2]
 
+    def test_only_fill_tempo_gets_chrome(self):
+        folder = str(self.root / "alpha")
+        with mock.patch.object(serve.subprocess, "run") as run:
+            serve.launch_fill("fill it", folder)
+        self.assertIn('claude --chrome \\"$p\\"', run.call_args[0][0][2])  # it reads the Tempo page in the user's Chrome
+        self.assertNotIn("--chrome", self.script(folder))  # Start sessions never get the signed-in Chrome
+
     def test_prompt_goes_through_a_private_file(self):
         prompt = "Line one with 'quotes' and \"doubles\"\nLine two $(rm -rf ~) `x`"
         script = self.script(str(self.root / "alpha"), prompt)

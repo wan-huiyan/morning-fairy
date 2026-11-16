@@ -214,11 +214,13 @@ def start_root():
     return p if p.is_dir() else None
 
 
-def launch_claude(folder, prompt):
+def launch_claude(folder, prompt, chrome=False):
     """Open a Terminal window (macOS) running Claude Code on the prompt in folder. The folder must sit inside start.json's
     root (your home folder when there is none); anything else, or a missing folder, opens in your home folder. The prompt
     goes through a private file that the new shell reads once and deletes, so newlines and quotes reach Claude as written.
-    `claude` starts in your own default permission mode. Tests replace this."""
+    `claude` starts in your own default permission mode. chrome=True adds --chrome, which a terminal session needs to reach
+    the Claude in Chrome extension (without it the session has no Chrome tools at all). Only Fill Tempo asks for it: Start
+    sessions can come from mail, chat or web finds, so they do not get your signed-in Chrome. Tests replace this."""
     where = Path(os.path.realpath(os.path.expanduser(str(folder)))) if folder else Path.home()
     root = start_root() or Path(os.path.realpath(Path.home()))
     if not where.is_dir() or not (where == root or root in where.parents):
@@ -240,7 +242,7 @@ def launch_claude(folder, prompt):
         Path(path).unlink(missing_ok=True)
         raise OSError("could not write the prompt")
     q = shlex.quote(path)
-    cmd = f'cd {shlex.quote(str(where))} && p="$(cat {q})" && rm -f {q} && claude "$p"'
+    cmd = f'cd {shlex.quote(str(where))} && p="$(cat {q})" && rm -f {q} && claude{" --chrome" if chrome else ""} "$p"'
     script = 'tell application "Terminal"\nactivate\ndo script "' + cmd.replace("\\", "\\\\").replace('"', '\\"') + '"\nend tell'
     try:
         subprocess.run(["osascript", "-e", script], check=True, capture_output=True, timeout=20)
@@ -253,7 +255,7 @@ def launch_claude(folder, prompt):
 
 def launch_fill(prompt, folder):
     """The Fill Tempo session, in the configured folder. Tests replace this."""
-    launch_claude(folder, prompt)
+    launch_claude(folder, prompt, chrome=True)  # it reads the Tempo page in your Chrome
 
 
 def start_request(r, today=None):
