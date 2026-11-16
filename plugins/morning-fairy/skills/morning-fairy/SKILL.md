@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.6.2
+version: 1.7.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -120,6 +120,11 @@ All design lives in the builder; the content never sets colours, layout or motio
   world-themed burst, crosses the card off with a pen stroke and flies it down into Resolved.
 - **Quests board:** Claude tasks grouped by project, each with a "Copy for <project>" prompt that names the
   folder to open the session in (`folder` on a project in the content, or `PROJECT_FOLDERS` in the builder).
+  With `digest/start.json` in place (copy `start.example.json`) and the page opened through the local helper,
+  each project and each quest also gets **Start in Claude**: the helper (`POST /start-quests`, quest ids only)
+  rebuilds the same prompt from that day's saved content and opens Terminal on `claude` in the project's
+  folder, one session per project. The folder must sit inside `start.json`'s `root`; anything else opens in the
+  home folder. The session runs straight away in the owner's own default permission mode.
 - **Time machine:** a month of real dates and a row of recent mornings; a picked day shows what that
   morning said and what got done, and opens the saved brief as it was.
 - **Sounds** (off until switched on), cursor wand and fairy dust per world, and a party when you type
@@ -195,12 +200,14 @@ If the rows did not come with the message, ask which rows; never guess from the 
 2. Optional: give each entry in the content's `projects` a `"folder"`, so a quest's "Copy for <project>" prompt
    names the folder to open Claude Code in. (Editing `PROJECT_FOLDERS` in the builder also works, but a plugin update
    replaces the file.)
-3. Try the demo: `digest/build_demo.sh` builds two made-up mornings and prints the newest page's path.
-4. Schedule a weekday 08:00 run on the owner's own machine (it writes to their Desktop, so a cloud routine
+3. Optional, macOS: `cp <skill>/digest/start.example.json <skill>/digest/start.json` turns on Start in Claude
+   on the Quests board (see above). Set `root` to the folder your project folders live in.
+4. Try the demo: `digest/build_demo.sh` builds two made-up mornings and prints the newest page's path.
+5. Schedule a weekday 08:00 run on the owner's own machine (it writes to their Desktop, so a cloud routine
    cannot do it). The prompt to use is `routine-prompt.md` in this folder, with its four blanks filled in. In the
    Claude desktop app, a local scheduled task runs while the app is open, and a run missed while it was closed
    happens on the next launch.
-5. Optional, macOS: `bash digest/make_dock_app.sh` builds `~/Applications/Morning Brief.app` (the mascot icon).
+6. Optional, macOS: `bash digest/make_dock_app.sh` builds `~/Applications/Morning Brief.app` (the mascot icon).
    Drag it onto the Dock; a click opens today's brief through the local helper. It finds the installed skill at
    click time, so a plugin update needs no rebuild.
 

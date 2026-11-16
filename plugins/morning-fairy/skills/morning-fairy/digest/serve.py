@@ -4,7 +4,9 @@
 
 127.0.0.1 only, port 8765. POST /fill-hours {"date"} opens Terminal (macOS) with an attended Claude session that fills
 that day's Tempo hours: the prompt is fill_hours_prompt.txt beside this file, filled from the "fill_tempo" block of
-clients.json beside this file (no block, no route); the page only sends a date. Writes that done.jsonl, and look.json
+clients.json beside this file (no block, no route); the page only sends a date. POST /start-quests {"date", "ids"}
+opens one such session per project for the quests picked on the Quests board, rebuilt from that day's saved brief;
+it needs start.json beside this file. Sessions start in your own default permission mode. Writes that done.jsonl, and look.json
 in the same folder (beside runs/) when the brief saves a new look, after which it rebuilds today's brief with the
 builder beside this file. Also serves the bundled fanfan icons (fanfan/ beside this file) for the look picker's
 previews. Python standard library only.
@@ -34,6 +36,7 @@ PATTERN = "* Morning brief and Jira digest.html"
 ORIGINS = {f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}"}
 HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}"}
 MAX_BODY = 4096
+START_MAX_BODY = 65536  # /start-quests: up to 20 quest ids with their wording (and notes, up to 2000 characters each)
 CODE = Path(__file__).resolve().parent  # the builder and the bundled fanfan icons always come from beside this file
 # /fanfan/<style>/<animal>-<noun>.svg: only these names, built from the match, never from the request
 FF_STYLES = ("thin", "thick", "thin-highlight", "thick-highlight")
@@ -54,6 +57,13 @@ FILL_DAYS = 14  # how far back a day may be filled
 FILL_GAP = 20  # seconds: a double tap opens one session, not two
 FILL_LOCK = threading.Lock()
 _fill_last = [None]  # time.monotonic() of the last launch; None until the first
+# /start-quests: the page sends a date and quest ids; the prompt is rebuilt here from runs/content-<date>.json
+START_CONFIG = CODE / "start.json"  # {"root": "~/Documents"}: Start is off without it; the builder reads the same file
+START_IDS, START_NOTE = 20, 2000
+START_PER_MIN = 8  # sessions opened in any 60 seconds
+START_LOCK = threading.Lock()
+_start_seen = {}  # (date, ids) -> time.monotonic() of its launch
+_start_times = []
 
 
 def briefs():
@@ -192,11 +202,86 @@ def fill_folder(cfg):
     return Path.home()
 
 
-def launch_fill(prompt, folder):
-    """Open a Terminal window running Claude Code on the prompt, in the folder. macOS only. Tests replace this."""
-    cmd = f"cd {shlex.quote(str(folder))} && claude {shlex.quote(prompt)}"
+def start_root():
+    """The folder sessions may open under, from start.json's "root" (a real folder), or None when Start is not set up."""
+    try:
+        root = json.loads(START_CONFIG.read_text(encoding="utf-8")).get("root")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(root, str) or not root.strip():
+        return None
+    p = Path(os.path.realpath(os.path.expanduser(root.strip())))
+    return p if p.is_dir() else None
+
+
+def launch_claude(folder, prompt):
+    """Open a Terminal window (macOS) running Claude Code on the prompt in folder. The folder must sit inside start.json's
+    root (your home folder when there is none); anything else, or a missing folder, opens in your home folder. The prompt
+    goes through a private file that the new shell reads once and deletes, so newlines and quotes reach Claude as written.
+    `claude` starts in your own default permission mode. Tests replace this."""
+    where = Path(os.path.realpath(os.path.expanduser(str(folder)))) if folder else Path.home()
+    root = start_root() or Path(os.path.realpath(Path.home()))
+    if not where.is_dir() or not (where == root or root in where.parents):
+        where = Path.home()
+    box = DIGEST / "runs" / "launch"
+    box.mkdir(parents=True, exist_ok=True)
+    os.chmod(box, 0o700)
+    for old in box.glob("prompt-*.txt"):  # leftovers from a launch whose shell never ran
+        try:
+            if time.time() - old.stat().st_mtime > 600:
+                old.unlink()
+        except OSError:
+            pass
+    fd, path = tempfile.mkstemp(prefix="prompt-", suffix=".txt", dir=str(box))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", errors="replace") as fh:
+            fh.write(prompt)
+    except (OSError, ValueError):
+        Path(path).unlink(missing_ok=True)
+        raise OSError("could not write the prompt")
+    q = shlex.quote(path)
+    cmd = f'cd {shlex.quote(str(where))} && p="$(cat {q})" && rm -f {q} && claude "$p"'
     script = 'tell application "Terminal"\nactivate\ndo script "' + cmd.replace("\\", "\\\\").replace('"', '\\"') + '"\nend tell'
-    subprocess.run(["osascript", "-e", script], check=True, capture_output=True, timeout=20)
+    try:
+        subprocess.run(["osascript", "-e", script], check=True, capture_output=True, timeout=20)
+    except subprocess.TimeoutExpired:
+        raise  # Terminal may well have opened and still needs the file
+    except (OSError, subprocess.SubprocessError):
+        Path(path).unlink(missing_ok=True)
+        raise
+
+
+def launch_fill(prompt, folder):
+    """The Fill Tempo session, in the configured folder. Tests replace this."""
+    launch_claude(folder, prompt)
+
+
+def start_request(r, today=None):
+    """(date, ids, notes, asks) from a /start-quests body, or None when anything is off."""
+    if not isinstance(r, dict):
+        return None
+    d, ids, notes = fill_date(r.get("date"), today), r.get("ids"), r.get("notes") or {}
+    if d is None or not isinstance(ids, list) or not 1 <= len(ids) <= START_IDS:
+        return None
+    if not all(isinstance(i, str) and 0 < len(i) <= 200 for i in ids):
+        return None
+    if not isinstance(notes, dict) or not all(k in ids and isinstance(v, str) and len(v) <= START_NOTE for k, v in notes.items()):
+        return None
+    asks = r.get("asks") or {}
+    if not isinstance(asks, dict) or not all(k in ids and isinstance(v, str) and len(v) <= 1000 for k, v in asks.items()):
+        return None
+    return d, list(dict.fromkeys(ids)), notes, asks
+
+
+def start_jobs(d, ids, notes, asks=None):
+    """[(project, folder, prompt)] from that day's saved brief, built by the builder's own start_prompts."""
+    content = DIGEST / "runs" / f"content-{d.isoformat()}.json"
+    if not content.is_file():
+        raise FileNotFoundError(content)
+    if str(CODE) not in sys.path:
+        sys.path.insert(0, str(CODE))  # -I leaves this folder off the path
+    import build_digest
+    return build_digest.start_prompts(json.loads(content.read_text(encoding="utf-8")), ids, notes, asks)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -268,7 +353,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.close_connection = True  # a refused body is never read, so the connection is not reused
         route = urlsplit(self.path).path
-        if route not in ("/done", "/look", "/fill-hours"):
+        if route not in ("/done", "/look", "/fill-hours", "/start-quests"):
             return self._send(404, "not found")
         if self.headers.get("Origin", "") not in ORIGINS or not self._host_ok():
             return self._send(403, "forbidden")
@@ -276,12 +361,50 @@ class Handler(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", ""))
         except ValueError:
             return self._send(411, "length required")
-        if n < 0 or n > MAX_BODY:
+        if n < 0 or n > (START_MAX_BODY if route == "/start-quests" else MAX_BODY):
             return self._send(413, "too large")
         try:
             r = json.loads(self.rfile.read(n).decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
             return self._send(400, "bad json")
+        if route == "/start-quests":
+            if start_root() is None:
+                return self._send(404, "not set up")  # no start.json beside this file
+            req = start_request(r)
+            if req is None:
+                return self._send(400, "bad fields")
+            d, ids, notes, asks = req
+            try:
+                jobs = start_jobs(d, ids, notes, asks)
+            except FileNotFoundError:
+                return self._send(404, "no saved brief for that day")
+            except KeyError:
+                return self._send(400, "unknown or finished quest")
+            except LookupError:
+                return self._send(409, '{"ok":false,"why":"brief changed"}', "application/json")
+            except Exception:  # a content file of an unexpected shape: say so rather than drop the connection
+                return self._send(500, '{"ok":false}', "application/json")
+            key = (d.isoformat(), tuple(sorted(ids)))
+            with START_LOCK:
+                now = time.monotonic()
+                if key in _start_seen and now - _start_seen[key] < FILL_GAP:
+                    return self._send(429, '{"ok":false,"why":"just opened"}', "application/json")
+                recent = [t for t in _start_times if now - t < 60]
+                if len(jobs) > START_PER_MIN or len(recent) + len(jobs) > START_PER_MIN:
+                    return self._send(429, '{"ok":false,"why":"too many"}', "application/json")
+                opened = 0
+                try:
+                    for _name, folder, prompt in jobs:
+                        launch_claude(folder, prompt)
+                        opened += 1
+                except (OSError, subprocess.SubprocessError):
+                    if opened or isinstance(sys.exc_info()[1], subprocess.TimeoutExpired):
+                        _start_seen[key] = now
+                        _start_times[:] = recent + [now] * max(opened, 1)
+                    return self._send(500, json.dumps({"ok": False, "opened": opened}), "application/json")
+                _start_seen[key] = now
+                _start_times[:] = recent + [now] * opened
+            return self._send(200, json.dumps({"ok": True, "sessions": opened}), "application/json")
         if route == "/fill-hours":
             cfg = fill_config()
             if cfg is None:

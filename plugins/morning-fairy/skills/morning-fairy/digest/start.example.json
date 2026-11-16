@@ -1,0 +1,4 @@
+{
+  "_comment": "Copy this to start.json to turn on the Quests board's Start in Claude buttons (macOS, through the local helper serve.py). `root` is the folder every session must open inside: a project folder outside it, or one that does not exist, opens in your home folder instead. Each project's folder comes from the brief's own `projects` list (its `folder`). Start runs the prompt straight away, in your own default Claude Code permission mode; delete start.json to go back to Copy only.",
+  "root": "~/Documents"
+}

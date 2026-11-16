@@ -47,7 +47,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. |
 | 🧚 | **Build your own fairy** | Pick the mascot (the ticket or Clawd), then the little animal that draws the page's icons: one of 4 animals, thin or thick lines, dot or shiny eyes, and 5 moves. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
-| 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. |
+| 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. Optionally, a **Start in Claude** button opens the session for you. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
 | 📐 | **Three layouts** | Tap the scene (signposts on the hills), Stage + tabs, and Swipe deck. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
@@ -220,6 +220,35 @@ saves your fairy from the picker and rebuilds today's brief with it. **After upd
 helper** (`pkill -f 'morning-fairy/digest/serve.py'`, then click the Dock app), or the one already running stays on
 the old version and cannot save a fairy.
 
+## ▶️ Start in Claude (optional, macOS, off by default)
+
+The Quests board always offers **Copy for &lt;project&gt;**: it copies a prompt, and you paste it into a Claude Code
+session you open yourself, in the folder it names. That way you choose the session and its permission mode.
+
+**Start in Claude** does that step for you. Press it on a project (or on one quest) and the local helper opens
+Terminal in that project's folder and runs `claude` on the same prompt, one session per project. Turn it on with:
+
+```bash
+cp <skill>/digest/start.example.json <skill>/digest/start.json
+# then set "root" to the folder your projects live in, e.g. "~/Documents"
+```
+
+**Start runs the prompt straight away, in your own default Claude Code permission mode.** Whatever mode you
+normally start `claude` in is the mode these sessions get: if that lets Claude edit files or run commands
+without asking, so will they. If you would rather read the prompt first, or pick a mode, use Copy instead.
+
+What keeps it contained:
+
+- The page sends only quest ids. The helper rebuilds the prompt from that day's saved brief, so nothing typed
+  into the page reaches the command line, and quoted mail or chat stays marked as background, never instructions.
+- A session opens only inside `root`. A project folder outside it, or one that does not exist, opens in your
+  home folder instead.
+- The helper answers only this page (Origin and Host checked), refuses a second press of the same quests within
+  20 seconds, and opens at most eight sessions a minute. If the brief was rebuilt since the page loaded, it asks
+  you to reload rather than guess.
+- The buttons appear only when the brief is opened through the helper (`serve.py`) and `start.json` exists.
+  Without either, the board offers Copy only.
+
 ## ⏱ Timesheet hours (optional, off by default)
 
 If you fill in a timesheet, the brief can work out where your week went and show you the days you have
@@ -332,6 +361,11 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.7.0** (2026-11-16): Start in Claude. With `digest/start.json` in place and the brief opened through the
+  local helper, each project and quest on the Quests board can open a Claude Code session in Terminal, in its
+  project folder (`POST /start-quests`, quest ids only; folders limited to `root`). It runs in your own default
+  permission mode; Copy stays for anyone who would rather paste the prompt themselves. Fill Tempo now hands its
+  prompt to Terminal the same way, through a private file the new shell reads once and deletes.
 - **1.6.2** (2026-11-16): the Hours tab lists the newest day first, in the bars and the table.
 - **1.6.1** (2026-11-16): the Hours tab's bars take each world's own colours (garden, cosmic, candy,
   caterpillar; light and dark), and the greys follow each world's muted ink.
