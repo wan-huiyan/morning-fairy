@@ -74,10 +74,17 @@ class RenderHours(Config, unittest.TestCase):
     def test_day_bars_share_one_scale(self):
         h = bd.render_hours(HOURS, [])
         days = re.findall(r'<span class="htrack"[^>]*>(.*?)</span><span class="hday-t">', h)
-        self.assertEqual(len(days), 3)
-        self.assertAlmostEqual(sum(widths(days[0])), 100.0, places=2)  # the longest day fills the track
+        self.assertEqual(len(days), 3)  # newest first: Wed, Tue, Mon
+        self.assertEqual(widths(days[0]), [])
         self.assertAlmostEqual(sum(widths(days[1])), 150 / 465 * 100, places=2)
-        self.assertEqual(widths(days[2]), [])
+        self.assertAlmostEqual(sum(widths(days[2])), 100.0, places=2)  # the longest day fills the track
+
+    def test_newest_day_comes_first_in_the_bars_and_the_table(self):
+        shuffled = {"days": [HOURS["days"][1], HOURS["days"][2], HOURS["days"][0]]}
+        h = bd.render_hours(shuffled, [])
+        self.assertEqual(re.findall(r'<span class="hday-l">([^<]+)</span>', h), ["Wed 11", "Tue 10", "Mon 9"])
+        table = re.findall(r"<tr><td>([^<]+)</td>", h)
+        self.assertEqual(table, sorted(table, key=["Wed 11", "Tue 10", "Mon 9"].index))
 
     def test_hues_follow_the_projects_list_not_the_minutes(self):
         h = bd.render_hours(HOURS, ["Orchard app", "Lighthouse Co", "Admin"])

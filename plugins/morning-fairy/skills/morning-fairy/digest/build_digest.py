@@ -1057,7 +1057,7 @@ def _clean_hours(h):
 
 def render_hours(h, order=()):
     h = _clean_hours(h)
-    days = h["days"]
+    days = sorted(h["days"], key=lambda dd: str(dd.get("date") or ""), reverse=True)  # newest day first; undated last
     slot, ordered = _hours_order(h, list(order))
     scale = max([_day_total(dd) for dd in days] + [dd.get("logged") or 0 for dd in days] + [60])
     bill = sum(e.get("minutes", 0) for dd in days for e in dd.get("entries") or [] if e.get("billable"))
