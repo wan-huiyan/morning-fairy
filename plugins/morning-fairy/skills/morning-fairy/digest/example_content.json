@@ -372,6 +372,34 @@
    }
   },
   {
+   "id": "scout",
+   "nav": "Scout",
+   "title": "Worth a look",
+   "blurb": "What the morning run found this week that could improve your work. Each one says why it matters and how you might use it. Nothing here waits on you, and nothing was installed.",
+   "lists": [
+    {
+     "id": "scout",
+     "tone": "scout",
+     "title": "Found this morning",
+     "empty": "Looked at the usual sources; nothing new worth your time today.",
+     "items": [
+      {
+       "title": "Example: a chart palette checker on GitHub",
+       "url": "https://example.com/palette-check",
+       "text": "Could replace the hand checks on the Orchard app chart colours. {source}",
+       "source": "GitHub, 1.2k stars this week",
+       "detail": "How you might use it: run it once over the four Hours bar palettes and compare its verdicts with the colour checks you already do by hand.",
+       "project": "Admin",
+       "claude": {
+        "ask": "read its README and say whether it would catch anything the hand checks miss",
+        "size": "about 15 min"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
    "id": "sources",
    "nav": "Sources",
    "title": "What was read",
