@@ -1763,6 +1763,28 @@ def read_history(folder, today):
     return past, done
 
 
+# On an earlier morning's brief, the time machine still says "Today" for that day and has no way forward. This turns that
+# day's chip and card into its date, and adds a chip and a button to the newest brief. serve.py injects it into every past
+# brief it serves (old pages too, since they cannot be rebuilt); the page itself runs it only when opened as a file.
+TM_PAST_JS = r"""function(href, isToday){
+  var box = document.querySelector('.tm'); if (!box || box.getAttribute('data-past')) return;
+  box.setAttribute('data-past', '1');
+  // the page's own morning is the card that says "You are here" (the day picked at first is usually an earlier one)
+  var here = box.querySelector('.tm-here'), card = here && here.closest('.tm-card'), me = card ? card.getAttribute('data-date') : '',
+      when = card ? card.getAttribute('aria-label') || '' : '', chip = box.querySelector('.tm-chip[data-pick="' + me + '"]');
+  if (chip && when) chip.textContent = when.slice(0, 3) + ' ' + (when.split(' ')[1] || '');
+  if (card) {
+    var s = card.querySelector('.tm-ch small'); if (s) s.textContent = 'This brief';
+    if (here.lastChild) here.lastChild.nodeValue = 'You are here: the brief from ' + when;
+    var b = document.createElement('a'); b.className = 'btn btn-accent tm-go'; b.href = href; b.style.textDecoration = 'none';
+    b.textContent = isToday ? 'Back to today\u2019s brief' : 'Open the latest brief'; card.appendChild(b);
+  }
+  var row = box.querySelector('.tm-chips');
+  if (row) { var c = document.createElement('a'); c.className = 'tm-chip tm-has'; c.href = href; c.style.textDecoration = 'none';
+    c.textContent = (isToday ? 'Today' : 'Latest') + ' \u203a'; row.appendChild(c); }
+}"""
+
+
 TM_CLOCK = ('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
             '<path d="M4 3.8v3.6h3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
             '<path d="M12 8v4.3l2.8 1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>')
@@ -2369,11 +2391,20 @@ a.slice:hover .slice-go,a.slice:focus-visible .slice-go{text-decoration:underlin
 CSS_STREAK = r"""
 /* the Calendar is a time machine: a month of real dates, a row of recent mornings, and the picked morning's card */
 .tm{margin-top:2px;container-type:inline-size}
+/* it opens from the clock button in the top row, over whichever layout is on, as a dialog */
+.tm-dlg{padding:0;width:min(1000px,calc(100vw - 24px));max-height:calc(100dvh - 24px);color:var(--w-ink,var(--ink));
+  background:var(--w-card,var(--card));border:1px solid var(--w-line,var(--line-strong));border-radius:26px;box-shadow:var(--w-shadow,none);overflow:hidden}
+.tm-dlg[open]{display:flex;flex-direction:column;animation:tm-pop .34s cubic-bezier(.22,1,.36,1)}
+@keyframes tm-pop{from{opacity:0;transform:translateY(14px) scale(.98)}}
+.tm-dlg::backdrop{background:rgba(15,12,8,.38);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.tm-dlg .ph .x{display:grid}
+.tm-dlg .pb{font-size:16px;line-height:1.6}
+@media (prefers-reduced-motion:reduce){.tm-dlg[open]{animation:none}}
 .tm-why{margin:0 0 14px;color:var(--muted);font-size:14.5px;line-height:1.45;max-width:62ch}
 .tm-body{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px 26px;align-items:start}
 .tm-cal{justify-self:start;padding:14px 16px 12px;border:1.5px solid var(--line-strong);border-radius:20px;background:var(--card)}
 .tm-side{min-width:0}
-@container (max-width:700px){.tm-body{grid-template-columns:minmax(0,1fr)}.tm-side{order:-1}.tm-cal{justify-self:stretch}.st-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+@container (max-width:700px){.tm-body{grid-template-columns:minmax(0,1fr)}.tm-side{order:-1}.tm-cal{justify-self:stretch}.tm .st-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
 .st-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;min-height:30px}
 .st-title{font:700 15px/1.2 var(--w-display,"Geist",system-ui,sans-serif);min-width:0}
 .st-nav button{flex:none;display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:1.5px solid var(--line-strong);border-radius:50%;background:transparent;color:var(--ink);cursor:pointer}
@@ -3621,6 +3652,15 @@ JS = r"""
       e.preventDefault(); play('travel'); a.classList.add('tm-going'); setTimeout(function(){ location.href = a.href; }, 480);
     }); });
     pick(box.getAttribute('data-sel'), false);
+    var dlg = document.getElementById('tm-dlg'), opener = document.getElementById('tm-open');
+    if (dlg && opener && dlg.showModal) {
+      opener.addEventListener('click', function(){ dlg.showModal(); play('pick'); });
+      dlg.addEventListener('click', function(e){ if (e.target === dlg || e.target.closest('.x')) dlg.close(); });
+    }
+    if (location.protocol === 'file:') {
+      var now = new Date(), loc = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+      if (BRIEF_DATE < loc) ({tm_past})('http://127.0.0.1:8765/', false);  // a file cannot tell whether today's brief exists yet: "Latest"
+    }
     var nDone = box.querySelector('[data-tm-done]'), nAll = box.querySelector('[data-tm-total]');
     function count(){
       var all = {}, on = {};
@@ -4389,8 +4429,8 @@ html[data-world="candy"] .headline h1{font-weight:700;letter-spacing:-.01em}
 html[data-world="cosmic"] .headline .when,html[data-world="candy"] .headline .when{font:600 13px var(--mono);letter-spacing:.01em}
 .clockchip{position:absolute;z-index:3;left:clamp(16px,3vw,40px);bottom:12px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--w-muted);pointer-events:none}
 .clockchip b{font:600 12.5px var(--mono);color:var(--w-ink);background:var(--w-card);border:1px solid var(--w-line);border-radius:999px;padding:3px 9px}
-html[data-world="cosmic"] .panel{background:rgba(255,255,255,.84)}
-html[data-world="cosmic"][data-mode="dark"] .panel{background:rgba(23,20,58,.9)}
+html[data-world="cosmic"] .panel,html[data-world="cosmic"] .tm-dlg{background:rgba(255,255,255,.84)}
+html[data-world="cosmic"][data-mode="dark"] .panel,html[data-world="cosmic"][data-mode="dark"] .tm-dlg{background:rgba(23,20,58,.9)}
 .finale-banner{position:absolute;inset:0;z-index:5;display:grid;place-items:center;pointer-events:none;text-align:center;padding:0 20px}
 .finale-banner span{font:800 clamp(28px,4.6vw,64px)/1.05 var(--w-display);color:var(--w-ink);text-shadow:0 3px 0 var(--w-card),0 0 30px var(--w-card)}
 
@@ -4472,8 +4512,8 @@ html[data-world="cosmic"][data-mode="light"] .k-new{fill:#ffd166;filter:drop-sha
 
 /* ---------- section panels (shared look) ---------- */
 .panel{min-height:0;display:flex;flex-direction:column;background:var(--w-card);border:1px solid var(--w-line);border-radius:26px;overflow:hidden;box-shadow:var(--w-shadow)}
-html[data-world="garden"] .panel{border:1.8px solid var(--w-line);border-radius:28px 18px 30px 16px/16px 30px 18px 28px}
-html[data-world="candy"] .panel{border:5px solid var(--w-cane);border-radius:30px}
+html[data-world="garden"] .panel,html[data-world="garden"] .tm-dlg{border:1.8px solid var(--w-line);border-radius:28px 18px 30px 16px/16px 30px 18px 28px}
+html[data-world="candy"] .panel,html[data-world="candy"] .tm-dlg{border:5px solid var(--w-cane);border-radius:30px}
 html[data-world="cosmic"] .panel{backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2)}
 .ph{display:flex;align-items:center;gap:10px;padding:16px 18px 10px}
 .ph h2{margin:0;font:700 clamp(19px,1.6vw,23px)/1.15 var(--w-display);flex:1;min-width:0}
@@ -4490,6 +4530,14 @@ html[data-world="garden"] .phi{border:1.5px solid var(--w-line);border-radius:50
 .tabs{display:flex;gap:6px;align-items:flex-end;position:relative;overflow-x:auto;scrollbar-width:none;padding:22px 2px 6px}
 .tabs::-webkit-scrollbar{display:none}
 @media (min-width:821px){.app[data-layout="stage"] .tabs{-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}}
+/* a narrow tab strip (a laptop window about 1000px wide gives it ~540px): the tabs share the width, icon over label, so all fit */
+.app[data-layout="stage"] .switch{container:tabs/inline-size}
+@container tabs (max-width:720px){
+  .app[data-layout="stage"] .tabs{gap:6px;-webkit-mask:none;mask:none}
+  .app[data-layout="stage"] .tab{flex:1 1 0;min-width:0;flex-direction:column;gap:3px;padding:7px 4px 6px;font-size:12px;border-radius:16px}
+  .app[data-layout="stage"] .tab .tl{white-space:normal;text-align:center;line-height:1.05}
+  .app[data-layout="stage"] .tab .n{position:absolute;top:-7px;right:4px;font-size:10px;padding:0 5px}
+}
 .tab{position:relative;display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:999px;border:1px solid var(--w-line);background:var(--w-chip);cursor:pointer;white-space:nowrap;font-weight:650;font-size:13.5px;flex:none;
   transition:background .3s,color .3s,transform .35s var(--spring)}
 html[data-world="garden"] .tab{border:1.5px solid var(--w-line);border-radius:16px 12px 16px 10px/10px 16px 12px 16px;background:var(--w-card)}
@@ -4724,7 +4772,7 @@ html[data-world="garden"] .app .btn-accent[data-copy-btn]{border:1.5px solid var
   .app .btn-accent[data-copy-btn]{padding:0 14px}
   #msg{bottom:84px}
   #out{bottom:84px;height:160px}
-  .app[data-layout="stage"] .tab .tl{white-space:normal;text-align:center;line-height:1.05}  /* seven tabs at 375px: "Time machine" takes two lines */
+  .app[data-layout="stage"] .tab .tl{white-space:normal;text-align:center;line-height:1.05}  /* at 375px a long label takes two lines */
   .app[data-layout="deck"] .headline,.app[data-layout="scene"] .headline{width:auto;right:16px}
   .app[data-layout="deck"] .main{grid-template-rows:minmax(240px,38%) 1fr auto}
   .app[data-layout="deck"] .stage{margin:0 10px;border-radius:24px}
@@ -6667,7 +6715,7 @@ def _build(content, log, admin_log, briefs, look):
     sound_on, sound_off = ICONS["sound"], ICONS["mute"]  # the top bar keeps its own sound and Look drawings, whatever the look
     tabicons = {"sad": FAN.favicon(asleep=True), "starry": favicon} if fav else {"sad": sad_icon(), "starry": favicon_href("starry")}
     js = (JS.replace("{storage_key}", storage_key).replace("{copy_header}", copy_header)
-          .replace("{brief_date}", json.dumps(d["date"]))
+          .replace("{brief_date}", json.dumps(d["date"])).replace("{tm_past}", TM_PAST_JS)
           .replace("{task_header}", json.dumps(f"For Claude to pick up (morning brief, {d['date_label']}):"))
           .replace("{task_guard}", json.dumps(TASK_GUARD)).replace("{hello_wait}", HELLO_WAIT)
           .replace("{admin_header}", json.dumps(f"Record as admin done (morning brief, {d['date_label']}):"))
@@ -6775,8 +6823,14 @@ def _build(content, log, admin_log, briefs, look):
         secs.append((c["id"], c.get("nav") or c["id"], _chapter_count(c), c["title"], body, icon))
         if quests and i == 0:
             secs.append(("quests", "Quests", sum(1 for q in quests if not q["a"].get("done")), "Quests for Claude", render_quests(quests, mood, d), SEC_ICON["quests"]))
-    if streak:
-        secs.append(("calendar", "Time machine", 0, "Time machine", streak, SEC_ICON["timemachine"]))
+    tm_btn = tm_dlg = ""
+    if streak:  # out of the tabs (seven did not fit): a clock in the top row opens it as a dialog
+        tm_ic = _sec_icon("calendar", SEC_ICON["timemachine"])
+        tm_btn = (f'<button class="icon-btn" id="tm-open" type="button" aria-haspopup="dialog" aria-controls="tm-dlg" '
+                  f'aria-label="Time machine: earlier mornings" title="Time machine">{_ic(SEC_ICON["timemachine"])}</button>')  # a plain clock, like its neighbours
+        tm_dlg = (f'<dialog class="tm-dlg" id="tm-dlg" aria-labelledby="tm-dlg-h"><div class="ph"><span class="phi">{tm_ic}</span>'
+                  f'<h2 id="tm-dlg-h">Time machine</h2><button type="button" class="x" aria-label="Close">{_ic(CLOSE_ICON)}</button></div>'
+                  f'<div class="pb">{streak}</div></dialog>')
     tabs = "".join(f'<button type="button" role="tab" class="tab" id="tab-{esc(k)}" data-sec="{esc(k)}" aria-controls="sec-{esc(k)}" aria-selected="false">'
                    f'{_sec_icon(k, ic)}<span class="tl">{esc(nav)}</span>{f"<span class=n>{n}</span>" if n and k in ("quests", "todo") else ""}</button>'
                    for k, nav, n, _, _, ic in secs)
@@ -6815,7 +6869,7 @@ def _build(content, log, admin_log, briefs, look):
     <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Stage + tabs</button><button type="button" data-layout="deck">Swipe deck</button><button type="button" data-layout="scene">Tap the scene</button></div>
     <div class="nav-tools">
       <span id="msg" aria-live="polite"></span>
-      <span class="ring" id="ring" role="img" aria-label="rows ticked"><span>0/0</span></span>
+      <span class="ring" id="ring" role="img" aria-label="rows ticked"><span>0/0</span></span>{tm_btn}
       <button class="icon-btn" id="sound" type="button" aria-pressed="false" aria-label="Turn sounds on"></button>
       <button class="icon-btn" id="look" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="look-panel" aria-label="Look: choose a world and light or dark">{ICONS["palette"]}</button>
       <button class="btn btn-accent" type="button" data-copy-btn>{ICONS["copy"]}<span>Copy<span class="wide-only"> ticked</span></span></button>
@@ -6835,7 +6889,7 @@ def _build(content, log, admin_log, briefs, look):
     <div class="scrim" id="scrim"></div>
     <div class="panels" id="panels">{panels}</div>
     <div class="deckctl" id="deckctl"><button type="button" id="deck-prev" aria-label="Previous section">{DECK_PREV}</button><button type="button" id="deck-next" aria-label="Next section">{DECK_NEXT}</button></div>
-  </main>
+  </main>{tm_dlg}
 </div>
 <textarea id="out" aria-label="Copied rows"></textarea>
 {fairy_tpl}

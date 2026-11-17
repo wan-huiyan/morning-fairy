@@ -83,8 +83,10 @@ def briefs():
     return sorted(found, key=key, reverse=True)
 
 
-def back_pill(name):
-    """A small fixed link on a past brief opened from the time machine: which morning this is, and the way back."""
+def back_pill(name, newest=None):
+    """A small fixed link on a past brief opened from the time machine: which morning this is, and the way back. With the
+    newest brief's name, the time machine inside the page also gets it (build_digest.TM_PAST_JS): that day's "Today" chip
+    and card are relabelled with its date, and a chip and a button lead to the newest brief."""
     m = re.match(r"(\d{4})-(\d{2})-(\d{2}) ", name)
     try:
         when = datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).strftime("%A %-d %b") if m else "an earlier morning"
@@ -95,7 +97,18 @@ def back_pill(name):
             'background:#15161a;color:#fff;font:600 14px/1.2 system-ui,-apple-system,sans-serif;text-decoration:none;'
             'box-shadow:0 10px 30px rgba(0,0,0,.35);white-space:nowrap">'
             '<span style="opacity:.75;font-weight:500">Time machine: ' + when + '</span>'
-            '<span style="padding:5px 11px;border-radius:999px;background:#fff;color:#15161a">Back to today</span></a>')
+            '<span style="padding:5px 11px;border-radius:999px;background:#fff;color:#15161a">Back to today</span></a>'
+            + (tm_past_script(newest) if newest else ""))
+
+
+def tm_past_script(newest):
+    """The script that gives an earlier brief's time machine the way to the newest one (old pages too: it reads their markup)."""
+    if str(CODE) not in sys.path:
+        sys.path.insert(0, str(CODE))  # -I leaves this folder off the path
+    import build_digest
+    is_today = newest.startswith(datetime.now().strftime("%Y-%m-%d") + " ")
+    args = json.dumps("/brief/" + quote(newest)) + ", " + ("true" if is_today else "false")
+    return "<script>(" + build_digest.TM_PAST_JS + ")(" + args.replace("</", "<\\/") + ");</script>"
 
 
 def _text(v, limit):
@@ -342,7 +355,7 @@ class Handler(BaseHTTPRequestHandler):
             body = f.read_bytes()
             newest = briefs()
             if newest and newest[0].name != name:  # an earlier morning: add the way back to today
-                pill = back_pill(name).encode("utf-8")
+                pill = back_pill(name, newest[0].name).encode("utf-8")
                 i = body.rfind(b"</body>")
                 body = body[:i] + pill + body[i:] if i >= 0 else body + pill
             # never inside another site's frame: a page there could steer a click onto Done or "Save my fairy"
