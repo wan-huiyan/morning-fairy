@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.8.1
+version: 1.9.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -125,8 +125,10 @@ All design lives in the builder; the content never sets colours, layout or motio
   rebuilds the same prompt from that day's saved content and opens Terminal on `claude` in the project's
   folder, one session per project. The folder must sit inside `start.json`'s `root`; anything else opens in the
   home folder. The session runs straight away in the owner's own default permission mode.
-- **Time machine:** a month of real dates and a row of recent mornings; a picked day shows what that
-  morning said and what got done, and opens the saved brief as it was.
+- **Time machine** (the clock in the top row, not a tab): a month of real dates and a row of recent mornings;
+  a picked day shows what that morning said and what got done, and opens the saved brief as it was. On an
+  earlier brief served by the helper, its time machine also gets a "Today" chip and a "Back to today's brief"
+  button (old briefs too: `serve.py` adds them as it serves the page).
 - **Sounds** (off until switched on), cursor wand and fairy dust per world, and a party when you type
   "magic". Nothing moves under reduced motion.
 

@@ -139,7 +139,7 @@ bash /tmp/morning-fairy/plugins/morning-fairy/skills/morning-fairy/digest/build_
 ```
 
 It builds two demo mornings (11 and 12 March 2026) into a temporary folder and prints the path of the newer one.
-Open that file, then open **Time machine** to jump back to the 11th.
+Open that file, then click the clock in the top row (the time machine) to jump back to the 11th.
 
 **3. Make it yours:** ask Claude for your brief now, then [set it up to arrive every morning](#-set-up-your-daily-brief).
 
@@ -381,6 +381,12 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.9.0** (2026-11-17): the time machine moves from the tabs to a clock button in the top row and opens as a
+  dialog, so the remaining tabs fit; a narrow tab strip (a laptop window about 1000 px wide) shows them icon over
+  label. An earlier brief served by the helper now has a way forward inside its time machine: its own day is
+  labelled with its date instead of "Today", and a "Today" chip and a "Back to today's brief" button lead to the
+  newest brief. A past brief opened straight from the folder links back through the helper. The calendar's
+  Sunday column no longer overflows on a phone.
 - **1.8.1** (2026-11-16): Fill Tempo opens its Terminal session as `claude --chrome`, so it can reach the Claude in
   Chrome extension to read your Tempo page (without the flag the session has no Chrome tools). Start in Claude
   sessions stay without it.
