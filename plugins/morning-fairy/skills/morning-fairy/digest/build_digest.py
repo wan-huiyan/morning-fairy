@@ -3659,7 +3659,7 @@ JS = r"""
     }
     if (location.protocol === 'file:') {
       var now = new Date(), loc = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
-      if (BRIEF_DATE < loc) ({tm_past})('http://127.0.0.1:8765/', true);
+      if (BRIEF_DATE < loc) ({tm_past})('http://127.0.0.1:8765/', false);  // a file cannot tell whether today's brief exists yet: "Latest"
     }
     var nDone = box.querySelector('[data-tm-done]'), nAll = box.querySelector('[data-tm-total]');
     function count(){

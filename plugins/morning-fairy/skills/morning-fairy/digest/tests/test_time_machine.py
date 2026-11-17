@@ -48,7 +48,7 @@ class Placement(unittest.TestCase):
     def test_page_script_has_the_past_function(self):
         html = build(True)
         self.assertNotIn("{tm_past}", html)
-        self.assertIn("'http://127.0.0.1:8765/', true", html)
+        self.assertIn("'http://127.0.0.1:8765/', false", html)  # a file cannot know today's brief exists
 
 
 class WayBack(unittest.TestCase):
