@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.14.1
+version: 1.15.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -111,7 +111,8 @@ All design lives in the builder; the content never sets colours, layout or motio
 
 - **Four worlds**, each light or dark: Storybook garden, Cosmic orbit, Candy pop, Caterpillar.
 - **The scene is clickable:** each meeting's hill and sign, and each admin clipboard, opens its row in Your day.
-- **Three layouts**: Tap the scene (signposts on the scene), Stage + tabs and Swipe deck. Until the reader picks one,
+- **Three layouts**: Tap the scene (signposts on the scene), Stage + tabs and Map (numbered levels on the hills, a
+  level card with Back and Next level, an XP bar of today's ticks). Until the reader picks one,
   the page follows the window (the scene on a wide one, tabs on a narrow one); a pick is saved in the browser.
 - **The day scene:** the sun rides 8 AM to 6 PM and can be dragged; the ground rises at each meeting by
   its weight; the mascot stands at "now" with a mood (sweat for a stamp, starry when nothing waits,

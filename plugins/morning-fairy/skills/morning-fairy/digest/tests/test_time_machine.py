@@ -38,7 +38,7 @@ class Placement(unittest.TestCase):
         self.assertNotIn('id="tab-calendar"', html)
         self.assertNotIn('id="sec-calendar"', html)
         secs = json.loads(re.search(r'<script type="application/json" id="stage-data">(.*?)</script>', html, re.S).group(1))["secs"]
-        self.assertNotIn("calendar", [s[0] for s in secs], "the deck, signposts and swipes skip it")
+        self.assertNotIn("calendar", [s[0] for s in secs], "the signposts, map levels and swipes skip it")
 
     def test_no_time_machine_no_button(self):
         html = build(False)

@@ -52,7 +52,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | 💸 | **Cloud spend** | Optional. What BigQuery queries have cost this month in each Google Cloud project you work in: a little bar per day, the month-end pace, the account that spent most, and a sweating mascot when a day jumps. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. Tickets that already match sit folded underneath as "Already up to date". |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
-| 📐 | **Three layouts** | Tap the scene (signposts on the hills), Stage + tabs, and Swipe deck. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
+| 📐 | **Three layouts** | Tap the scene (signposts on the hills), Stage + tabs, and Map: every section is a numbered level on the hills, joined by a dashed path; the mascot hops to the one you open, its level pops up as a card with Back and Next level, a level turns into a check once you have ticked everything in it, and an XP bar counts today's ticks. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
 | 🔊 | **17 sound effects** | Off until you switch them on. Each world has its own voice: a triangle wave in the garden, a detuned sine in space, a square wave in candy, a soft sine pluck on the leaf. |
 | 🎉 | **Small secrets** | Type `magic` anywhere for a party. Tick every box on the page and the mascot hops into an all-done finale. |
 | ♿ | **Calm when asked** | With reduced motion on, nothing flies, bobs, wiggles or sparkles. |
@@ -405,6 +405,12 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.15.0** (2026-11-18): a quest map. The side-scrolling card layout is retired and a new Map layout takes its
+  place: each section is a numbered level standing on the hills, joined by a dashed path (a snake across a laptop, a
+  zig-zag down a phone). The mascot hops to the level you open and its card pops up over the scene, with Level i of n,
+  Back and Next level (or the arrow keys). A level shows how many of its items are still to do and turns into a check
+  when you have ticked them all; an XP bar under the headline counts today's ticks. A saved pick of the old layout opens
+  as the map.
 - **1.14.1** (2026-11-18): calendar meetings are logged as the calendar shows them. An hours entry can carry a
   `start` time; the page shows it ("from 10:00") and the logging session logs that row as its own worklog at that
   time and length. Both Tempo prompts now say each meeting is its own worklog, never merged with another.
@@ -475,7 +481,7 @@ See [NOTICE.md](NOTICE.md).
   now takes its colours from its world, light and dark, a step quieter than the scene. Cards tilt less as they grow
   and not at all past 560 px, so big cards stay easy to read. A tall meeting hill no longer pushes signs into the sun:
   the sun rides above every board, getting smaller first, and on a phone the scene gets up to 35% more sky rather than
-  shrinking the signs. In the swipe deck, where the scene's height is fixed by the screen, the sun can still touch the
+  shrinking the signs. In the side-scrolling card layout (retired in 1.15.0), where the scene's height was fixed by the screen, the sun could still touch the
   top sign on a very tall day. The "now" label no longer sits on a signpost.
 - **1.3.0** (2026-11-05): a fourth world, Caterpillar: the day is a big leaf, the caterpillar's body is the
   part of the day already lived with its head munching at now, it climbs over each meeting's hill, curls into a cocoon
