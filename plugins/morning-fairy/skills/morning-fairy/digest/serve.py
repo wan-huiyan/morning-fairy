@@ -228,13 +228,14 @@ def start_root():
     return p if p.is_dir() else None
 
 
-def launch_claude(folder, prompt, chrome=False):
+def launch_claude(folder, prompt, chrome=False, model=None):
     """Open a Terminal window (macOS) running Claude Code on the prompt in folder. The folder must sit inside start.json's
     root (your home folder when there is none); anything else, or a missing folder, opens in your home folder. The prompt
     goes through a private file that the new shell reads once and deletes, so newlines and quotes reach Claude as written.
     `claude` starts in your own default permission mode. chrome=True adds --chrome, which a terminal session needs to reach
     the Claude in Chrome extension (without it the session has no Chrome tools at all). Only Fill Tempo asks for it: Start
-    sessions can come from mail, chat or web finds, so they do not get your signed-in Chrome. Tests replace this."""
+    sessions can come from mail, chat or web finds, so they do not get your signed-in Chrome. model, when given, is passed
+    as --model (an alias such as "sonnet"). Tests replace this."""
     where = Path(os.path.realpath(os.path.expanduser(str(folder)))) if folder else Path.home()
     root = start_root() or Path(os.path.realpath(Path.home()))
     if not where.is_dir() or not (where == root or root in where.parents):
@@ -256,7 +257,7 @@ def launch_claude(folder, prompt, chrome=False):
         Path(path).unlink(missing_ok=True)
         raise OSError("could not write the prompt")
     q = shlex.quote(path)
-    cmd = f'cd {shlex.quote(str(where))} && p="$(cat {q})" && rm -f {q} && claude{" --chrome" if chrome else ""} "$p"'
+    cmd = f'cd {shlex.quote(str(where))} && p="$(cat {q})" && rm -f {q} && claude{" --chrome" if chrome else ""}{" --model " + shlex.quote(model) if model else ""} "$p"'
     script = 'tell application "Terminal"\nactivate\ndo script "' + cmd.replace("\\", "\\\\").replace('"', '\\"') + '"\nend tell'
     try:
         subprocess.run(["osascript", "-e", script], check=True, capture_output=True, timeout=20)
@@ -304,6 +305,15 @@ def log_prompt(brief, day, rows, cfg):
 def launch_fill(prompt, folder):
     """The Fill Tempo session, in the configured folder. Tests replace this."""
     launch_claude(folder, prompt, chrome=True)  # it reads the Tempo page in your Chrome
+
+
+LOG_MODEL = "sonnet"  # the hours are already decided on the page, so typing them in needs no top model
+
+
+def launch_log(prompt, folder):
+    """The Approve and log session: the same folder and Chrome as Fill Tempo, on Sonnet, since it only types in rows the
+    page already settled (Fill Tempo stays on your default model: it measures and proposes). Tests replace this."""
+    launch_claude(folder, prompt, chrome=True, model=LOG_MODEL)
 
 
 def start_request(r, today=None):
@@ -474,7 +484,7 @@ class Handler(BaseHTTPRequestHandler):
                 if _fill_last[0] is not None and time.monotonic() - _fill_last[0] < FILL_GAP:
                     return self._send(429, '{"ok":false,"why":"just opened"}', "application/json")
                 try:
-                    launch_fill(prompt, fill_folder(cfg))
+                    launch_log(prompt, fill_folder(cfg))
                 except subprocess.TimeoutExpired:
                     _fill_last[0] = time.monotonic()
                     return self._send(500, '{"ok":false}', "application/json")

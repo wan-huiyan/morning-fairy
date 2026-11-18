@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.12.0
+version: 1.12.1
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -276,7 +276,9 @@ long unattended agent run inside an attended session counts, which reads high. S
 **Approve and log.** On the Hours tab each day Tempo still lacks (or that Tempo was not read for) shows
 the morning's proposed rows, each one ticked, with its minutes and the description Tempo will get, both
 editable. Approving sends the ticked rows to the helper's `/log-hours`, which starts one attended
-session that logs exactly those rows, with no second OK: the click is the OK. It needs the same
+session that logs exactly those rows, with no second OK: the click is the OK. That session runs on
+Sonnet (`claude --chrome --model sonnet`), since the hours are already decided and it only types them
+in; Fill Tempo, which measures and proposes, stays on your default model. It needs the same
 `fill_tempo` block in `clients.json` as Fill Tempo (without it the helper answers "not set up" and the
 page says so). The work item, project and billable setting always come from the brief, never from the
 page; minutes are 5 to 600 in steps of 5 and a description is at most 160 characters. The session

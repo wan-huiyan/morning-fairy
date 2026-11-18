@@ -402,6 +402,9 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.12.1** (2026-11-18): the session that Approve and log starts now runs on Sonnet (`--model sonnet`): the hours
+  are already decided on the page, so it only types them in. Fill Tempo, which measures and proposes, stays on your
+  default model.
 - **1.12.0** (2026-11-18): the Approve and log card draws each day as a timeline. One lane per row, each stretch
   of work across the hours in the project's colour, calendar meetings as pills, and stretches where an agent ran
   alone faded and left out until you click them in. Where two rows overlap, the overlap is hatched and counted
