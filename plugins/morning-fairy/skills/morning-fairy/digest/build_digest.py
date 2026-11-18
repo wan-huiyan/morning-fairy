@@ -1779,7 +1779,7 @@ JS_HOURS = r"""
     return [].slice.call(cur().querySelectorAll('.happ-row')).filter(function(li){ return li.querySelector('.happ-on').checked; }).map(function(li){
       return {i: +li.querySelector('.happ-on').getAttribute('data-i'), minutes: Math.round(+li.querySelector('.happ-min').value),
               desc: li.querySelector('.happ-desc').value.trim()};
-    });
+    }).filter(function(x){ return x.minutes > 0; });  // a lane with every block left out logs nothing
   }
   function sum(){
     var r = rows(), m = r.reduce(function(a, x){ return a + (x.minutes > 0 ? x.minutes : 0); }, 0);
@@ -1829,7 +1829,8 @@ JS_HOURS = r"""
       [].slice.call(day.querySelectorAll('.tovl')).forEach(function(o){ o.remove(); });
       function pair(i, j){ U[i].forEach(function(x){ U[j].forEach(function(y){
         var a = Math.max(x[0], y[0]), b = Math.min(x[1], y[1]); if (b - a < 1) return;
-        var k = i + '-' + j + '-' + a, own = owner[k] != null ? owner[k] : (y[2] && !x[2] ? j : i);
+        var k = i + '-' + j + '-' + a, own = owner[k] != null ? owner[k] : y[2] !== x[2] ? (y[2] ? j : i) :
+          lanes[j].getAttribute('data-bill') === '1' && lanes[i].getAttribute('data-bill') !== '1' ? j : i;  // a meeting, then billable, then the first row
         lost[own === i ? j : i] += b - a;
         [i, j].forEach(function(n){
           var o = document.createElement('button'); o.type = 'button'; o.className = 'tovl'; o.setAttribute('data-own', own === n ? '1' : '0');
@@ -1846,7 +1847,7 @@ JS_HOURS = r"""
       var tot = {bill: 0, non: 0};
       lanes.forEach(function(li, n){
         var m = U[n].reduce(function(s, x){ return s + x[1] - x[0]; }, 0) - lost[n], x = li.querySelector('.happ-x');
-        if (first && x.value === '') x.value = Math.max(0, r5(+li.getAttribute('data-prop') - m));
+        if (first && x.value === '') x.value = Math.max(0, Math.round((+li.getAttribute('data-prop') - m) / 5) * 5);
         var all = r5(Math.max(0, m) + Math.max(0, Math.round(+x.value || 0)));
         li.querySelector('.tmin').textContent = hm(all); li.querySelector('.happ-min').value = all;
         if (li.querySelector('.happ-on').checked) tot[li.getAttribute('data-bill') === '1' ? 'bill' : 'non'] += all;
