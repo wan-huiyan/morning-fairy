@@ -77,6 +77,7 @@ class Timeline(unittest.TestCase):
             {"row": 0, "kind": "session", "start": "09:00", "end": "10:30", "title": "Deck checks", "typed": 4, "counted": True},
             {"row": 0, "kind": "session", "start": "12:00", "end": "12:20", "title": "", "typed": 0, "counted": False},
             {"row": 1, "kind": "meeting", "start": "10:00", "end": "11:00", "title": "Weekly <sync>"},
+            {"row": 0, "kind": "quiet", "start": "11:00", "end": "11:40", "title": "Deck checks", "words": 447, "counted": False},
             {"row": 2, "kind": "session", "start": "13:00", "end": "14:00"},   # a zero-minute row: not drawn
             {"row": 7, "start": "13:00", "end": "14:00"}, {"row": 0, "start": "15:00", "end": "14:00"},  # bad row, backwards
             {"row": 0, "start": "25:00", "end": "26:00"}, "junk"]
@@ -87,7 +88,10 @@ class Timeline(unittest.TestCase):
         html = bd.render_approve(h, {"Acme": 2, "Admin": 3})
         self.assertIn('class="happ-day tl-day"', html)
         self.assertEqual(html.count('class="happ-row tlane"'), 2)
-        self.assertEqual(html.count('<button type="button" class="tblk'), 3, "bad, backwards and zero-row spans are dropped")
+        self.assertEqual(html.count('<button type="button" class="tblk'), 4, "bad, backwards and zero-row spans are dropped")
+        self.assertIn('class="tblk hs2 tquiet" data-a="660" data-b="700" aria-pressed="false"', html, "a quiet stretch starts left out")
+        self.assertIn("11:00–11:40, 40m: no messages, then you replied with 447 words.", html)
+        self.assertIn("overlap, counted in both", html)
         self.assertIn('class="tblk hs2" data-a="540" data-b="630" aria-pressed="true"', html)
         self.assertIn('class="tblk hs2" data-a="720" data-b="740" aria-pressed="false"', html, "an agent-alone stretch starts left out")
         self.assertIn('class="tblk hs3 nb tmeet" data-a="600" data-b="660" data-meet aria-pressed="true"', html)

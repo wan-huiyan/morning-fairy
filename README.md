@@ -309,9 +309,10 @@ watching.
 billable work solid, non-billable striped, sessions with no project yet dotted grey, and a tick on each
 bar for what Tempo already holds. Week totals sit above the bars and every entry is one tap away as a table.
 Above them, the Approve and log card can draw each unlogged day as a timeline: one lane per row, every stretch
-of work across the hours in the same colours, calendar meetings as pills, overlaps between rows hatched and
-counted once. Click a block in or out, click an overlap to move it, hover any block to see where it came from;
-the lane totals add up into the day's tiles and the approve button.
+of work across the hours in the same colours, calendar meetings as pills, and the quiet stretches before your
+replies (time spent reading an agent's work or writing your answers elsewhere) dotted and left out until you tick
+them. Overlaps between rows are marked and count in both. Click a block in or out, hover any block to see where it
+came from; the lane totals add up into the day's tiles and the approve button.
 
 **The Fill Tempo button** (macOS, optional) opens Terminal with a Claude session that measures one day,
 shows you the proposed entries and the gap against Tempo, and logs them one at a time only after you say
@@ -404,6 +405,11 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.14.0** (2026-11-18): quiet stretches. The session log only sees time while messages flow, so reading an
+  agent's work or writing your answers in the brief went uncounted. `measure_session_hours.py --spans` now lists
+  the silence before each reply you typed, cut around meetings, out-of-office blocks (`"away": true` in
+  `--meetings`) and typing in other sessions, and the timeline draws them dotted and left out until you tick them.
+  And overlaps between rows now count in both rows: the timeline marks them and takes nothing off either.
 - **1.13.0** (2026-11-18): the Spend tab splits each project's cost into **Your patch** (your login plus the
   service accounts you list in `spend_accounts.json`) and **The neighbours** (everyone else), in the summary bar,
   each row and each day's bar.
