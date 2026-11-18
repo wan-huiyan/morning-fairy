@@ -1023,6 +1023,8 @@ def render_chapter(ch, chips=False, date="", mood="calm", admin=None, rel=None):
         groups.append(render_hours(ch["hours"], ch["hours"].get("_order", ())))
     elif ch.get("id") == "hours":
         groups.append('<div class="hours">' + render_fill() + '<div class="htip" role="tooltip" hidden></div></div>')  # an older page's rows still get the button
+    if ch.get("spend"):
+        groups.append(render_spend(ch["spend"]))
     rows = ch.get("rows")
     if rows:
         groups.append('<div class="rows">' + "".join(
@@ -1457,6 +1459,132 @@ CSS_HOURS = r"""
   .hday{grid-template-columns:3.6em 1fr 6.8em;gap:4px 10px}
 }
 @media (forced-colors: active){.hseg,.hkey{forced-color-adjust:none;border:1px solid CanvasText}}
+"""
+
+
+# ---- Spend: BigQuery query spend this month for every GCP project you are working in.
+# Data comes from measure_gcp_spend.py (the morning run pastes its --json output as the chapter's "spend"). One row per
+# project: a little bar per day of the month (its own scale, the figure beside it gives the size), today striped as
+# still filling, days to come left as dotted slots. Layout ideas borrowed from agy-gcp-companion by ericsk, credited
+# in the foot. It reuses the Hours chapter's classes, tooltip and hues, so every world styles it the same way.
+def _usd(x, cents=True):
+    if x is None:
+        return "not known"
+    return f"${x:,.2f}" if cents or x < 100 else f"${x:,.0f}"
+
+
+def _spend_change(p, prev_month):
+    if not p.get("prev_same"):
+        return f"none in {prev_month}"
+    ch = (p["mtd"] / p["prev_same"] - 1) * 100
+    if abs(ch) < 5:
+        return f"about the same as {prev_month}"
+    return f"{'up' if ch > 0 else 'down'} {abs(ch):.0f}% on {prev_month}"
+
+
+def _d_label(iso):
+    import datetime as dt
+    try:
+        d = dt.date.fromisoformat(iso)
+        return f"{d.day} {d:%b}"
+    except (TypeError, ValueError):
+        return str(iso or "")
+
+
+SPEND_ROW_MIN = 0.5  # a project under 50 cents this month folds into one "also watched" line
+
+
+def spend_mood(sp):
+    """Sweat when a project spikes or is heading well past last month; calm otherwise."""
+    for p in sp.get("projects", []):
+        if p.get("spikes") or (p.get("projected") and p.get("prev_total") and p["projected"] > 1.25 * p["prev_total"] and p["projected"] > 20):
+            return "sweat"
+    return "calm"
+
+
+def render_spend(sp):
+    every = [p for p in sp.get("projects", []) if isinstance(p, dict) and p.get("project")]
+    projects = [p for p in every if (p.get("mtd") or 0) >= SPEND_ROW_MIN or p.get("problems")]
+    small = [p for p in every if p not in projects]
+    prev_month = sp.get("prev_month") or "last month"
+    tot = sum(p.get("mtd") or 0 for p in every)
+    proj = sum(p.get("projected") or 0 for p in every)
+    prev = sum(p.get("prev_same") or 0 for p in every)
+    mood = spend_mood(sp)
+    pal = mascot_svg("smascot", "A worried ticket: a project's spend jumped" if mood == "sweat" else "A calm ticket: spend looks steady", mood)
+    stats = [(_usd(tot), f"so far this month, {len(every)} {'project' if len(every) == 1 else 'projects'}"),
+             (_usd(proj), "by month end, if the last week's pace holds"),
+             (_usd(prev), f"on the same days of {prev_month}")]
+    summary = ('<div class="ssum">' + pal + '<div class="hsum">' + "".join(
+        f'<div class="hstat"><span class="hstat-v">{esc(v)}</span><span class="hstat-l">{esc(l)}</span></div>' for v, l in stats)
+        + "</div></div>")
+    rows = []
+    for p in projects:
+        days = p.get("days") or []
+        top = max([d.get("usd") or 0 for d in days if not d.get("future")] + [0.01])
+        bars = []
+        for d in days:
+            if d.get("future"):
+                bars.append('<span class="sbar sfut" aria-hidden="true"></span>')
+                continue
+            v = d.get("usd") or 0
+            tip = f"{_d_label(d.get('date'))}: {_usd(v)}" + (" so far" if d.get("partial") else "") + (f", most by {d['top']}" if d.get("top") else "")
+            bars.append(f'<span class="sbar" data-tip="{esc(tip)}"><i class="hseg hs1{" nb" if d.get("partial") else ""}" '
+                        f'style="height:{max(4, 100 * v / top):.1f}%"></i></span>')
+        notes = []
+        if p.get("top"):
+            t = p["top"][0]
+            share = f", {100 * t['usd'] / p['mtd']:.0f}% of it" if p.get("mtd") else ""
+            notes.append(f"Most by {t['who']}: {_usd(t['usd'])}{share}.")
+        for k in p.get("spikes") or []:
+            notes.append(f"{_d_label(k['date'])} jumped to {_usd(k['usd'])}, {100 * (k.get('share') or 0):.0f}% of the month"
+                         + (f", mostly {k['top']}." if k.get("top") else "."))
+        if p.get("reserved_jobs"):
+            notes.append(f"{p['reserved_jobs']} jobs ran on reserved capacity, priced here as if on-demand, so this figure is too high.")
+        for pr in p.get("problems") or []:
+            notes.append(pr[0].upper() + pr[1:] + ", so this figure is too low.")
+        aria = (f"{p['project']}: {_usd(p.get('mtd'))} so far, {_spend_change(p, prev_month)}. "
+                + " ".join(notes))
+        change = _spend_change(p, prev_month)
+        warn = " hgap" if change.startswith("up") and (p.get("mtd") or 0) >= 5 else ""
+        rows.append(f'<li class="hday sday"><span class="hday-l">{esc(p["project"])}</span>'
+                    f'<span class="sspark" role="img" aria-label="{esc(aria)}">{"".join(bars)}</span>'
+                    f'<span class="hday-t"><b>{_usd(p.get("mtd"))}</b><small class="{warn.strip()}">{esc(change)}</small>'
+                    f'<small>month end {_usd(p.get("projected"))}</small></span>'
+                    + (f'<p class="hday-note">{esc(" ".join(notes))}</p>' if notes else "") + "</li>")
+    if small:
+        rows.append('<li class="hday sday sday-small"><p class="hday-note">Also watched, under '
+                    + _usd(SPEND_ROW_MIN) + ' so far: ' + esc("; ".join(f'{p["project"]} {_usd(p.get("mtd"))}' for p in small)) + '.</p></li>')
+    trs = "".join(f'<tr><td>{esc(p["project"])}</td><td>{esc(t["who"])}</td><td class="num">{_usd(t["usd"])}</td></tr>'
+                  for p in every for t in p.get("top") or [])
+    table = ('<details class="htable"><summary>Who spent it, as a table</summary><div class="htable-w"><table>'
+             '<thead><tr><th>Project</th><th>Account</th><th class="num">This month</th></tr></thead>'
+             f'<tbody>{trs}</tbody></table></div></details>') if trs else ""
+    cr = sp.get("credit") or {}
+    credit = (f' Layout ideas borrowed from <a href="{esc(safe_url(cr.get("url", "")))}">{esc(cr.get("name", ""))}</a> by {esc(cr.get("by", ""))}.'
+              if cr.get("url") else "")
+    foot = (f'<p class="hfoot">BigQuery queries only, estimated at ${sp.get("price_per_tib", 6.25)} per TiB scanned: not storage, '
+            f'Cloud Run or anything else, and before any free tier or credits. A project shows up here when you ran a query in it in the '
+            f'last {sp.get("active_days", 30)} days. Each row has its own scale; the striped bar is today, still filling. '
+            f'Reading these costs a few cents a day, billed to {esc(sp.get("billed_to") or "each project itself")}.{credit}</p>')
+    if not every:
+        return '<div class="hours spend"><p class="hfoot">No project with a BigQuery query of yours in the last month.</p></div>'
+    return (f'<div class="hours spend">{summary}<ol class="hdays sdays">{"".join(rows)}</ol>{foot}{table}'
+            '<div class="htip" role="tooltip" hidden></div></div>')
+
+
+CSS_SPEND = """
+.ssum{display:flex;align-items:center;gap:14px}
+.smascot{width:52px;height:52px;flex:none}
+.sday{grid-template-columns:minmax(8em,13em) 1fr 8.4em}
+.sday .hday-l{overflow-wrap:anywhere;font-size:13.5px}
+.sday .hday-t small{white-space:normal;text-align:right}
+.sday-small{grid-template-columns:1fr}.sday-small .hday-note{grid-column:1}
+.sspark{display:flex;align-items:flex-end;gap:2px;height:34px}
+.sbar{flex:1 1 0;height:100%;display:flex;align-items:flex-end;min-width:2px}
+.sbar i{display:block;width:100%;border-radius:2px 2px 1px 1px}
+.sfut{height:4px;align-self:flex-end;background:radial-gradient(var(--hun) .9px,transparent 1.3px) 0 0/4px 4px;opacity:.6}
+@media (max-width:640px){.sday{grid-template-columns:1fr 7.6em}.sday .hday-l,.sday .hday-note{grid-column:1/-1}.sday .sspark{grid-column:1}}
 """
 
 JS_HOURS = r"""
@@ -2119,7 +2247,9 @@ def render_nochange(ch):
     if not rows:
         return ""
     li = "".join("<li>" + (f'<b>{r["title"]}</b> ' if r.get("title") else "") + f'<span>{r["html"]}</span></li>' for r in rows)
-    return f'<h3 class="group" id="nochange">No change in Jira</h3><ul class="nc-list">{li}</ul>'
+    # folded by default: it is the evidence behind "nothing to update", not something to act on
+    return (f'<details class="nc-fold" id="nochange"><summary><h3 class="group">Already up to date in Jira ({len(rows)})</h3></summary>'
+            f'<ul class="nc-list">{li}</ul></details>')
 
 
 def render_marquee(words):
@@ -4512,6 +4642,14 @@ CSS_TODO = r"""
 .qstart:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .qstart:disabled,.qg-start:disabled{opacity:.6;cursor:progress}
 .quest .qmeta{flex-wrap:wrap}
+.nc-fold{margin-top:18px}
+.nc-fold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+.nc-fold>summary::-webkit-details-marker{display:none}
+.nc-fold>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.nc-fold[open]>summary::before{transform:rotate(45deg)}
+.nc-fold>summary h3{margin:0}
+.nc-fold>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+@media (prefers-reduced-motion:reduce){.nc-fold>summary::before{transition:none}}
 .nc-list{margin:8px 0 0;padding-left:20px;font-size:14px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
 .nc-list li{margin:6px 0}
 .nc-list b{color:var(--ink);font-weight:650}
@@ -6859,9 +6997,11 @@ def _build(content, log, admin_log, briefs, look):
         css += CSS_BRIEF
     if any(lst.get("tone") == "scout" for c in d["chapters"] for lst in c.get("lists", [])):
         css += CSS_SCOUT
-    has_hours = any(c.get("hours") or c.get("id") == "hours" for c in d["chapters"])
+    has_hours = any(c.get("hours") or c.get("id") == "hours" or c.get("spend") for c in d["chapters"])
     if has_hours:
         css += CSS_HOURS
+    if any(c.get("spend") for c in d["chapters"]):
+        css += CSS_SPEND
     sleepy = {"icon": FAN.favicon(asleep=True) if fav else favicon_href("sleepy")}
     sound_on, sound_off = ICONS["sound"], ICONS["mute"]  # the top bar keeps its own sound and Look drawings, whatever the look
     tabicons = {"sad": FAN.favicon(asleep=True), "starry": favicon} if fav else {"sad": sad_icon(), "starry": favicon_href("starry")}
@@ -6954,9 +7094,12 @@ def _build(content, log, admin_log, briefs, look):
         top = ""
     cta_at = next((c["id"] for c in d["chapters"] if any(g.get("cards") for g in c.get("groups", []))), first["id"])
     names_n = len(names) > 1
-    # "No change" is not a section of its own when there is a Jira section to hold it
+    # "No change" is not a section of its own when there is a Jira section to hold it: under the copy button on a morning
+    # with Jira cards, else at the foot of the Jira chapter itself (a quiet morning used to give it a tab of its own)
     nc = next((c for c in d["chapters"] if c["id"] == "nochange"), None)
-    if nc is not None and not any(g.get("cards") for c in d["chapters"] if c is not nc for g in c.get("groups", [])):
+    has_cards = any(g.get("cards") for c in d["chapters"] if c is not nc for g in c.get("groups", []))
+    nc_at = cta_at if has_cards else next((c["id"] for c in d["chapters"] if c["id"] == "todo"), None)
+    if nc is not None and nc_at is None:
         nc = None
     shown = [c for c in d["chapters"] if c is not nc]
     for c in shown:
@@ -6967,7 +7110,9 @@ def _build(content, log, admin_log, briefs, look):
         if i == 0:
             body = top + body
         if c["id"] == cta_at:
-            body += cta + (render_nochange(nc) if nc is not None else "")
+            body += cta
+        if nc is not None and c["id"] == nc_at:
+            body += render_nochange(nc)
         if i == len(shown) - 1:
             body = render_marquee(words) + body + f'<p class="foot">Built {esc(d["built"])}. Draft only until you paste the rows back.</p>' + credits
         icon = SEC_ICON.get(c["id"]) or (SEC_ICON["today"] if c.get("day") else SEC_ICON["page"])

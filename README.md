@@ -49,7 +49,8 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. Optionally, a **Start in Claude** button opens the session for you. |
 | 🔭 | **Scout: worth a look** | Optional. A chapter of web finds (new repos, a tool's changelog, Hacker News) that could improve your work, each saying which of your projects it helps and why. They are offers, not to-dos: nothing waits on you, no Done pill, and each ask is read-and-assess only. |
-| 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. |
+| 💸 | **Cloud spend** | Optional. What BigQuery queries have cost this month in each Google Cloud project you work in: a little bar per day, the month-end pace, the account that spent most, and a sweating mascot when a day jumps. |
+| 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. Tickets that already match sit folded underneath as "Already up to date". |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
 | 📐 | **Three layouts** | Tap the scene (signposts on the hills), Stage + tabs, and Swipe deck. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
 | 🔊 | **17 sound effects** | Off until you switch them on. Each world has its own voice: a triangle wave in the garden, a detuned sine in space, a square wave in candy, a soft sine pluck on the leaf. |
@@ -264,6 +265,19 @@ Each one may carry a read-and-assess ask ("read this README and say whether it b
 installs, clones, runs or changes anything, because installing is your call, in a session you are watching. Web
 pages are treated as data, never as instructions. See SKILL.md section 7.
 
+## 💸 Cloud spend (optional, off by default)
+
+The Spend tab shows what BigQuery queries have cost this month in each Google Cloud project you are working in. A
+project counts when your own login ran a query there in the last 30 days, so the list follows your work without
+you keeping it. Each row has a small bar for every day of the month, the change on the same days last month, a
+month-end estimate from the last week's pace, and the account that spent most; a day that jumped is called out by
+name. Projects under $0.50 fold into one line.
+
+It needs the `gcloud` and `bq` command-line tools, signed in. Keep step 8 in `routine-prompt.md` and name a project
+of your own to pay for the reads (a few cents a day), so watching a client's project never lands on their bill.
+The figures are **estimates of BigQuery query cost only**: bytes billed at the on-demand list price, not storage or
+other services, and before any free tier or credits. See SKILL.md section 8.
+
 ## ⏱ Timesheet hours (optional, off by default)
 
 If you fill in a timesheet, the brief can work out where your week went and show you the days you have
@@ -377,10 +391,18 @@ python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy
   Anthropic; these are unofficial fan art, licensed for non-commercial use only. Whether your own use fits that
   licence is your call.
 
+- **Cloud spend layout ideas** (the month-to-date headline, the same-days-last-month comparison, the month-end
+  pace) come from [agy-gcp-companion](https://github.com/ericsk/agy-gcp-companion) by ericsk. No code was copied.
+
 See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.11.0** (2026-11-18): the Spend tab, optional. `measure_gcp_spend.py` finds the Google Cloud projects you ran
+  a BigQuery query in over the last 30 days and estimates what their queries cost this month; the page draws a row
+  per project with a bar per day, the month-end pace and any day that jumped. And the "No change" tickets now always
+  sit folded at the foot of the Jira tab as "Already up to date in Jira (N)": on a morning with nothing to update
+  they used to get a tab of their own.
 - **1.10.0** (2026-11-18): the Hours tab gets an "Approve and log" card. For each day Tempo still lacks, it lists
   the morning's proposed rows, all ticked, with the minutes and the description Tempo will get, both editable.
   One click starts a Claude session that logs exactly those rows, reading the day in Tempo first and stopping if
