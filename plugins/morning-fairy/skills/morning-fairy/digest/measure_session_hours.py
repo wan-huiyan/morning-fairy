@@ -213,6 +213,61 @@ def _emit(bucket, stretch, require_typed):
     bucket.append((stretch[0][0], stretch[-1][0]))
 
 
+def _title(first_text, limit=60):
+    """A short, plain name for a session: its first message without harness tags."""
+    import re
+    t = re.sub(r"<[^>]{1,80}>", " ", first_text or "")
+    t = " ".join(t.split())
+    return t[:limit].rstrip() + ("…" if len(t) > limit else "")
+
+
+def stretches(projects_dir, clients, gap_minutes):
+    """Every stretch of every session, kept or not: [(client, start, end, typed, title)]. typed is how many messages
+    in it she typed; a stretch with none is an agent running alone. The timeline on the brief draws these (--spans)."""
+    out = []
+    gap = dt.timedelta(minutes=gap_minutes)
+    for path in glob.glob(os.path.join(projects_dir, "*", "*.jsonl")):
+        cwd, first, stamps = read_session(path)
+        if len(stamps) < 2 or is_scheduled(first):
+            continue
+        name, title = classify(cwd, clients, first), _title(first)
+        cur = [stamps[0]]
+        for row in stamps[1:] + [None]:
+            if row is not None and row[0] - cur[-1][0] <= gap:
+                cur.append(row)
+                continue
+            if len(cur) >= 2:
+                out.append((name, cur[0][0], cur[-1][0], sum(1 for _, t in cur if t), title))
+            if row is not None:
+                cur = [row]
+    return out
+
+
+def span_rows(projects_dir, clients, gap_minutes, lo, hi, meetings_path=None, include_unattended=False):
+    """{date: [stretch]} for --spans: each session stretch and each meeting, split at midnight, clipped to the window."""
+    items = [(c, a, b, n, t, "session") for c, a, b, n, t in stretches(projects_dir, clients, gap_minutes)]
+    if meetings_path:
+        with open(meetings_path) as fh:
+            for m in json.load(fh):
+                items.append((m.get("client", "unattributed"), dt.datetime.fromisoformat(m["start"]).astimezone(),
+                              dt.datetime.fromisoformat(m["end"]).astimezone(), None, str(m.get("title") or "Meeting")[:60], "meeting"))
+    out = {}
+    for c, a, b, n, t, kind in sorted(items, key=lambda x: x[1]):
+        start = a
+        for day, seconds in split_at_midnight(a, b):
+            stop = start + dt.timedelta(seconds=seconds)
+            if lo <= day <= hi and seconds >= 60:
+                row = {"client": c, "kind": kind, "start": start.strftime("%H:%M"),
+                       "end": "24:00" if stop.time() == dt.time.min and stop.date() > day else stop.strftime("%H:%M"),
+                       "minutes": round(seconds / 60), "title": t}
+                if kind == "session":
+                    row["typed"] = n
+                    row["counted"] = bool(n) or include_unattended
+                out.setdefault(str(day), []).append(row)
+            start = stop
+    return out
+
+
 def add_meetings(by_client, meetings_path):
     with open(meetings_path) as fh:
         for m in json.load(fh):
@@ -250,6 +305,9 @@ def main(argv=None):
                     help="also count stretches with no message she typed (the count before "
                          "1.10.0); use it to see how much a day leans on agents running alone.")
     ap.add_argument("--json", action="store_true", dest="as_json")
+    ap.add_argument("--spans", action="store_true",
+                    help="with --json, also list every stretch per day (times, client, how many messages she typed, "
+                         "whether it counts, the session's name) and each meeting: the brief's Hours timeline draws them")
     args = ap.parse_args(argv)
 
     lo = dt.date.fromisoformat(args.start)
@@ -285,6 +343,8 @@ def main(argv=None):
             "by_client": {n: {str(d): round(h, 2) for d, h in sorted(pd.items())}
                           for n, pd in sorted(result.items())},
             "wall_clock": {str(d): round(h, 2) for d, h in sorted(wall.items())},
+            **({"spans": span_rows(args.projects_dir, clients, args.gap, lo, hi, args.meetings, args.include_unattended)}
+               if args.spans else {}),
             "caveat": "Proxy for a timesheet, not a measurement of the working day. "
                       "See 'Timesheet hours' in the morning-fairy skill.",
         }

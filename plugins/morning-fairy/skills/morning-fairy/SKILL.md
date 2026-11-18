@@ -229,11 +229,12 @@ today, never a single day, because the point is to catch the days that were miss
 
 ```bash
 python3 -I <skill>/digest/measure_session_hours.py \
-  --start <yesterday minus 6 days> --end <yesterday> --json
+  --start <yesterday minus 6 days> --end <yesterday> --json --spans
 ```
 
-Add `--meetings` with the window's calendar meetings as `{"client","start","end"}` so a meeting
-attended with no session open still counts; the run already fetched the calendar.
+Add `--meetings` with the window's calendar meetings as `{"client","start","end","title"}` so a meeting
+attended with no session open still counts; the run already fetched the calendar. `--spans` adds a
+`spans` key: every stretch per day, typed or not, and every meeting, which the Approve and log card draws.
 
 **What the number is.** Every session transcript carries a timestamp per message. Messages less than
 `--gap` minutes apart (15 by default) are one stretch of work; a longer gap ends it and the idle time
@@ -281,6 +282,19 @@ reads the day in Tempo first and stops on any mismatch (time already on those wo
 the picker, the wrong week). An hours entry in the brief's content may carry a `"desc"` field to
 set the description the page offers; without one it starts from the entry's `"what"`. The helper logs
 nothing to disk.
+
+**The timeline.** When a day in the brief's content carries `"spans"`, the card draws that day as a
+timeline: one lane per row, each stretch across the hours in the project's colour (solid billable,
+striped non-billable, a pill for a calendar meeting, faded and dashed for a stretch where an agent ran
+alone, which starts left out). Click a block to count it or leave it out. Where two rows overlap, the
+overlap is hatched and counted once, in the meeting's row by default (else the earlier row); a click
+moves it. Each lane's total is its counted blocks plus a "min other" box, prefilled with whatever the
+morning proposed beyond the blocks, and the tiles and the button add the lanes up. Hovering a block
+says where it came from. Copy each stretch from the measure's `spans` output as
+`{"row","kind","start","end","title","typed","counted"}`, where `row` is the index in that day's
+`entries` of the row it counts towards; leave out a stretch that fits no row rather than guess. Set
+each row's `minutes` to what its blocks add up to under that overlap rule, so the "other" box starts
+at 0. A day without `spans` keeps the plain row list.
 
 **Checking what is already logged.** A timesheet tool's API may not answer "are *my* hours in?" — in
 Tempo, for instance, the worklog it syncs into Jira is authored by the Tempo app account, never the

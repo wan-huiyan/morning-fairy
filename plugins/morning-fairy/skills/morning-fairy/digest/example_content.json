@@ -351,6 +351,13 @@
      {
       "date": "2026-03-11",
       "label": "Wed 11",
+      "spans": [
+       {"row": 0, "kind": "session", "start": "09:10", "end": "11:15", "title": "Fix the Orchard checkout tests", "typed": 9, "counted": true},
+       {"row": 1, "kind": "meeting", "start": "10:00", "end": "10:30", "title": "Team standup"},
+       {"row": 0, "kind": "session", "start": "13:30", "end": "15:05", "title": "Orchard release notes", "typed": 5, "counted": true},
+       {"row": 0, "kind": "session", "start": "15:30", "end": "16:35", "title": "Orchard release notes", "typed": 3, "counted": true},
+       {"row": 0, "kind": "session", "start": "17:00", "end": "17:40", "title": "Overnight test sweep", "typed": 0, "counted": false}
+      ],
       "entries": [
        {
         "project": "Orchard app",
