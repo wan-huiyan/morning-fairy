@@ -306,6 +306,10 @@ watching.
 **The Hours tab.** The brief draws the week as one stacked bar per day: each project in its own colour,
 billable work solid, non-billable striped, sessions with no project yet dotted grey, and a tick on each
 bar for what Tempo already holds. Week totals sit above the bars and every entry is one tap away as a table.
+Above them, the Approve and log card can draw each unlogged day as a timeline: one lane per row, every stretch
+of work across the hours in the same colours, calendar meetings as pills, overlaps between rows hatched and
+counted once. Click a block in or out, click an overlap to move it, hover any block to see where it came from;
+the lane totals add up into the day's tiles and the approve button.
 
 **The Fill Tempo button** (macOS, optional) opens Terminal with a Claude session that measures one day,
 shows you the proposed entries and the gap against Tempo, and logs them one at a time only after you say
@@ -398,6 +402,11 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.12.0** (2026-11-18): the Approve and log card draws each day as a timeline. One lane per row, each stretch
+  of work across the hours in the project's colour, calendar meetings as pills, and stretches where an agent ran
+  alone faded and left out until you click them in. Where two rows overlap, the overlap is hatched and counted
+  once (in the meeting's row by default; a click moves it). Lane totals sum into the tiles and the button, and
+  hovering a block says where it came from. `measure_session_hours.py --spans` lists the stretches the brief needs.
 - **1.11.0** (2026-11-18): the Spend tab, optional. `measure_gcp_spend.py` finds the Google Cloud projects you ran
   a BigQuery query in over the last 30 days and estimates what their queries cost this month; the page draws a row
   per project with a bar per day, the month-end pace and any day that jumped. And the "No change" tickets now always

@@ -1144,7 +1144,93 @@ def _log_days(h):
     return out
 
 
-def render_approve(h):
+def _tpos(m):
+    """Where a minute of the day sits on the timeline, in %: before 7 and after 20 squeezed into the 9% edges."""
+    h = m / 60
+    return h / 7 * 9 if h < 7 else 9 + (h - 7) / 13 * 82 if h < 20 else min(100.0, 91 + (h - 20) / 4 * 9)
+
+
+def _hhmm(v):
+    """'HH:MM' (24:00 allowed) as minutes since midnight, else None."""
+    m = re.fullmatch(r"([01]\d|2[0-4]):([0-5]\d)", v) if isinstance(v, str) else None
+    if not m:
+        return None
+    t = int(m.group(1)) * 60 + int(m.group(2))
+    return t if t <= 1440 else None
+
+
+def _day_spans(dd):
+    """A day's stretches that can be drawn: [(row, a, b, kind, span)], kind "typed", "alone" or "meeting"."""
+    out = []
+    for sp in dd.get("spans") or []:
+        if not isinstance(sp, dict):
+            continue
+        i, a, b = sp.get("row"), _hhmm(sp.get("start")), _hhmm(sp.get("end"))
+        if not isinstance(i, int) or isinstance(i, bool) or not 0 <= i < len(dd["entries"]) or dd["entries"][i].get("minutes", 0) <= 0:
+            continue
+        if a is None or b is None or b <= a:
+            continue
+        kind = "meeting" if sp.get("kind") == "meeting" else "typed" if sp.get("counted", True) else "alone"
+        out.append((i, a, b, kind, sp))
+    return out
+
+
+def _span_tip(e, a, b, kind, sp):
+    when = f'{a // 60:02d}:{a % 60:02d}–{b // 60:02d}:{b % 60:02d}, {_hm(b - a)}'
+    title = " ".join(str(sp.get("title") or "").split())
+    title = title if len(title) <= 61 else title[:60].rstrip() + "…"
+    if kind == "meeting":
+        base = f'{"“" + title + "”" if title else "Meeting"} on the calendar, {when}.'
+    else:
+        n = sp.get("typed") if isinstance(sp.get("typed"), int) else 0
+        base = f'{e["project"]} session{" “" + title + "”" if title else ""}, {when}. ' + (
+            f'You typed {n} message{"s" if n != 1 else ""} here.' if n else "Nobody typed here: the agent ran alone.")
+    return base + " Counted: click to leave it out.", base + " Left out: click to count it."
+
+
+def _timeline(dd, slot):
+    """One lane per proposed row: its stretches drawn across the day in the project's colour (solid billable, striped
+    non-billable, as the bars below), with live totals the page script works out (JS_HOURS)."""
+    spans = _day_spans(dd)
+    axis = "".join(f'<span style="left:{_tpos(h * 60):.2f}%">{h}</span>' for h in (0, 7, 9, 11, 13, 15, 17, 19, 24))
+    edge = '<i class="tnight" style="left:0;width:9%"></i><i class="tnight" style="left:91%;width:9%"></i>'
+    lanes = []
+    for i, e in enumerate(dd["entries"]):
+        if e.get("minutes", 0) <= 0:
+            continue
+        cls = f'hs{slot.get(e["project"], 0)}{"" if e.get("billable") else " nb"}'
+        blocks = []
+        for row, a, b, kind, sp in spans:
+            if row != i:
+                continue
+            on_tip, off_tip = _span_tip(e, a, b, kind, sp)
+            on = kind != "alone"
+            blocks.append(f'<button type="button" class="tblk {cls}{" tmeet" if kind == "meeting" else ""}" data-a="{a}" data-b="{b}"'
+                          f'{" data-meet" if kind == "meeting" else ""} aria-pressed="{"true" if on else "false"}" '
+                          f'style="left:{_tpos(a):.3f}%;width:{max(_tpos(b) - _tpos(a), .45):.3f}%" '
+                          f'data-tip="{esc(on_tip if on else off_tip)}" data-tip-on="{esc(on_tip)}" data-tip-off="{esc(off_tip)}" '
+                          f'aria-label="{esc(on_tip if on else off_tip)}"></button>')
+        name = ", ".join(x for x in (e["project"], e.get("key")) if x)
+        desc = str(e.get("desc") or e.get("what") or "")[:LOG_DESC_MAX]
+        lanes.append(
+            f'<li class="happ-row tlane" data-bill="{1 if e.get("billable") else 0}" data-prop="{e["minutes"]}">'
+            f'<input type="checkbox" class="happ-on" checked data-i="{i}" aria-label="Log {esc(name)}">'
+            f'<span class="happ-what"><b>{esc(e["project"])}</b><small>{esc(e.get("key") or "no work item")} · '
+            f'{"billable" if e.get("billable") else "non-billable"}</small></span>'
+            f'<span class="ttrack">{edge}{"".join(blocks)}</span>'
+            f'<span class="tsum"><b class="tmin">{_hm(e["minutes"])}</b><label class="tx">+<input type="number" class="happ-x" min="0" '
+            f'max="600" step="5" aria-label="Other minutes for {esc(name)}, beyond the blocks">min other</label>'
+            f'<input type="hidden" class="happ-min" value="{e["minutes"]}"></span>'
+            f'<input type="text" class="happ-desc" maxlength="{LOG_DESC_MAX}" value="{esc(desc)}" aria-label="Tempo description for {esc(name)}"></li>')
+    tiles = ('<div class="ttiles"><div><small>Billable</small><b data-t="bill">0</b></div><div><small>Non-billable</small>'
+             '<b data-t="non">0</b></div><div><small>Day total</small><b data-t="all">0</b></div></div>')
+    keys = ('<p class="tkeys"><span><i class="tk hs1"></i>you typed</span><span><i class="tk hs1 tmeet"></i>calendar meeting</span>'
+            '<span><i class="tk hs1 toffk"></i>agent alone, left out</span><span><i class="tk tovk"></i>overlap, counted once</span></p>')
+    return (f'{tiles}<div class="tgrid"><span></span><span class="taxis">{axis}</span><span></span></div>'
+            f'<ul class="happ-rows tl-rows">{"".join(lanes)}</ul>{keys}')
+
+
+def render_approve(h, slot=None):
     """Approve and log: the morning's proposed rows for each day Tempo still lacks, each one ticked, with
     its minutes and the description Tempo gets, editable. The button sends the ticked rows to serve.py /log-hours, which
     checks them against this brief's saved content and starts a session that logs exactly those, with no second OK."""
@@ -1170,11 +1256,14 @@ def render_approve(h):
                 f'<label class="happ-m"><input type="number" class="happ-min" min="5" max="600" step="5" value="{e["minutes"]}" '
                 f'aria-label="Minutes for {esc(name)}"><span>min</span></label>'
                 f'<input type="text" class="happ-desc" maxlength="{LOG_DESC_MAX}" value="{esc(desc)}" aria-label="Tempo description for {esc(name)}"></li>')
+        if _day_spans(dd):
+            rows = None
         logged = dd.get("logged")
         note = ("Tempo was not read for this day: the session checks it first." if logged is None
                 else f"Tempo already has {_hm(logged)} for this day." if logged else "Tempo has nothing for this day yet.")
-        sets.append(f'<div class="happ-day" data-day="{esc(dd["date"])}"{"" if n == 0 else " hidden"}>'
-                    f'<p class="happ-note">{esc(note)}</p><ul class="happ-rows">{"".join(rows)}</ul></div>')
+        body = _timeline(dd, slot or {}) if rows is None else f'<ul class="happ-rows">{"".join(rows)}</ul>'
+        sets.append(f'<div class="happ-day{" tl-day" if rows is None else ""}" data-day="{esc(dd["date"])}"{"" if n == 0 else " hidden"}>'
+                    f'<p class="happ-note">{esc(note)}</p>{body}</div>')
     return ('<div class="happ" data-approve><div class="happ-head"><h3 class="hfill-h">Approve and log</h3>'
             '<p class="hfill-p">The morning&#8217;s proposed rows. Untick, change the minutes or the description, then approve: '
             'a Claude session logs exactly these in Tempo, reading the day first and stopping if anything does not match.</p></div>'
@@ -1255,7 +1344,7 @@ def render_hours(h, order=()):
         for e in dd.get("entries") or []:
             per[e["project"]][0 if e.get("billable") else 1] += e.get("minutes", 0)
 
-    fill = render_approve(h) + render_fill()
+    fill = render_approve(h, slot) + render_fill()
 
     def key(cls):
         return f'<span class="hkey {cls}" aria-hidden="true"></span>'
@@ -1388,6 +1477,33 @@ CSS_HOURS = r"""
 .happ-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .happ-foot .hfill-st{flex:1 1 16em}
 [data-approve-go][aria-busy="true"]{opacity:.7;cursor:progress}
+/* the day as a timeline: one lane per row, each stretch in its project's colour, as the bars below */
+.ttiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:2px 0 10px}
+.ttiles div{background:var(--card-solid);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:grid}
+.ttiles small{font-size:12px;color:var(--muted)}.ttiles b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.tgrid{display:block;padding:0 11px}.tgrid>span:empty{display:none}
+.taxis{display:block;position:relative;height:15px;font-size:11px;color:var(--muted)}
+.taxis span{position:absolute;transform:translateX(-50%)}
+.tlane{grid-template-columns:auto minmax(0,1fr) auto}
+.tlane .tsum{grid-column:3;grid-row:1}.tlane .happ-desc{grid-column:1/-1;grid-row:3}
+.ttrack{grid-row:2;grid-column:1/-1;position:relative;height:26px;border-radius:7px;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.tnight{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.tnight:first-child{border-radius:7px 0 0 7px}.tnight+.tnight{border-radius:0 7px 7px 0}
+.tblk,.tk{--c:var(--h0)}
+.tblk{position:absolute;top:3px;bottom:3px;min-width:3px;padding:0;border:0;border-radius:4px;cursor:pointer;background:var(--c)}
+.tblk.nb,.tk.nb{background:repeating-linear-gradient(45deg,var(--c) 0 2.5px,color-mix(in srgb,var(--c) 26%,var(--card-solid)) 2.5px 6px)}
+.tblk.tmeet,.tk.tmeet{border-radius:999px;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ink) 45%,transparent)}
+.tblk[aria-pressed="false"],.tk.toffk{background:color-mix(in srgb,var(--c) 16%,transparent);outline:1px dashed color-mix(in srgb,var(--c) 75%,var(--ink));outline-offset:-1px;box-shadow:none}
+.tblk:hover{filter:brightness(1.08)}.tblk:focus-visible,.tovl:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tovl,.tk.tovk{background:repeating-linear-gradient(-45deg,var(--ink) 0 1.5px,transparent 1.5px 4.5px);outline:1.5px solid var(--ink);outline-offset:-1.5px}
+.tovl{position:absolute;top:1px;bottom:1px;z-index:2;border:0;padding:0;border-radius:3px;cursor:pointer;min-width:3px}
+.tovl[data-own="0"]{opacity:.28}
+.tsum{display:grid;justify-items:end;gap:2px}.tmin{font-size:15px;font-variant-numeric:tabular-nums}
+.tx{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted)}
+.happ-x{width:3.6em;padding:3px 5px;border-radius:7px;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);font:inherit;font-size:12.5px;text-align:right}
+.tkeys{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0 0;font-size:12px;color:var(--muted)}
+.tk{display:inline-block;width:16px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:5px;background:var(--c)}
+.hs1.tk,.hs1.tblk{--c:var(--h1)}.hs2.tblk{--c:var(--h2)}.hs3.tblk{--c:var(--h3)}.hs4.tblk{--c:var(--h4)}
 /* the action: one panel, the day it will fill named in words */
 .hfill[hidden]{display:none}
 .hfill{display:grid;grid-template-columns:1fr auto;gap:10px 18px;align-items:center;padding:16px 18px;border-radius:18px;
@@ -1663,7 +1779,7 @@ JS_HOURS = r"""
     return [].slice.call(cur().querySelectorAll('.happ-row')).filter(function(li){ return li.querySelector('.happ-on').checked; }).map(function(li){
       return {i: +li.querySelector('.happ-on').getAttribute('data-i'), minutes: Math.round(+li.querySelector('.happ-min').value),
               desc: li.querySelector('.happ-desc').value.trim()};
-    });
+    }).filter(function(x){ return x.minutes > 0; });  // a lane with every block left out logs nothing
   }
   function sum(){
     var r = rows(), m = r.reduce(function(a, x){ return a + (x.minutes > 0 ? x.minutes : 0); }, 0);
@@ -1690,6 +1806,67 @@ JS_HOURS = r"""
         else st.textContent = 'The helper could not start the session (error ' + res.status + '). Nothing was logged.';
       }, function(){ st.textContent = 'The brief helper is not answering. Nothing was logged.'; })
       .then(function(){ go.removeAttribute('aria-busy'); sum(); });
+  });
+})();
+(function(){
+  // the timeline: counted blocks, overlaps between rows counted once (a meeting keeps them, a click moves them), live totals
+  var box = document.querySelector('[data-approve]'); if (!box) return;
+  function hm(m){ var h = Math.floor(m / 60), r = m % 60; return h ? h + 'h' + (r ? (r < 10 ? '0' : '') + r : '') : r + 'm'; }
+  function pos(m){ var h = m / 60; return h < 7 ? h / 7 * 9 : h < 20 ? 9 + (h - 7) / 13 * 82 : Math.min(100, 91 + (h - 20) / 4 * 9); }
+  function t2(m){ return (m < 600 ? '0' : '') + Math.floor(m / 60) + ':' + (m % 60 < 10 ? '0' : '') + m % 60; }
+  function r5(m){ return m <= 0 ? 0 : Math.max(5, Math.round(m / 5) * 5); }
+  [].slice.call(box.querySelectorAll('.tl-day')).forEach(function(day){
+    var lanes = [].slice.call(day.querySelectorAll('.tlane')), owner = {}, first = true;
+    function spans(li){
+      var iv = [].slice.call(li.querySelectorAll('.tblk[aria-pressed="true"]')).map(function(b){
+        return [+b.getAttribute('data-a'), +b.getAttribute('data-b'), b.hasAttribute('data-meet')]; }).sort(function(x, y){ return x[0] - y[0]; });
+      var out = [];
+      iv.forEach(function(x){ var l = out[out.length - 1]; if (l && x[0] <= l[1]) { l[1] = Math.max(l[1], x[1]); l[2] = l[2] || x[2]; } else out.push(x.slice()); });
+      return out;
+    }
+    function calc(){
+      var U = lanes.map(spans), lost = lanes.map(function(){ return 0; });
+      [].slice.call(day.querySelectorAll('.tovl')).forEach(function(o){ o.remove(); });
+      function pair(i, j){ U[i].forEach(function(x){ U[j].forEach(function(y){
+        var a = Math.max(x[0], y[0]), b = Math.min(x[1], y[1]); if (b - a < 1) return;
+        var k = i + '-' + j + '-' + a, own = owner[k] != null ? owner[k] : y[2] !== x[2] ? (y[2] ? j : i) :
+          lanes[j].getAttribute('data-bill') === '1' && lanes[i].getAttribute('data-bill') !== '1' ? j : i;  // a meeting, then billable, then the first row
+        lost[own === i ? j : i] += b - a;
+        [i, j].forEach(function(n){
+          var o = document.createElement('button'); o.type = 'button'; o.className = 'tovl'; o.setAttribute('data-own', own === n ? '1' : '0');
+          o.style.left = pos(a) + '%'; o.style.width = Math.max(pos(b) - pos(a), .45) + '%';
+          var tip = 'Overlap ' + t2(a) + '\u2013' + t2(b) + ', ' + hm(b - a) + ': ' + lanes[i].querySelector('b').textContent + ' and ' +
+            lanes[j].querySelector('b').textContent + ' at the same time. Counted once, in ' + lanes[own].querySelector('b').textContent +
+            '. Click to move it to ' + lanes[own === i ? j : i].querySelector('b').textContent + '.';
+          o.setAttribute('data-tip', tip); o.setAttribute('aria-label', tip);
+          o.addEventListener('click', function(){ owner[k] = own === i ? j : i; calc(); });
+          lanes[n].querySelector('.ttrack').appendChild(o);
+        });
+      }); }); }
+      for (var i = 0; i < lanes.length; i++) for (var j = i + 1; j < lanes.length; j++) pair(i, j);
+      var tot = {bill: 0, non: 0};
+      lanes.forEach(function(li, n){
+        var m = U[n].reduce(function(s, x){ return s + x[1] - x[0]; }, 0) - lost[n], x = li.querySelector('.happ-x');
+        if (first && x.value === '') x.value = Math.max(0, Math.round((+li.getAttribute('data-prop') - m) / 5) * 5);
+        var all = r5(Math.max(0, m) + Math.max(0, Math.round(+x.value || 0)));
+        li.querySelector('.tmin').textContent = hm(all); li.querySelector('.happ-min').value = all;
+        if (li.querySelector('.happ-on').checked) tot[li.getAttribute('data-bill') === '1' ? 'bill' : 'non'] += all;
+      });
+      first = false;
+      day.querySelector('[data-t="bill"]').textContent = hm(tot.bill); day.querySelector('[data-t="non"]').textContent = hm(tot.non);
+      day.querySelector('[data-t="all"]').textContent = hm(tot.bill + tot.non);
+      box.dispatchEvent(new Event('change'));
+    }
+    day.addEventListener('click', function(e){
+      var b = e.target.closest && e.target.closest('.tblk'); if (!b) return;
+      var on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      var tip = b.getAttribute(on ? 'data-tip-on' : 'data-tip-off'); b.setAttribute('data-tip', tip); b.setAttribute('aria-label', tip);
+      var t = document.querySelector('.htip'); if (t && !t.hidden) t.textContent = tip;
+      calc();
+    });
+    day.addEventListener('input', function(e){ if (e.target.classList.contains('happ-x')) calc(); });
+    day.addEventListener('change', function(e){ if (e.target.classList.contains('happ-on')) calc(); });
+    calc();
   });
 })();
 """

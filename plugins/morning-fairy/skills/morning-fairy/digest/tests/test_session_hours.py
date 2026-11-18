@@ -262,5 +262,31 @@ class TestMeetingsAndOptIn(Base):
             self.assertIn("patterns", c)
 
 
+class TestSpans(Base):
+    def test_spans_list_every_stretch_typed_alone_and_meetings(self):
+        self.write_session("p1", "a", "/u/acme-platform", span(10, "10:00", "10:30"), first_user="Check the <b>model</b> chart")
+        self.write_session("p1", "b", "/u/acme-platform", span(10, "14:00", "14:20"))  # an agent running alone
+        self.write_session("p2", "c", "/u/acme-platform", span(10, "23:40", "23:55") + [at(11, 0, 10)], first_user="late")
+        cmap = os.path.join(self.root, "clients.json")
+        with open(cmap, "w") as fh:
+            json.dump({"clients": CLIENTS}, fh)
+        meet = os.path.join(self.root, "meetings.json")
+        with open(meet, "w") as fh:
+            json.dump([{"client": "internal", "title": "Weekly sync", "start": at(10, 11).replace(tzinfo=TZ).isoformat(),
+                        "end": at(10, 11, 30).replace(tzinfo=TZ).isoformat()}], fh)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            m.main(["--start", "2026-11-10", "--projects-dir", self.root, "--clients", cmap, "--meetings", meet, "--json", "--spans"])
+        spans = json.loads(buf.getvalue())["spans"]
+        self.assertEqual(list(spans), ["2026-11-10"], "the 00:00-00:10 tail on the 11th is outside the window")
+        got = spans["2026-11-10"]
+        self.assertEqual([(s["client"], s["kind"], s["start"], s["end"], s.get("counted"), s["title"]) for s in got], [
+            ("acme", "session", "10:00", "10:30", True, "Check the model chart"),
+            ("internal", "meeting", "11:00", "11:30", None, "Weekly sync"),
+            ("acme", "session", "14:00", "14:20", False, ""),
+            ("acme", "session", "23:40", "24:00", True, "late")])
+        self.assertEqual((got[0]["typed"], got[2]["typed"]), (1, 0))
+
+
 if __name__ == "__main__":
     unittest.main()

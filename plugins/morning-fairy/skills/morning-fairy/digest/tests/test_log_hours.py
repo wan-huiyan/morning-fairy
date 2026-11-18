@@ -70,6 +70,46 @@ class Card(unittest.TestCase):
         self.assertEqual(bd.render_approve(bd._clean_hours(hours(logged=225))), "")
 
 
+class Timeline(unittest.TestCase):
+    def spans(self):
+        h = hours()
+        h["days"][0]["spans"] = [
+            {"row": 0, "kind": "session", "start": "09:00", "end": "10:30", "title": "Deck checks", "typed": 4, "counted": True},
+            {"row": 0, "kind": "session", "start": "12:00", "end": "12:20", "title": "", "typed": 0, "counted": False},
+            {"row": 1, "kind": "meeting", "start": "10:00", "end": "11:00", "title": "Weekly <sync>"},
+            {"row": 2, "kind": "session", "start": "13:00", "end": "14:00"},   # a zero-minute row: not drawn
+            {"row": 7, "start": "13:00", "end": "14:00"}, {"row": 0, "start": "15:00", "end": "14:00"},  # bad row, backwards
+            {"row": 0, "start": "25:00", "end": "26:00"}, "junk"]
+        return h
+
+    def test_each_row_gets_a_lane_of_blocks_in_its_project_colour(self):
+        h = bd._clean_hours(self.spans())
+        html = bd.render_approve(h, {"Acme": 2, "Admin": 3})
+        self.assertIn('class="happ-day tl-day"', html)
+        self.assertEqual(html.count('class="happ-row tlane"'), 2)
+        self.assertEqual(html.count('<button type="button" class="tblk'), 3, "bad, backwards and zero-row spans are dropped")
+        self.assertIn('class="tblk hs2" data-a="540" data-b="630" aria-pressed="true"', html)
+        self.assertIn('class="tblk hs2" data-a="720" data-b="740" aria-pressed="false"', html, "an agent-alone stretch starts left out")
+        self.assertIn('class="tblk hs3 nb tmeet" data-a="600" data-b="660" data-meet aria-pressed="true"', html)
+        self.assertIn("You typed 4 messages here.", html)
+        self.assertIn("Nobody typed here: the agent ran alone.", html)
+        self.assertIn("&#x201c;Weekly &lt;sync&gt;&#x201d;", html.replace("“", "&#x201c;").replace("”", "&#x201d;"))
+        self.assertNotIn("<sync>", html)
+        for t in ("bill", "non", "all"):
+            self.assertIn(f'data-t="{t}"', html)
+
+    def test_a_day_without_spans_keeps_the_plain_row_list(self):
+        html = bd.render_approve(bd._clean_hours(hours()))
+        self.assertNotIn("tl-day", html)
+        self.assertNotIn("tblk", html)
+        self.assertIn('class="happ-min"', html)
+
+    def test_a_long_session_name_is_cut_with_an_ellipsis(self):
+        on, off = bd._span_tip({"project": "Acme"}, 60, 90, "typed", {"title": "x" * 80, "typed": 1})
+        self.assertIn("“" + "x" * 60 + "…”, 01:00–01:30, 30m.", on)
+        self.assertTrue(on.endswith("Counted: click to leave it out.") and off.endswith("Left out: click to count it."))
+
+
 class Route(Config, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
