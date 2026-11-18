@@ -293,7 +293,9 @@ def log_prompt(brief, day, rows, cfg):
     ok = build_digest.log_rows(json.loads(content.read_text(encoding="utf-8")), day.isoformat(), rows)
     lines = []
     for n, (e, m, desc) in enumerate(ok, 1):
+        start = e.get("start") if isinstance(e.get("start"), str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", e["start"]) else None
         lines.append(f'{n}) {e["project"]}, work item {e.get("key") or "(none: stop and ask me)"}, {m // 60}h{m % 60:02d}, '
+                     f'{"starting at " + start + " (a calendar meeting: log it at that time), " if start else ""}'
                      f'{"billable" if e.get("billable") else "non-billable"}, description "{desc.replace(chr(34), chr(39))}"')
     val = {"skill_md": str(CODE.parent / "SKILL.md"), "tempo_url": cfg["tempo_url"].strip()}
     t = re.sub(r"\{(skill_md|tempo_url)\}", lambda m: val[m.group(1)], LOG_PROMPT.read_text(encoding="utf-8"))

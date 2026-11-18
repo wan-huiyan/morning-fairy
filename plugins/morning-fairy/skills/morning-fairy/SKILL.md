@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.14.0
+version: 1.14.1
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -293,6 +293,12 @@ reads the day in Tempo first and stops on any mismatch (time already on those wo
 the picker, the wrong week). An hours entry in the brief's content may carry a `"desc"` field to
 set the description the page offers; without one it starts from the entry's `"what"`. The helper logs
 nothing to disk.
+
+**Calendar meetings are one entry each, at their calendar time.** Propose each meeting as its own
+entry with `"start"` set to its calendar start (`"HH:MM"`, local) and `minutes` to its calendar
+length, even when two meetings share a work item: two meetings are two worklogs, never one merged
+entry. The page shows "from 10:00" on such a row, and the logging session is told to log it at that
+start time and length, as the calendar shows it. Map each meeting's span to its own row.
 
 **The timeline.** When a day in the brief's content carries `"spans"`, the card draws that day as a
 timeline: one lane per row, each stretch across the hours in the project's colour (solid billable,

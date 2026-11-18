@@ -2,6 +2,6 @@ Fill my Tempo hours for {day} ({date}). This is an attended session: I am watchi
 Follow the "Timesheet hours" section of {skill_md} in full, including its guard rails.
 1. Measure the day: python3 -I {measure} --start {date} --end {date} --json, passing that day's calendar meetings as --meetings. If the day is today it is still going, so measure up to now and say so.
 2. Read what Tempo already holds for {date} from {tempo_url} in the browser.
-3. Show me one proposed entry per work item for that day, every project included, each rounded to 5 minutes and marked billable or non-billable, with the gap against what Tempo already has. {work_items}
+3. Show me one proposed entry per work item for that day, except that each calendar meeting is its own entry at its calendar start time and length (two meetings on one work item are two worklogs, never one merged entry), every project included, each rounded to 5 minutes and marked billable or non-billable, with the gap against what Tempo already has. {work_items}
 4. Wait for my OK on the hours. Then log one entry per click and read the week total back after each save.
 Never use Log All Activities, never use Submit Period, and never click a worklog card anywhere but its pencil.
