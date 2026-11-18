@@ -288,5 +288,42 @@ class TestSpans(Base):
         self.assertEqual((got[0]["typed"], got[2]["typed"]), (1, 0))
 
 
+    def write_turns(self, project, name, cwd, turns):
+        """A session from [(datetime, who, text)], who "me" (a message you typed) or "agent"."""
+        d = os.path.join(self.root, project)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, name + ".jsonl"), "w") as fh:
+            for when, who, text in turns:
+                o = ({"type": "user", "message": {"content": text}} if who == "me" else
+                     {"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}})
+                fh.write(json.dumps({**o, "cwd": cwd, "timestamp": when.replace(tzinfo=TZ).isoformat()}) + "\n")
+
+    def test_quiet_stretches_before_a_reply_are_listed_and_cut(self):
+        turns = [(t, "agent", "working") for t in span(10, "10:00", "10:30")]
+        turns[0] = (turns[0][0], "me", "Start the analysis")
+        turns += [(t, "agent", "a background job finished") for t in span(10, "11:00", "11:05")]  # the agent alone
+        turns += [(at(10, 11, 40), "me", "here are my five words"), (at(10, 11, 45), "agent", "ok")]
+        turns += [(at(10, 16, 0), "me", "after a long break"), (at(10, 16, 5), "agent", "ok")]  # 4h15 of silence: no quiet
+        self.write_turns("p1", "a", "/u/acme-platform", turns)
+        self.write_session("p2", "b", "/u/admin", span(10, "10:52", "10:58"), first_user="other work")
+        cmap = os.path.join(self.root, "clients.json")
+        with open(cmap, "w") as fh:
+            json.dump({"clients": CLIENTS}, fh)
+        iso = lambda h, mi: at(10, h, mi).replace(tzinfo=TZ).isoformat()
+        meet = os.path.join(self.root, "meetings.json")
+        with open(meet, "w") as fh:
+            json.dump([{"client": "internal", "title": "Sync", "start": iso(10, 40), "end": iso(10, 50)},
+                       {"client": "internal", "away": True, "start": iso(11, 20), "end": iso(11, 30)}], fh)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            m.main(["--start", "2026-11-10", "--projects-dir", self.root, "--clients", cmap, "--meetings", meet, "--json", "--spans"])
+        out = json.loads(buf.getvalue())
+        quiet = [(s["start"], s["end"], s["words"], s["counted"]) for s in out["spans"]["2026-11-10"] if s["kind"] == "quiet"]
+        # 10:30-11:00 less the sync and the other session's typing (10:50-10:52 is under 5 minutes, so dropped);
+        # then 11:05-11:40 less the away block. The chain runs back across the agent-alone stretch at 11:00.
+        self.assertEqual(quiet, [("10:30", "10:40", 5, False), ("11:05", "11:20", 5, False), ("11:30", "11:40", 5, False)])
+        self.assertAlmostEqual(out["by_client"]["internal"]["2026-11-10"], 16 / 60, delta=0.01)  # the sync counts, away does not
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.13.0
+version: 1.14.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -233,8 +233,17 @@ python3 -I <skill>/digest/measure_session_hours.py \
 ```
 
 Add `--meetings` with the window's calendar meetings as `{"client","start","end","title"}` so a meeting
-attended with no session open still counts; the run already fetched the calendar. `--spans` adds a
-`spans` key: every stretch per day, typed or not, and every meeting, which the Approve and log card draws.
+attended with no session open still counts; the run already fetched the calendar. Add each
+out-of-office block as `{"client": "internal", "away": true, "start", "end"}`: it is never counted, and
+only cuts the quiet stretches below. `--spans` adds a `spans` key: every stretch per day, typed or not,
+every meeting, and every quiet stretch, which the Approve and log card draws.
+
+**Quiet stretches.** The session log only sees time while messages flow. Reading what an agent made,
+or writing your answers in the brief or a deck, leaves a silence and then a reply. `--spans` lists
+those silences as `quiet`: in a session, each gap from your last typed message to your next, running
+back across stretches where only the agent ran, with no single gap over 3 hours, and cut wherever you
+were in a meeting, away, or typing in another session. Each one carries `words`, the length of the
+reply that ended it. They are an estimate, so they start left out: you tick in the ones that were work.
 
 **What the number is.** Every session transcript carries a timestamp per message. Messages less than
 `--gap` minutes apart (15 by default) are one stretch of work; a longer gap ends it and the idle time
@@ -262,12 +271,10 @@ long unattended agent run inside an attended session counts, which reads high. S
    repo is to hand. Scratch workspaces and worktrees hide real work behind names that say nothing,
    and a session's transcript does not live under its own working directory — find it by its cwd:
    `cd ~/.claude/projects && find . -name '*.jsonl' -newermt '<date>' -print0 | xargs -0 grep -l '<cwd-leaf>'`
-2. **On a day where two things ran at once, split the WALL CLOCK.** Per-project unions overlap, so
-   they sum to more hours than anyone sat there. Client-billable work keeps its full measured union
-   and internal work divides what is left; never dilute a client's hours because internal work ran
-   beside them. The one exception is a calendar meeting: time you sat in a meeting counts in the
-   meeting's row, not in a client session that ran on beside it. The Approve and log timeline uses the
-   same rule as its default, so the proposal and the page agree.
+2. **On a day where two things ran at once, each project keeps its own measured time.** Overlapping
+   hours are logged in both rows, so the day's entries can add up to more than the hours you sat
+   there. The Approve and log timeline marks each overlap and takes nothing off either row. If your
+   timesheet must never add up past the wall clock, split the overlap by hand before approving.
 3. **Propose the whole day, every project**, plus the meetings the session measure cannot see. Which
    meetings ran is a question for that day's calendar, never a hardcoded rule — "the standup, every
    weekday" is wrong the first week someone skips one.
@@ -290,15 +297,15 @@ nothing to disk.
 **The timeline.** When a day in the brief's content carries `"spans"`, the card draws that day as a
 timeline: one lane per row, each stretch across the hours in the project's colour (solid billable,
 striped non-billable, a pill for a calendar meeting, faded and dashed for a stretch where an agent ran
-alone, which starts left out). Click a block to count it or leave it out. Where two rows overlap, the
-overlap is hatched and counted once: by default in the meeting's row when one side is a calendar
-meeting (you were in the meeting), otherwise in the billable row, otherwise the first; a click moves it. Each lane's total is its counted blocks plus a "min other" box, prefilled with whatever the
+alone, dotted for a quiet stretch before one of your replies; those last two start left out). Click a
+block to count it or leave it out. Where two rows overlap, a hatched strip marks it and both rows keep
+the time. Each lane's total is its counted blocks plus a "min other" box, prefilled with whatever the
 morning proposed beyond the blocks, and the tiles and the button add the lanes up. Hovering a block
 says where it came from. Copy each stretch from the measure's `spans` output as
-`{"row","kind","start","end","title","typed","counted"}`, where `row` is the index in that day's
+`{"row","kind","start","end","title","typed","words","counted"}`, where `row` is the index in that day's
 `entries` of the row it counts towards; leave out a stretch that fits no row rather than guess. Set
-each row's `minutes` to what its blocks add up to under that overlap rule, so the "other" box starts
-at 0. A row you deliberately propose below its measured time gets no spans: its lane stays empty and
+each row's `minutes` to what its counted blocks add up to, overlaps included, so the "other" box
+starts at 0. Never add quiet stretches to `minutes`: you tick those in yourself. A row you deliberately propose below its measured time gets no spans: its lane stays empty and
 the whole proposal sits in the "other" box, because the box cannot go below zero. A day without `spans` keeps the plain row list.
 
 **Checking what is already logged.** A timesheet tool's API may not answer "are *my* hours in?" — in

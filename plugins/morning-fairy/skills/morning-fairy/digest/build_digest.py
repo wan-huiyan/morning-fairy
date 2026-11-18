@@ -1160,7 +1160,7 @@ def _hhmm(v):
 
 
 def _day_spans(dd):
-    """A day's stretches that can be drawn: [(row, a, b, kind, span)], kind "typed", "alone" or "meeting"."""
+    """A day's stretches that can be drawn: [(row, a, b, kind, span)], kind "typed", "alone", "meeting" or "quiet"."""
     out = []
     for sp in dd.get("spans") or []:
         if not isinstance(sp, dict):
@@ -1170,7 +1170,8 @@ def _day_spans(dd):
             continue
         if a is None or b is None or b <= a:
             continue
-        kind = "meeting" if sp.get("kind") == "meeting" else "typed" if sp.get("counted", True) else "alone"
+        kind = (sp.get("kind") if sp.get("kind") in ("meeting", "quiet") else
+                "typed" if sp.get("counted", True) else "alone")
         out.append((i, a, b, kind, sp))
     return out
 
@@ -1181,6 +1182,11 @@ def _span_tip(e, a, b, kind, sp):
     title = title if len(title) <= 61 else title[:60].rstrip() + "…"
     if kind == "meeting":
         base = f'{"“" + title + "”" if title else "Meeting"} on the calendar, {when}.'
+    elif kind == "quiet":
+        n = sp.get("words") if isinstance(sp.get("words"), int) else 0
+        base = (f'Quiet in the {e["project"]} session{" “" + title + "”" if title else ""}, {when}: no messages, then you '
+                f'replied{f" with {n} word" + ("s" if n != 1 else "") if n else ""}. Probably reading its work or writing '
+                'your answer elsewhere; an estimate.')
     else:
         n = sp.get("typed") if isinstance(sp.get("typed"), int) else 0
         base = f'{e["project"]} session{" “" + title + "”" if title else ""}, {when}. ' + (
@@ -1204,8 +1210,8 @@ def _timeline(dd, slot):
             if row != i:
                 continue
             on_tip, off_tip = _span_tip(e, a, b, kind, sp)
-            on = kind != "alone"
-            blocks.append(f'<button type="button" class="tblk {cls}{" tmeet" if kind == "meeting" else ""}" data-a="{a}" data-b="{b}"'
+            on = kind in ("typed", "meeting")
+            blocks.append(f'<button type="button" class="tblk {cls}{" tmeet" if kind == "meeting" else " tquiet" if kind == "quiet" else ""}" data-a="{a}" data-b="{b}"'
                           f'{" data-meet" if kind == "meeting" else ""} aria-pressed="{"true" if on else "false"}" '
                           f'style="left:{_tpos(a):.3f}%;width:{max(_tpos(b) - _tpos(a), .45):.3f}%" '
                           f'data-tip="{esc(on_tip if on else off_tip)}" data-tip-on="{esc(on_tip)}" data-tip-off="{esc(off_tip)}" '
@@ -1225,7 +1231,8 @@ def _timeline(dd, slot):
     tiles = ('<div class="ttiles"><div><small>Billable</small><b data-t="bill">0</b></div><div><small>Non-billable</small>'
              '<b data-t="non">0</b></div><div><small>Day total</small><b data-t="all">0</b></div></div>')
     keys = ('<p class="tkeys"><span><i class="tk hs1"></i>you typed</span><span><i class="tk hs1 tmeet"></i>calendar meeting</span>'
-            '<span><i class="tk hs1 toffk"></i>agent alone, left out</span><span><i class="tk tovk"></i>overlap, counted once</span></p>')
+            '<span><i class="tk hs1 toffk"></i>agent alone, left out</span><span><i class="tk hs1 tquietk"></i>quiet before your reply, '
+            'left out</span><span><i class="tk tovk"></i>overlap, counted in both</span></p>')
     return (f'{tiles}<div class="tgrid"><span></span><span class="taxis">{axis}</span><span></span></div>'
             f'<ul class="happ-rows tl-rows">{"".join(lanes)}</ul>{keys}')
 
@@ -1494,10 +1501,12 @@ CSS_HOURS = r"""
 .tblk.nb,.tk.nb{background:repeating-linear-gradient(45deg,var(--c) 0 2.5px,color-mix(in srgb,var(--c) 26%,var(--card-solid)) 2.5px 6px)}
 .tblk.tmeet,.tk.tmeet{border-radius:999px;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ink) 45%,transparent)}
 .tblk[aria-pressed="false"],.tk.toffk{background:color-mix(in srgb,var(--c) 16%,transparent);outline:1px dashed color-mix(in srgb,var(--c) 75%,var(--ink));outline-offset:-1px;box-shadow:none}
+/* quiet before a reply: dotted, so it never passes for measured time; ticked it fills in, dots kept */
+.tblk.tquiet,.tk.tquietk{background:radial-gradient(circle,color-mix(in srgb,var(--card-solid) 70%,transparent) 1px,transparent 1.5px) 0 0/5px 5px,var(--c)}
+.tblk.tquiet[aria-pressed="false"],.tk.tquietk{background:radial-gradient(circle,color-mix(in srgb,var(--c) 85%,transparent) 1px,transparent 1.5px) 0 0/5px 5px,color-mix(in srgb,var(--c) 10%,transparent);outline:1px dotted color-mix(in srgb,var(--c) 80%,var(--ink));outline-offset:-1px}
 .tblk:hover{filter:brightness(1.08)}.tblk:focus-visible,.tovl:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tovl,.tk.tovk{background:repeating-linear-gradient(-45deg,var(--ink) 0 1.5px,transparent 1.5px 4.5px);outline:1.5px solid var(--ink);outline-offset:-1.5px}
-.tovl{position:absolute;top:1px;bottom:1px;z-index:2;border:0;padding:0;border-radius:3px;cursor:pointer;min-width:3px}
-.tovl[data-own="0"]{opacity:.28}
+.tovl{position:absolute;top:-5px;height:5px;z-index:2;border-radius:2px;min-width:3px}  /* a strip over the track, so the blocks under it stay clickable */
 .tsum{display:grid;justify-items:end;gap:2px}.tmin{font-size:15px;font-variant-numeric:tabular-nums}
 .tx{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted)}
 .happ-x{width:3.6em;padding:3px 5px;border-radius:7px;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);font:inherit;font-size:12.5px;text-align:right}
@@ -1839,14 +1848,14 @@ JS_HOURS = r"""
   });
 })();
 (function(){
-  // the timeline: counted blocks, overlaps between rows counted once (a meeting keeps them, a click moves them), live totals
+  // the timeline: counted blocks, overlaps between rows marked (each row keeps its own time), live totals
   var box = document.querySelector('[data-approve]'); if (!box) return;
   function hm(m){ var h = Math.floor(m / 60), r = m % 60; return h ? h + 'h' + (r ? (r < 10 ? '0' : '') + r : '') : r + 'm'; }
   function pos(m){ var h = m / 60; return h < 7 ? h / 7 * 9 : h < 20 ? 9 + (h - 7) / 13 * 82 : Math.min(100, 91 + (h - 20) / 4 * 9); }
   function t2(m){ return (m < 600 ? '0' : '') + Math.floor(m / 60) + ':' + (m % 60 < 10 ? '0' : '') + m % 60; }
   function r5(m){ return m <= 0 ? 0 : Math.max(5, Math.round(m / 5) * 5); }
   [].slice.call(box.querySelectorAll('.tl-day')).forEach(function(day){
-    var lanes = [].slice.call(day.querySelectorAll('.tlane')), owner = {}, first = true;
+    var lanes = [].slice.call(day.querySelectorAll('.tlane')), first = true;
     function spans(li){
       var iv = [].slice.call(li.querySelectorAll('.tblk[aria-pressed="true"]')).map(function(b){
         return [+b.getAttribute('data-a'), +b.getAttribute('data-b'), b.hasAttribute('data-meet')]; }).sort(function(x, y){ return x[0] - y[0]; });
@@ -1855,28 +1864,24 @@ JS_HOURS = r"""
       return out;
     }
     function calc(){
-      var U = lanes.map(spans), lost = lanes.map(function(){ return 0; });
+      var U = lanes.map(spans);
       [].slice.call(day.querySelectorAll('.tovl')).forEach(function(o){ o.remove(); });
+      // an overlap between two rows is only marked: each row logs its own full time (double counting is fine)
       function pair(i, j){ U[i].forEach(function(x){ U[j].forEach(function(y){
         var a = Math.max(x[0], y[0]), b = Math.min(x[1], y[1]); if (b - a < 1) return;
-        var k = i + '-' + j + '-' + a, own = owner[k] != null ? owner[k] : y[2] !== x[2] ? (y[2] ? j : i) :
-          lanes[j].getAttribute('data-bill') === '1' && lanes[i].getAttribute('data-bill') !== '1' ? j : i;  // a meeting, then billable, then the first row
-        lost[own === i ? j : i] += b - a;
+        var tip = 'Overlap ' + t2(a) + '\u2013' + t2(b) + ', ' + hm(b - a) + ': ' + lanes[i].querySelector('b').textContent + ' and ' +
+          lanes[j].querySelector('b').textContent + ' at the same time. Counted in both rows.';
         [i, j].forEach(function(n){
-          var o = document.createElement('button'); o.type = 'button'; o.className = 'tovl'; o.setAttribute('data-own', own === n ? '1' : '0');
+          var o = document.createElement('i'); o.className = 'tovl'; o.setAttribute('role', 'img');
           o.style.left = pos(a) + '%'; o.style.width = Math.max(pos(b) - pos(a), .45) + '%';
-          var tip = 'Overlap ' + t2(a) + '\u2013' + t2(b) + ', ' + hm(b - a) + ': ' + lanes[i].querySelector('b').textContent + ' and ' +
-            lanes[j].querySelector('b').textContent + ' at the same time. Counted once, in ' + lanes[own].querySelector('b').textContent +
-            '. Click to move it to ' + lanes[own === i ? j : i].querySelector('b').textContent + '.';
           o.setAttribute('data-tip', tip); o.setAttribute('aria-label', tip);
-          o.addEventListener('click', function(){ owner[k] = own === i ? j : i; calc(); });
           lanes[n].querySelector('.ttrack').appendChild(o);
         });
       }); }); }
       for (var i = 0; i < lanes.length; i++) for (var j = i + 1; j < lanes.length; j++) pair(i, j);
       var tot = {bill: 0, non: 0};
       lanes.forEach(function(li, n){
-        var m = U[n].reduce(function(s, x){ return s + x[1] - x[0]; }, 0) - lost[n], x = li.querySelector('.happ-x');
+        var m = U[n].reduce(function(s, x){ return s + x[1] - x[0]; }, 0), x = li.querySelector('.happ-x');
         if (first && x.value === '') x.value = Math.max(0, Math.round((+li.getAttribute('data-prop') - m) / 5) * 5);
         var all = r5(Math.max(0, m) + Math.max(0, Math.round(+x.value || 0)));
         li.querySelector('.tmin').textContent = hm(all); li.querySelector('.happ-min').value = all;

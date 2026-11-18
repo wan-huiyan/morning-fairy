@@ -18,9 +18,11 @@ Usage:
   python3 -I measure_session_hours.py --start 2026-11-12 --client acme --json
   python3 -I measure_session_hours.py --start 2026-11-09 --meetings meetings.json
 
---meetings takes [{"client": "acme", "start": "2026-11-12T16:00", "end": "...Z or local"}]
+--meetings takes [{"client": "acme", "start": "2026-11-12T16:00", "end": "...Z or local", "title": optional}]
 and unions those intervals in too, so a meeting attended with no session open still
-counts. The brief already fetches the calendar; pass what it found.
+counts. The brief already fetches the calendar; pass what it found. An entry with
+"away": true (an out-of-office block) is not counted; it only cuts the quiet stretches
+that --spans lists.
 """
 
 import argparse
@@ -94,7 +96,7 @@ def first_user_text(obj):
 
 
 def read_session(path):
-    """-> (cwd, first user message text, sorted [(timestamp, typed_by_her)])."""
+    """-> (cwd, first user message text, sorted [(timestamp, words you typed in it, 0 when it is not yours)])."""
     cwd = None
     first = None
     stamps = []
@@ -116,7 +118,7 @@ def read_session(path):
                     when = dt.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone()
                 except ValueError:
                     continue
-                stamps.append((when, is_typed_by_her(obj)))
+                stamps.append((when, typed_words(obj)))
     stamps.sort(key=lambda r: r[0])
     return cwd, (first or ""), stamps
 
@@ -148,6 +150,17 @@ def is_typed_by_her(obj):
                    if isinstance(p, dict) and p.get("type") == "text"]
              if isinstance(content, list) else [])
     return any(t.strip() and not t.strip().startswith(NOTICE_PREFIXES) for t in parts)
+
+
+def typed_words(obj):
+    """How many words you typed in this message: 0 when it is not yours (is_typed_by_her). Pasted text counts as yours."""
+    if not is_typed_by_her(obj):
+        return 0
+    content = (obj.get("message") or {}).get("content")
+    parts = ([content] if isinstance(content, str)
+             else [p.get("text", "") for p in content if isinstance(p, dict) and p.get("type") == "text"]
+             if isinstance(content, list) else [])
+    return max(1, sum(len(t.split()) for t in parts if not t.strip().startswith(NOTICE_PREFIXES)))
 
 
 def is_scheduled(first_text):
@@ -243,26 +256,81 @@ def stretches(projects_dir, clients, gap_minutes):
     return out
 
 
+QUIET_CAP = 180  # minutes: a longer silence before a reply is a night or a day off, not reading
+QUIET_MIN = 5    # minutes: a quiet piece shorter than this after the cuts is not drawn
+
+
+def quiet_windows(projects_dir, clients, gap_minutes, cap_minutes=QUIET_CAP):
+    """The silences before your replies: in a session, each gap between stretches from your last typed message
+    up to your next one, running back across stretches where only the agent ran, as long as no single gap is over
+    cap_minutes (a night or a day off breaks the chain). Time you were most likely reading the agent's work or writing your
+    answer somewhere else (the brief, a deck) before replying; each gap is its own piece so you can tick some and not others.
+    [(client, start, end, words in the reply, title)]. An estimate: the brief draws these left out until you tick them."""
+    out = []
+    gap, cap = dt.timedelta(minutes=gap_minutes), dt.timedelta(minutes=cap_minutes)
+    for path in glob.glob(os.path.join(projects_dir, "*", "*.jsonl")):
+        cwd, first, stamps = read_session(path)
+        if len(stamps) < 2 or is_scheduled(first):
+            continue
+        name, title = classify(cwd, clients, first), _title(first)
+        groups, cur = [], [stamps[0]]
+        for row in stamps[1:]:
+            if row[0] - cur[-1][0] <= gap:
+                cur.append(row)
+            else:
+                groups.append(cur)
+                cur = [row]
+        groups.append(cur)
+        waiting = []  # the gaps since your last typed message, across stretches where only the agent ran
+        for prev, nxt in zip(groups, groups[1:]):
+            a, b = prev[-1][0], nxt[0][0]
+            waiting = [] if b - a > cap else waiting + [(a, b)]
+            words = next((w for _, w in nxt if w), 0)
+            if words:
+                out += [(name, x, y, words, title) for x, y in waiting]
+                waiting = []
+    return out
+
+
+def _cut(a, b, holes):
+    """[a, b) less every (start, end) in holes."""
+    out = [(a, b)]
+    for ha, hb in holes:
+        out = [p for x, y in out for p in ((x, min(y, ha)), (max(x, hb), y)) if p[1] > p[0]]
+    return out
+
+
 def span_rows(projects_dir, clients, gap_minutes, lo, hi, meetings_path=None, include_unattended=False):
-    """{date: [stretch]} for --spans: each session stretch and each meeting, split at midnight, clipped to the window."""
-    items = [(c, a, b, n, t, "session") for c, a, b, n, t in stretches(projects_dir, clients, gap_minutes)]
+    """{date: [stretch]} for --spans: each session stretch, each meeting and each quiet stretch before a reply, split at
+    midnight, clipped to the window. A quiet stretch is cut wherever you were in a meeting, away (a meetings entry with
+    "away": true, such as an out-of-office block, drawn nowhere) or typing in another session."""
+    st = stretches(projects_dir, clients, gap_minutes)
+    items = [(c, a, b, n, t, "session") for c, a, b, n, t in st]
+    holes = [(a, b) for _, a, b, n, _ in st if n]
     if meetings_path:
         with open(meetings_path) as fh:
             for m in json.load(fh):
-                items.append((m.get("client", "unattributed"), dt.datetime.fromisoformat(m["start"]).astimezone(),
-                              dt.datetime.fromisoformat(m["end"]).astimezone(), None, str(m.get("title") or "Meeting")[:60], "meeting"))
+                a, b = dt.datetime.fromisoformat(m["start"]).astimezone(), dt.datetime.fromisoformat(m["end"]).astimezone()
+                holes.append((a, b))
+                if not m.get("away"):
+                    items.append((m.get("client", "unattributed"), a, b, None, str(m.get("title") or "Meeting")[:60], "meeting"))
+    for c, a, b, n, t in quiet_windows(projects_dir, clients, gap_minutes):
+        items += [(c, x, y, n, t, "quiet") for x, y in _cut(a, b, holes)]
     out = {}
     for c, a, b, n, t, kind in sorted(items, key=lambda x: x[1]):
         start = a
         for day, seconds in split_at_midnight(a, b):
             stop = start + dt.timedelta(seconds=seconds)
-            if lo <= day <= hi and seconds >= 60:
+            if lo <= day <= hi and seconds >= (QUIET_MIN * 60 if kind == "quiet" else 60):
                 row = {"client": c, "kind": kind, "start": start.strftime("%H:%M"),
                        "end": "24:00" if stop.time() == dt.time.min and stop.date() > day else stop.strftime("%H:%M"),
                        "minutes": round(seconds / 60), "title": t}
                 if kind == "session":
                     row["typed"] = n
                     row["counted"] = bool(n) or include_unattended
+                elif kind == "quiet":
+                    row["words"] = n
+                    row["counted"] = False
                 out.setdefault(str(day), []).append(row)
             start = stop
     return out
@@ -271,6 +339,8 @@ def span_rows(projects_dir, clients, gap_minutes, lo, hi, meetings_path=None, in
 def add_meetings(by_client, meetings_path):
     with open(meetings_path) as fh:
         for m in json.load(fh):
+            if m.get("away"):
+                continue  # an out-of-office block only cuts quiet stretches (span_rows); it is not time worked
             start = dt.datetime.fromisoformat(m["start"]).astimezone()
             end = dt.datetime.fromisoformat(m["end"]).astimezone()
             by_client.setdefault(m.get("client", "unattributed"), []).append((start, end))
