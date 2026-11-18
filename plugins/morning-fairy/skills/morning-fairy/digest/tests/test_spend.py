@@ -39,6 +39,22 @@ class Spend(unittest.TestCase):
     def test_empty_is_safe(self):
         self.assertIn("No project", bd.render_spend({"projects": []}))
 
+    def test_your_patch_and_the_neighbours(self):
+        p = proj("p", 10.0)
+        p["mine"] = 7.5
+        p["top"] = [{"who": "you", "usd": 7.5, "mine": True}, {"who": "etl (service account)", "usd": 2.5, "mine": False}]
+        for d in p["days"]:
+            d["mine"] = 0.75
+        html = bd.render_spend({"projects": [p]})
+        self.assertIn("Your patch", html)
+        self.assertIn("The neighbours", html)
+        self.assertIn("75%: you and your projects", html)
+        self.assertIn("your patch $0.75, the neighbours $0.25", html)  # each day's bar says its own split
+        self.assertIn('class="hseg sn"', html)
+
+    def test_no_split_without_mine(self):
+        self.assertNotIn("Your patch", bd.render_spend({"projects": [proj("p", 10.0)]}))
+
     def test_spend_chapter_gets_its_css_and_tooltip(self):
         c = __import__("json").loads((pathlib.Path(__file__).resolve().parents[1] / "demo" / "content-2026-03-12.json").read_text())
         c["chapters"].insert(1, {"id": "spend", "nav": "Spend", "title": "Cloud spend", "spend": {"projects": [proj("p", 9.0)]}})

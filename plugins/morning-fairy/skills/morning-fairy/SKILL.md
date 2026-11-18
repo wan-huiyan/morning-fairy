@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.12.1
+version: 1.13.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -413,6 +413,10 @@ than dropping it.
  "blurb": "What BigQuery queries have cost this month in the GCP projects you are working in.",
  "spend": <the script's JSON>}
 ```
+
+Each row and the summary split the spend into **"Your patch"** (the owner's own login, plus any account listed in
+`<home>/spend_accounts.json` as `{"mine": ["my-pipeline@example.iam.gserviceaccount.com"]}`, `*` allowed; their
+own pipelines' service accounts belong there) and **"The neighbours"** (everyone else in the same projects).
 
 Never edit, round or invent a figure in it; if the script fails, leave the chapter out and say so under Sources.
 The figures are **estimates of BigQuery query cost only** (bytes billed at the on-demand list price): not storage,
