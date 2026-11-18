@@ -14,12 +14,15 @@ Display ideas (month-to-date headline, same-days-last-month comparison, month-en
 agy-gcp-companion by ericsk, https://github.com/ericsk/agy-gcp-companion (Apache-2.0 per its package.json).
 No code was copied.
 
+Each account's spend is split into "your patch" (your own login, plus any account named in <home>/spend_accounts.json
+or --mine, such as your own pipelines' service accounts) and "the neighbours" (everyone else in the same projects).
+
 Usage: python3 measure_gcp_spend.py --json                     (prints the "spend" object for the content JSON)
        python3 measure_gcp_spend.py --projects a,b             (skip discovery)
        python3 measure_gcp_spend.py --bill-to my-own-project   (who pays for the reads; a few cents a day)
 Needs the gcloud and bq command-line tools, signed in.
 """
-import argparse, calendar, collections, concurrent.futures as cf, csv, datetime as dt, io, json, os, re, statistics, subprocess, sys
+import argparse, calendar, collections, concurrent.futures as cf, csv, datetime as dt, fnmatch, io, json, os, pathlib, re, statistics, subprocess, sys
 
 PRICE_PER_TIB = 6.25
 CAP_BYTES = 5_000_000_000      # per query; a project that needs more is reported as skipped, never silently dropped
@@ -28,6 +31,19 @@ ME = ""                        # the signed-in gcloud account, read at start
 ACTIVE_DAYS = 30
 PACE_DAYS = 7
 MINOR_SHARE = 0.03
+MINE = []                      # account patterns that count as "your patch", besides your own login
+
+
+def is_mine(u):
+    return u == ME or any(fnmatch.fnmatch(u, pat) for pat in MINE)
+
+
+def read_mine(path):
+    """<home>/spend_accounts.json: {"mine": ["my-pipeline@example.iam.gserviceaccount.com", "etl-*@example.*"]}"""
+    try:
+        return list(json.loads(pathlib.Path(path).read_text()).get("mine", []))
+    except (OSError, ValueError):
+        return []
 
 SQL = """
 SELECT DATE(creation_time) d, user_email,
@@ -103,12 +119,15 @@ def measure(project, now):
     pm0 = (m0 - dt.timedelta(days=1)).replace(day=1)
     days_in_m = calendar.monthrange(today.year, today.month)[1]
     daily, who, day_who = collections.defaultdict(float), collections.defaultdict(float), collections.defaultdict(collections.Counter)
+    day_mine, mine_who = collections.defaultdict(float), set()
     prev_same = prev_total = 0.0
     reserved = 0
     for r in rows:
         d = dt.date.fromisoformat(r["d"]); c = usd(r["bytes"]); reserved += int(r["reserved_jobs"] or 0)
         if d >= m0:
             daily[d] += c; who[short(r["user_email"])] += c; day_who[d][short(r["user_email"])] += c
+            if is_mine(r["user_email"]):
+                day_mine[d] += c; mine_who.add(short(r["user_email"]))
         elif d >= pm0:
             prev_total += c
             if d.day <= today.day:
@@ -122,7 +141,7 @@ def measure(project, now):
     for i in range(days_in_m):
         d = m0 + dt.timedelta(days=i)
         top = day_who[d].most_common(1)
-        series.append({"date": d.isoformat(), "usd": round(daily.get(d, 0.0), 4), "future": d > today,
+        series.append({"date": d.isoformat(), "usd": round(daily.get(d, 0.0), 4), "mine": round(day_mine.get(d, 0.0), 4), "future": d > today,
                        "partial": d == today, "top": top[0][0] if top else ""})
     complete = [daily.get(m0 + dt.timedelta(days=i), 0.0) for i in range(today.day - 1)]
     med = statistics.median(complete) if complete else 0
@@ -130,11 +149,11 @@ def measure(project, now):
                "share": round(s["usd"] / mtd, 3) if mtd else 0}
               for s in series if not s["future"] and s["usd"] >= max(5.0, 3 * med)]
     ranked = sorted(who.items(), key=lambda kv: -kv[1])
-    top = [{"who": k, "usd": round(v, 2)} for k, v in ranked[:5]]
+    top = [{"who": k, "usd": round(v, 2), "mine": k in mine_who} for k, v in ranked[:5]]
     if len(ranked) > 5:
         top.append({"who": f"{len(ranked) - 5} others", "usd": round(sum(v for _, v in ranked[5:]), 2)})
     return {"project": project,
-            "mtd": round(mtd, 2), "prev_same": round(prev_same, 2), "prev_total": round(prev_total, 2),
+            "mtd": round(mtd, 2), "mine": round(sum(day_mine.values()), 2), "prev_same": round(prev_same, 2), "prev_total": round(prev_total, 2),
             "pace": None if pace is None else round(pace, 2), "projected": None if projected is None else round(projected, 2),
             "pace_days": window, "days": series, "top": top, "spikes": spikes,
             "reserved_jobs": reserved, "problems": problems, "unread_minor_regions": minor}
@@ -145,10 +164,13 @@ def main():
     a.add_argument("--projects", help="comma-separated; default: discovered from your own BigQuery jobs")
     a.add_argument("--bill-to", default=os.environ.get("MORNING_FAIRY_GCP_BILL_TO"),
                    help="project that pays for the reads (default: each project pays for its own)")
+    a.add_argument("--mine", help="comma-separated account patterns that count as yours (default: <home>/spend_accounts.json)")
     a.add_argument("--json", action="store_true")
     o = a.parse_args()
-    global BILL_TO, ME
+    global BILL_TO, ME, MINE
     BILL_TO = o.bill_to or None
+    home = os.environ.get("MORNING_FAIRY_HOME") or os.path.expanduser("~/.morning-fairy")
+    MINE = o.mine.split(",") if o.mine else read_mine(os.path.join(home, "spend_accounts.json"))
     ME = sh(["gcloud", "config", "get-value", "account"]).stdout.strip()
     now = dt.datetime.now().astimezone()
     projects = o.projects.split(",") if o.projects else discover(now)
@@ -158,7 +180,7 @@ def main():
     m0 = now.date().replace(day=1)
     out = {"as_of": now.isoformat(timespec="minutes"), "month": f"{m0:%B %Y}",
            "prev_month": f"{(m0 - dt.timedelta(days=1)):%B}", "price_per_tib": PRICE_PER_TIB, "billed_to": BILL_TO or "each project itself",
-           "active_days": ACTIVE_DAYS, "projects": res,
+           "active_days": ACTIVE_DAYS, "projects": res, "mine_accounts": ["your own login"] + MINE,
            "credit": {"name": "agy-gcp-companion", "by": "ericsk", "url": "https://github.com/ericsk/agy-gcp-companion"}}
     if o.json:
         json.dump(out, sys.stdout, indent=1)

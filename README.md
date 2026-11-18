@@ -271,7 +271,9 @@ The Spend tab shows what BigQuery queries have cost this month in each Google Cl
 project counts when your own login ran a query there in the last 30 days, so the list follows your work without
 you keeping it. Each row has a small bar for every day of the month, the change on the same days last month, a
 month-end estimate from the last week's pace, and the account that spent most; a day that jumped is called out by
-name. Projects under $0.50 fold into one line.
+name. Projects under $0.50 fold into one line. The spend is split into **Your patch** (your own login, plus your
+pipelines' service accounts if you list them in `~/.morning-fairy/spend_accounts.json`) and **The neighbours**
+(everyone else in the same projects), in the summary bar, on each row and inside each day's bar.
 
 It needs the `gcloud` and `bq` command-line tools, signed in. Keep step 8 in `routine-prompt.md` and name a project
 of your own to pay for the reads (a few cents a day), so watching a client's project never lands on their bill.
@@ -402,6 +404,9 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.13.0** (2026-11-18): the Spend tab splits each project's cost into **Your patch** (your login plus the
+  service accounts you list in `spend_accounts.json`) and **The neighbours** (everyone else), in the summary bar,
+  each row and each day's bar.
 - **1.12.1** (2026-11-18): the session that Approve and log starts now runs on Sonnet (`--model sonnet`): the hours
   are already decided on the page, so it only types them in. Fill Tempo, which measures and proposes, stays on your
   default model.

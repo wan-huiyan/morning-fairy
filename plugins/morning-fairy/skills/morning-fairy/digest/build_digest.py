@@ -1634,6 +1634,20 @@ def render_spend(sp):
     summary = ('<div class="ssum">' + pal + '<div class="hsum">' + "".join(
         f'<div class="hstat"><span class="hstat-v">{esc(v)}</span><span class="hstat-l">{esc(l)}</span></div>' for v, l in stats)
         + "</div></div>")
+    split = any("mine" in p for p in every)
+    if split:  # "Your patch" (your login and your own projects' service accounts) against "The neighbours" (everyone else)
+        mine = sum(p.get("mine") or 0 for p in every)
+        rest = max(tot - mine, 0)
+        bar = ""
+        if tot:
+            bar = ('<div class="hweek" role="img" aria-label="' + esc(f"Your patch {_usd(mine)}, the neighbours {_usd(rest)}") + '">'
+                   + (_seg("hs1", 100 * mine / tot, f"Your patch: {_usd(mine)}") if mine else "")
+                   + (_seg("sn", 100 * rest / tot, f"The neighbours: {_usd(rest)}") if rest else "") + "</div>")
+        summary += (bar + '<ul class="hleg">'
+                    f'<li><span class="hkey hs1" aria-hidden="true"></span><span class="hleg-n">Your patch</span><span class="hleg-v">{_usd(mine)}'
+                    f'<small>{100 * mine / tot:.0f}%: you and your projects\' service accounts</small></span></li>'
+                    f'<li><span class="hkey sn" aria-hidden="true"></span><span class="hleg-n">The neighbours</span><span class="hleg-v">{_usd(rest)}'
+                    f'<small>{100 * rest / tot:.0f}%: everyone else in the same projects</small></span></li></ul>' if tot else "")
     rows = []
     for p in projects:
         days = p.get("days") or []
@@ -1644,10 +1658,21 @@ def render_spend(sp):
                 bars.append('<span class="sbar sfut" aria-hidden="true"></span>')
                 continue
             v = d.get("usd") or 0
-            tip = f"{_d_label(d.get('date'))}: {_usd(v)}" + (" so far" if d.get("partial") else "") + (f", most by {d['top']}" if d.get("top") else "")
-            bars.append(f'<span class="sbar" data-tip="{esc(tip)}"><i class="hseg hs1{" nb" if d.get("partial") else ""}" '
-                        f'style="height:{max(4, 100 * v / top):.1f}%"></i></span>')
+            tip = f"{_d_label(d.get('date'))}: {_usd(v)}" + (" so far" if d.get("partial") else "")
+            nb = " nb" if d.get("partial") else ""
+            h = max(4, 100 * v / top)
+            if "mine" in d and v:
+                m = min(d.get("mine") or 0, v)
+                tip += f", your patch {_usd(m)}, the neighbours {_usd(v - m)}"
+                segs = ((f'<i class="hseg sn{nb}" style="height:{h * (v - m) / v:.1f}%"></i>' if v - m > 0 else "")
+                        + (f'<i class="hseg hs1{nb}" style="height:{h * m / v:.1f}%"></i>' if m > 0 else ""))
+            else:
+                segs = f'<i class="hseg hs1{nb}" style="height:{h:.1f}%"></i>'
+            tip += f", most by {d['top']}" if d.get("top") else ""
+            bars.append(f'<span class="sbar" data-tip="{esc(tip)}">{segs}</span>')
         notes = []
+        if "mine" in p and p.get("mtd"):
+            notes.append(f"Your patch {_usd(p['mine'])}, the neighbours {_usd(max(p['mtd'] - p['mine'], 0))}.")
         if p.get("top"):
             t = p["top"][0]
             share = f", {100 * t['usd'] / p['mtd']:.0f}% of it" if p.get("mtd") else ""
@@ -1671,10 +1696,11 @@ def render_spend(sp):
     if small:
         rows.append('<li class="hday sday sday-small"><p class="hday-note">Also watched, under '
                     + _usd(SPEND_ROW_MIN) + ' so far: ' + esc("; ".join(f'{p["project"]} {_usd(p.get("mtd"))}' for p in small)) + '.</p></li>')
-    trs = "".join(f'<tr><td>{esc(p["project"])}</td><td>{esc(t["who"])}</td><td class="num">{_usd(t["usd"])}</td></tr>'
+    trs = "".join(f'<tr><td>{esc(p["project"])}</td><td>{esc(t["who"])}</td>'
+                  f'<td>{"your patch" if t.get("mine") else ("the neighbours" if "mine" in t else "")}</td><td class="num">{_usd(t["usd"])}</td></tr>'
                   for p in every for t in p.get("top") or [])
     table = ('<details class="htable"><summary>Who spent it, as a table</summary><div class="htable-w"><table>'
-             '<thead><tr><th>Project</th><th>Account</th><th class="num">This month</th></tr></thead>'
+             '<thead><tr><th>Project</th><th>Account</th><th>Whose</th><th class="num">This month</th></tr></thead>'
              f'<tbody>{trs}</tbody></table></div></details>') if trs else ""
     cr = sp.get("credit") or {}
     credit = (f' Layout ideas borrowed from <a href="{esc(safe_url(cr.get("url", "")))}">{esc(cr.get("name", ""))}</a> by {esc(cr.get("by", ""))}.'
@@ -1698,7 +1724,11 @@ CSS_SPEND = """
 .sday-small{grid-template-columns:1fr}.sday-small .hday-note{grid-column:1}
 .sspark{display:flex;align-items:flex-end;gap:2px;height:34px}
 .sbar{flex:1 1 0;height:100%;display:flex;align-items:flex-end;min-width:2px}
-.sbar i{display:block;width:100%;border-radius:2px 2px 1px 1px}
+.sbar{flex-direction:column;justify-content:flex-end}
+.sbar i{display:block;width:100%;border-radius:1px}
+.sbar i:first-child{border-radius:2px 2px 1px 1px}
+.hseg.sn,.hkey.sn{--c:color-mix(in srgb,var(--h1) 32%,var(--card-solid));background:var(--c)}
+.hseg.sn.nb{background:repeating-linear-gradient(45deg,var(--c) 0 2.5px,color-mix(in srgb,var(--c) 40%,var(--card-solid)) 2.5px 6px)}
 .sfut{height:4px;align-self:flex-end;background:radial-gradient(var(--hun) .9px,transparent 1.3px) 0 0/4px 4px;opacity:.6}
 @media (max-width:640px){.sday{grid-template-columns:1fr 7.6em}.sday .hday-l,.sday .hday-note{grid-column:1/-1}.sday .sspark{grid-column:1}}
 """
