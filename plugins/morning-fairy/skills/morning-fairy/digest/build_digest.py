@@ -1125,6 +1125,92 @@ def render_fill():
         '<textarea class="hfill-out" data-fill-out aria-label="The fill-hours prompt" hidden></textarea></div>')
 
 
+LOG_DESC_MAX = 160  # characters of a Tempo description typed from the page
+
+
+def _log_days(h):
+    """Days with proposed rows to approve: something proposed, and Tempo not read or holding less than the rows add up to."""
+    out = []
+    for dd in sorted(h["days"], key=lambda x: str(x.get("date") or ""), reverse=True):  # newest first, as the bars are
+        ents = [e for e in dd.get("entries") or [] if e.get("minutes", 0) > 0]
+        if not ents or not isinstance(dd.get("date"), str):
+            continue
+        tot = sum(e["minutes"] for e in ents)
+        if dd.get("logged") is not None and dd["logged"] >= tot:
+            continue
+        out.append(dd)
+    return out
+
+
+def render_approve(h):
+    """Approve and log: the morning's proposed rows for each day Tempo still lacks, each one ticked, with
+    its minutes and the description Tempo gets, editable. The button sends the ticked rows to serve.py /log-hours, which
+    checks them against this brief's saved content and starts a session that logs exactly those, with no second OK."""
+    days = _log_days(h)
+    if not days:
+        return ""
+    chips, sets = [], []
+    for n, dd in enumerate(days):
+        label = dd.get("label") or dd["date"]
+        tot = sum(e["minutes"] for e in dd["entries"] if e.get("minutes", 0) > 0)
+        chips.append(f'<button type="button" class="happ-chip" data-day="{esc(dd["date"])}" aria-pressed="{"true" if n == 0 else "false"}">'
+                     f'{esc(label)} <small>{_hm(tot)}</small></button>')
+        rows = []
+        for i, e in enumerate(dd["entries"]):
+            if e.get("minutes", 0) <= 0:
+                continue
+            name = ", ".join(x for x in (e["project"], e.get("key")) if x)
+            desc = str(e.get("desc") or e.get("what") or "")[:LOG_DESC_MAX]
+            rows.append(
+                f'<li class="happ-row"><input type="checkbox" class="happ-on" checked data-i="{i}" aria-label="Log {esc(name)}">'
+                f'<span class="happ-what"><b>{esc(e["project"])}</b><small>{esc(e.get("key") or "no work item")} · '
+                f'{"billable" if e.get("billable") else "non-billable"}</small></span>'
+                f'<label class="happ-m"><input type="number" class="happ-min" min="5" max="600" step="5" value="{e["minutes"]}" '
+                f'aria-label="Minutes for {esc(name)}"><span>min</span></label>'
+                f'<input type="text" class="happ-desc" maxlength="{LOG_DESC_MAX}" value="{esc(desc)}" aria-label="Tempo description for {esc(name)}"></li>')
+        logged = dd.get("logged")
+        note = ("Tempo was not read for this day: the session checks it first." if logged is None
+                else f"Tempo already has {_hm(logged)} for this day." if logged else "Tempo has nothing for this day yet.")
+        sets.append(f'<div class="happ-day" data-day="{esc(dd["date"])}"{"" if n == 0 else " hidden"}>'
+                    f'<p class="happ-note">{esc(note)}</p><ul class="happ-rows">{"".join(rows)}</ul></div>')
+    return ('<div class="happ" data-approve><div class="happ-head"><h3 class="hfill-h">Approve and log</h3>'
+            '<p class="hfill-p">The morning&#8217;s proposed rows. Untick, change the minutes or the description, then approve: '
+            'a Claude session logs exactly these in Tempo, reading the day first and stopping if anything does not match.</p></div>'
+            f'<div class="happ-chips" role="group" aria-label="Day to log">{"".join(chips)}</div>{"".join(sets)}'
+            '<div class="happ-foot"><button type="button" class="btn btn-accent" data-approve-go>Approve and log</button>'
+            '<p class="hfill-st" role="status" aria-live="polite" data-approve-status></p></div></div>')
+
+
+def log_rows(content, day, rows):
+    """The rows a /log-hours request may log: [(entry, minutes, description)] for `day` in this brief's Hours chapter.
+    Work item, project and billable always come from the brief, never from the request. Raises KeyError for a day or row
+    the brief does not propose, ValueError for minutes or a description out of bounds."""
+    ch = next((c for c in content.get("chapters") or [] if isinstance(c, dict) and isinstance(c.get("hours"), dict)), None)
+    if ch is None:
+        raise KeyError("no hours")
+    dd = next((x for x in _log_days(_clean_hours(ch["hours"])) if x["date"] == day), None)
+    if dd is None:
+        raise KeyError("day")
+    out, seen = [], set()
+    for r in rows:
+        i, m, desc = r.get("i"), r.get("minutes"), r.get("desc", "")
+        if not isinstance(i, int) or isinstance(i, bool) or not 0 <= i < len(dd["entries"]) or i in seen:
+            raise KeyError("row")
+        e = dd["entries"][i]
+        if e.get("minutes", 0) <= 0:
+            raise KeyError("row")
+        if not isinstance(m, int) or isinstance(m, bool) or not 5 <= m <= 600 or m % 5:
+            raise ValueError("minutes")
+        if not isinstance(desc, str) or len(desc) > LOG_DESC_MAX:
+            raise ValueError("desc")
+        desc = " ".join("".join(c for c in desc if c.isprintable()).split()) or str(e.get("desc") or e.get("what") or "")[:LOG_DESC_MAX]
+        seen.add(i)
+        out.append((e, m, desc))
+    if not out:
+        raise ValueError("no rows")
+    return out
+
+
 def _mins(v):
     try:
         return max(0, int(round(float(v or 0))))
@@ -1167,7 +1253,7 @@ def render_hours(h, order=()):
         for e in dd.get("entries") or []:
             per[e["project"]][0 if e.get("billable") else 1] += e.get("minutes", 0)
 
-    fill = render_fill()
+    fill = render_approve(h) + render_fill()
 
     def key(cls):
         return f'<span class="hkey {cls}" aria-hidden="true"></span>'
@@ -1277,6 +1363,29 @@ CSS_HOURS = r"""
 .hseg,.hkey{background:var(--c)}
 .hseg.nb,.hkey.nb{background:repeating-linear-gradient(45deg,var(--c) 0 2.5px,color-mix(in srgb,var(--c) 26%,var(--card-solid)) 2.5px 6px)}
 .hseg.un,.hkey.un{background:radial-gradient(var(--hun) 1.1px,transparent 1.5px) 0 0/5px 5px,color-mix(in srgb,var(--hun) 16%,var(--card-solid))}
+/* approve and log: the morning's rows, ticked, with minutes and description editable */
+.happ{display:grid;gap:10px;padding:16px 18px;border-radius:18px;border:1.5px solid color-mix(in srgb,var(--accent) 45%,var(--line-strong));
+  background:color-mix(in srgb,var(--accent) 7%,var(--card-solid))}
+.happ-chips{display:flex;flex-wrap:wrap;gap:8px}
+.happ-chip{padding:7px 13px;border-radius:999px;border:1.5px solid var(--line-strong);background:var(--card);color:var(--ink);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.happ-chip:hover{background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+.happ-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.happ-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.happ-chip small{opacity:.75;font-weight:500;margin-left:4px}
+.happ-day[hidden]{display:none}
+.happ-note{margin:0 0 6px;font-size:13px;color:var(--muted)}
+.happ-rows{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.happ-row{display:grid;grid-template-columns:auto minmax(9em,1fr) auto;gap:6px 10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--card-solid);border:1px solid var(--line)}
+.happ-row:has(.happ-on:not(:checked)){opacity:.55}
+.happ-on{width:18px;height:18px;accent-color:var(--accent);margin:0}
+.happ-what{display:grid;min-width:0}.happ-what b{font-size:14px}.happ-what small{font-size:12px;color:var(--muted)}
+.happ-m{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
+.happ-min{width:4.6em;padding:5px 6px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);font:inherit;font-size:14px;text-align:right}
+.happ-desc{grid-column:2/-1;width:100%;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);font:inherit;font-size:13.5px}
+.happ-min:focus-visible,.happ-desc:focus-visible,.happ-on:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.happ-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.happ-foot .hfill-st{flex:1 1 16em}
+[data-approve-go][aria-busy="true"]{opacity:.7;cursor:progress}
 /* the action: one panel, the day it will fill named in words */
 .hfill[hidden]{display:none}
 .hfill{display:grid;grid-template-columns:1fr auto;gap:10px 18px;align-items:center;padding:16px 18px;border-radius:18px;
@@ -1412,6 +1521,48 @@ JS_HOURS = r"""
   }
   go.addEventListener('click', function(){ pick(); run(main); });
   alt.addEventListener('click', function(){ pick(); run(other); });
+})();
+(function(){
+  // Approve and log: the ticked rows of the picked day go to the helper, which checks them against this brief and logs them
+  var box = document.querySelector('[data-approve]'); if (!box) return;
+  var chips = [].slice.call(box.querySelectorAll('.happ-chip')), sets = [].slice.call(box.querySelectorAll('.happ-day')),
+      go = box.querySelector('[data-approve-go]'), st = box.querySelector('[data-approve-status]');
+  var SERVED = /^http:\/\/(127\.0\.0\.1|localhost):8765$/.test(location.origin), day = sets.length ? sets[0].getAttribute('data-day') : '';
+  var BRIEF = ''; try { BRIEF = JSON.parse(document.getElementById('stage-data').textContent).date; } catch (e) {}
+  function hm(m){ var h = Math.floor(m / 60), r = m % 60; return h ? h + 'h' + (r ? (r < 10 ? '0' : '') + r : '') : r + 'm'; }
+  function cur(){ return box.querySelector('.happ-day[data-day="' + day + '"]'); }
+  function rows(){
+    return [].slice.call(cur().querySelectorAll('.happ-row')).filter(function(li){ return li.querySelector('.happ-on').checked; }).map(function(li){
+      return {i: +li.querySelector('.happ-on').getAttribute('data-i'), minutes: Math.round(+li.querySelector('.happ-min').value),
+              desc: li.querySelector('.happ-desc').value.trim()};
+    });
+  }
+  function sum(){
+    var r = rows(), m = r.reduce(function(a, x){ return a + (x.minutes > 0 ? x.minutes : 0); }, 0);
+    go.textContent = r.length ? 'Approve and log ' + r.length + (r.length === 1 ? ' row, ' : ' rows, ') + hm(m) : 'Nothing ticked';
+    go.disabled = !r.length;
+  }
+  chips.forEach(function(c){ c.addEventListener('click', function(){
+    day = c.getAttribute('data-day'); st.textContent = '';
+    chips.forEach(function(x){ x.setAttribute('aria-pressed', x === c ? 'true' : 'false'); });
+    sets.forEach(function(s){ s.hidden = s.getAttribute('data-day') !== day; }); sum();
+  }); });
+  box.addEventListener('input', sum); box.addEventListener('change', sum); sum();
+  go.addEventListener('click', function(){
+    var r = rows(), bad = r.filter(function(x){ return !(x.minutes >= 5 && x.minutes <= 600 && x.minutes % 5 === 0); });
+    if (bad.length) { st.textContent = 'Minutes go in steps of 5, from 5 to 600.'; return; }
+    if (!SERVED) { st.textContent = 'Open the brief from the Dock app (it goes through the helper) to log from here.'; return; }
+    go.setAttribute('aria-busy', 'true'); go.disabled = true; st.textContent = 'Starting a Claude session to log these…';
+    fetch('/log-hours', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({brief: BRIEF, day: day, rows: r}),
+                         credentials: 'same-origin', redirect: 'error'})
+      .then(function(res){
+        if (res.ok) st.textContent = 'A Claude session is logging ' + r.length + (r.length === 1 ? ' row' : ' rows') + ' in Terminal. It reads the day in Tempo first and stops if anything does not match.';
+        else if (res.status === 429) st.textContent = 'A session started a moment ago: look for it in Terminal before starting another.';
+        else if (res.status === 404) st.textContent = 'Logging from the page is not set up, or the helper cannot find this brief\u2019s saved rows. Nothing was started.';
+        else st.textContent = 'The helper could not start the session (error ' + res.status + '). Nothing was logged.';
+      }, function(){ st.textContent = 'The brief helper is not answering. Nothing was logged.'; })
+      .then(function(){ go.removeAttribute('aria-busy'); sum(); });
+  });
 })();
 """
 

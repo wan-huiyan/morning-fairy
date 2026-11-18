@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.9.0
+version: 1.10.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -249,8 +249,10 @@ long unattended agent run inside an attended session counts, which reads high. S
   next to it invites billing the whole week to one client.
 - Report `unattributed` as a pile to attribute by hand, never as zero. A project missing from the map
   is **silently invisible**, not zero.
-- `--require-typed` counts only stretches holding a message the owner actually typed. Run both and
-  compare before proposing a week.
+- Only stretches holding a message the owner actually typed count, so an agent that ran on alone with
+  nobody at the keyboard adds nothing (the default since 1.10.0; a loaded skill, a `/loop` prompt and a
+  context-refresh summary are not typing). `--include-unattended` counts those stretches too: run both
+  and compare before proposing a week. `--require-typed` is still accepted and does nothing.
 
 **Four rules that decide whether the figures are right.**
 
@@ -267,6 +269,18 @@ long unattended agent run inside an attended session counts, which reads high. S
    meetings ran is a question for that day's calendar, never a hardcoded rule — "the standup, every
    weekday" is wrong the first week someone skips one.
 4. **Round each entry to 5 minutes.** Nothing goes into a timesheet as 4h 42m.
+
+**Approve and log.** On the Hours tab each day Tempo still lacks (or that Tempo was not read for) shows
+the morning's proposed rows, each one ticked, with its minutes and the description Tempo will get, both
+editable. Approving sends the ticked rows to the helper's `/log-hours`, which starts one attended
+session that logs exactly those rows, with no second OK: the click is the OK. It needs the same
+`fill_tempo` block in `clients.json` as Fill Tempo (without it the helper answers "not set up" and the
+page says so). The work item, project and billable setting always come from the brief, never from the
+page; minutes are 5 to 600 in steps of 5 and a description is at most 160 characters. The session
+reads the day in Tempo first and stops on any mismatch (time already on those work items, a key not in
+the picker, the wrong week). An hours entry in the brief's content may carry a `"desc"` field to
+set the description the page offers; without one it starts from the entry's `"what"`. The helper logs
+nothing to disk.
 
 **Checking what is already logged.** A timesheet tool's API may not answer "are *my* hours in?" — in
 Tempo, for instance, the worklog it syncs into Jira is authored by the Tempo app account, never the

@@ -7,7 +7,9 @@ Nothing here reads a real transcript: every fixture is written into the test's
 own temp folder.
 """
 
+import contextlib
 import datetime as dt
+import io
 import json
 import os
 import sys
@@ -203,6 +205,32 @@ class TestScheduledAndTyped(Base):
             self.assertFalse(m.is_typed_by_her({"type": "user", "message": {"content": text}}))
         self.assertTrue(m.is_typed_by_her({"type": "user", "message": {"content": "please resume"}}))
         self.assertFalse(m.is_typed_by_her({"type": "assistant", "message": {"content": "ok"}}))
+
+    def test_a_loaded_skill_a_loop_prompt_or_a_context_summary_is_not_typed(self):
+        for extra in ({"isMeta": True},
+                      {"isCompactSummary": True, "isVisibleInTranscriptOnly": True}):
+            obj = dict({"type": "user",
+                        "message": {"content": "Watch my access request until it is set up."}}, **extra)
+            self.assertFalse(m.is_typed_by_her(obj))
+
+    def test_the_cli_drops_unattended_stretches_unless_asked(self):
+        # An agent running alone: no message anyone typed.
+        self.write_session("p1", "a", "/u/acme-platform", span(10, "10:00", "11:00"))
+        cmap = os.path.join(self.root, "clients.json")
+        with open(cmap, "w") as fh:
+            json.dump({"clients": CLIENTS}, fh)
+        args = ["--start", "2026-11-10", "--projects-dir", self.root,
+                "--clients", cmap, "--json"]
+
+        def run(extra):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                m.main(args + extra)
+            return json.loads(buf.getvalue())["by_client"]
+
+        self.assertNotIn("acme", run([]))
+        self.assertNotIn("acme", run(["--require-typed"]))  # old flag still accepted
+        self.assertAlmostEqual(run(["--include-unattended"])["acme"]["2026-11-10"], 1.0, places=5)
 
 
 class TestMeetingsAndOptIn(Base):

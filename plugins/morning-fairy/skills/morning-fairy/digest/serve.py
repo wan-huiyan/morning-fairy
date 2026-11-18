@@ -3,7 +3,7 @@
 ~/.morning-fairy/runs/done.jsonl (MORNING_FAIRY_HOME overrides the folder).
 
 127.0.0.1 only, port 8765. POST /fill-hours {"date"} opens Terminal (macOS) with an attended Claude session that fills
-that day's Tempo hours: the prompt is fill_hours_prompt.txt beside this file, filled from the "fill_tempo" block of
+that day's Tempo hours (POST /log-hours logs the rows approved on the Hours tab, checked against that day's saved brief, the same way): the prompt is fill_hours_prompt.txt beside this file, filled from the "fill_tempo" block of
 clients.json beside this file (no block, no route); the page only sends a date. POST /start-quests {"date", "ids"}
 opens one such session per project for the quests picked on the Quests board, rebuilt from that day's saved brief;
 it needs start.json beside this file. Sessions start in your own default permission mode. Writes that done.jsonl, and look.json
@@ -52,6 +52,7 @@ LOOK_MANY = {"places": ("tabs", "quests", "toolbar", "done", "empty", "favicon")
 LOOK_LOCK = threading.Lock()  # one save-and-rebuild at a time
 # /fill-hours: the page sends a date and nothing else; the prompt is this fixed file with the config and the date filled in
 FILL_PROMPT = CODE / "fill_hours_prompt.txt"
+LOG_PROMPT = CODE / "log_hours_prompt.txt"  # Approve and log: the rows approved on the page, logged with no second OK
 FILL_CONFIG = CODE / "clients.json"  # its "fill_tempo" block: tempo_url (required), work_items, folder
 FILL_DAYS = 14  # how far back a day may be filled
 FILL_GAP = 20  # seconds: a double tap opens one session, not two
@@ -266,6 +267,40 @@ def launch_claude(folder, prompt, chrome=False):
         raise
 
 
+def log_request(r, today=None):
+    """(brief date, day, rows) from a /log-hours body, or None when anything is off. The rows are checked against the
+    brief itself in log_prompt; here only their shape."""
+    if not isinstance(r, dict):
+        return None
+    brief, day, rows = fill_date(r.get("brief"), today), fill_date(r.get("day"), today), r.get("rows")
+    if brief is None or day is None or day > brief or not isinstance(rows, list) or not 1 <= len(rows) <= 20:
+        return None
+    if not all(isinstance(x, dict) and set(x) <= {"i", "minutes", "desc"} for x in rows):
+        return None
+    return brief, day, rows
+
+
+def log_prompt(brief, day, rows, cfg):
+    """The logging session's prompt for the rows the brief of `brief` proposes for `day` (build_digest.log_rows checks
+    them: work item, project and billable come from the brief, never from the page). One line, as Terminal types it."""
+    content = DIGEST / "runs" / f"content-{brief.isoformat()}.json"
+    if not content.is_file():
+        raise FileNotFoundError(content)
+    if str(CODE) not in sys.path:
+        sys.path.insert(0, str(CODE))  # -I leaves this folder off the path
+    import build_digest
+    ok = build_digest.log_rows(json.loads(content.read_text(encoding="utf-8")), day.isoformat(), rows)
+    lines = []
+    for n, (e, m, desc) in enumerate(ok, 1):
+        lines.append(f'{n}) {e["project"]}, work item {e.get("key") or "(none: stop and ask me)"}, {m // 60}h{m % 60:02d}, '
+                     f'{"billable" if e.get("billable") else "non-billable"}, description "{desc.replace(chr(34), chr(39))}"')
+    val = {"skill_md": str(CODE.parent / "SKILL.md"), "tempo_url": cfg["tempo_url"].strip()}
+    t = re.sub(r"\{(skill_md|tempo_url)\}", lambda m: val[m.group(1)], LOG_PROMPT.read_text(encoding="utf-8"))
+    t = " ".join(t.split())
+    return (t.replace("{rows}", "; ".join(lines) + ".").replace("{date}", day.isoformat())
+            .replace("{day}", f"{day:%A} {day.day} {day:%B %Y}").replace("{time}", datetime.now().strftime("%H:%M")))
+
+
 def launch_fill(prompt, folder):
     """The Fill Tempo session, in the configured folder. Tests replace this."""
     launch_claude(folder, prompt, chrome=True)  # it reads the Tempo page in your Chrome
@@ -368,7 +403,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.close_connection = True  # a refused body is never read, so the connection is not reused
         route = urlsplit(self.path).path
-        if route not in ("/done", "/look", "/fill-hours", "/start-quests"):
+        if route not in ("/done", "/look", "/fill-hours", "/start-quests", "/log-hours"):
             return self._send(404, "not found")
         if self.headers.get("Origin", "") not in ORIGINS or not self._host_ok():
             return self._send(403, "forbidden")
@@ -376,7 +411,7 @@ class Handler(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", ""))
         except ValueError:
             return self._send(411, "length required")
-        if n < 0 or n > (START_MAX_BODY if route == "/start-quests" else MAX_BODY):
+        if n < 0 or n > (START_MAX_BODY if route in ("/start-quests", "/log-hours") else MAX_BODY):
             return self._send(413, "too large")
         try:
             r = json.loads(self.rfile.read(n).decode("utf-8"))
@@ -420,6 +455,33 @@ class Handler(BaseHTTPRequestHandler):
                 _start_seen[key] = now
                 _start_times[:] = recent + [now] * opened
             return self._send(200, json.dumps({"ok": True, "sessions": opened}), "application/json")
+        if route == "/log-hours":
+            cfg = fill_config()
+            if cfg is None:
+                return self._send(404, "not set up")  # no "fill_tempo" block in clients.json
+            req = log_request(r)
+            if req is None:
+                return self._send(400, "bad fields")
+            try:
+                prompt = log_prompt(*req, cfg)
+            except FileNotFoundError:
+                return self._send(404, "no saved brief for that day")
+            except (KeyError, ValueError):
+                return self._send(400, "rows the brief does not propose")
+            except Exception:  # a content file of an unexpected shape
+                return self._send(500, '{"ok":false}', "application/json")
+            with FILL_LOCK:  # one Tempo session at a time, whichever button started it
+                if _fill_last[0] is not None and time.monotonic() - _fill_last[0] < FILL_GAP:
+                    return self._send(429, '{"ok":false,"why":"just opened"}', "application/json")
+                try:
+                    launch_fill(prompt, fill_folder(cfg))
+                except subprocess.TimeoutExpired:
+                    _fill_last[0] = time.monotonic()
+                    return self._send(500, '{"ok":false}', "application/json")
+                except (OSError, subprocess.SubprocessError):
+                    return self._send(500, '{"ok":false}', "application/json")
+                _fill_last[0] = time.monotonic()
+            return self._send(200, json.dumps({"ok": True, "rows": len(req[2])}), "application/json")
         if route == "/fill-hours":
             cfg = fill_config()
             if cfg is None:

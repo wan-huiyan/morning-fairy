@@ -381,6 +381,14 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.10.0** (2026-11-18): the Hours tab gets an "Approve and log" card. For each day Tempo still lacks, it lists
+  the morning's proposed rows, all ticked, with the minutes and the description Tempo will get, both editable.
+  One click starts a Claude session that logs exactly those rows, reading the day in Tempo first and stopping if
+  anything does not match. It needs the same Tempo setup as Fill Tempo; without it the card still shows and says logging is not set up.
+  Hours entries can carry a short `desc` for that description. The hours measure now counts only stretches where you
+  actually typed a message, so agents running on their own, a loaded skill, a `/loop` prompt or a
+  context-refresh summary no longer add time; `--include-unattended` brings the old count back, and
+  `--require-typed` still works but is now the default.
 - **1.9.0** (2026-11-17): the time machine moves from the tabs to a clock button in the top row and opens as a
   dialog, so the remaining tabs fit; a narrow tab strip (a laptop window about 1000 px wide) shows them icon over
   label. An earlier brief served by the helper now has a way forward inside its time machine: its own day is
