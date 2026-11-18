@@ -1,7 +1,7 @@
 """Tests for Approve and log: build_digest.render_approve / log_rows and serve.py's /log-hours route.
 
 Run from the repo root:  python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests -v
-Nothing is launched: launch_fill is replaced, so no Terminal window opens and no Claude session starts. The brief's saved
+Nothing is launched: launch_log is replaced, so no Terminal window opens and no Claude session starts. The brief's saved
 content and the "fill_tempo" config are files of the test's own in a temp folder.
 """
 import http.client
@@ -116,10 +116,10 @@ class Route(Config, unittest.TestCase):
         cls.tmp = Path(tempfile.mkdtemp())
         (cls.tmp / "runs").mkdir()
         (cls.tmp / "runs" / f"content-{TODAY.isoformat()}.json").write_text(json.dumps(content()))
-        cls.saved = (serve.DIGEST, serve.launch_fill)
+        cls.saved = (serve.DIGEST, serve.launch_log)
         cls.launched = []
         serve.DIGEST = cls.tmp
-        serve.launch_fill = lambda prompt, folder: cls.launched.append((prompt, folder))
+        serve.launch_log = lambda prompt, folder: cls.launched.append((prompt, folder))
         cls.srv = serve.ThreadingHTTPServer(("127.0.0.1", 0), serve.Handler)
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
 
@@ -127,7 +127,7 @@ class Route(Config, unittest.TestCase):
     def tearDownClass(cls):
         cls.srv.shutdown()
         cls.srv.server_close()
-        serve.DIGEST, serve.launch_fill = cls.saved
+        serve.DIGEST, serve.launch_log = cls.saved
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def setUp(self):
@@ -182,6 +182,27 @@ class Route(Config, unittest.TestCase):
         out = bd.render_hours(content()["chapters"][0]["hours"], [])
         self.assertIn("data-approve", out)
         self.assertNotIn("data-fill-go", out)
+
+
+class Model(unittest.TestCase):
+    """The command Terminal is told to run: logging on Sonnet, Fill Tempo on your default model. osascript is replaced."""
+    def command(self, launch):
+        saved, ran = (serve.DIGEST, serve.subprocess.run), []
+        tmp = Path(tempfile.mkdtemp())
+        serve.DIGEST, serve.subprocess.run = tmp, lambda args, **kw: ran.append(args[-1])
+        try:
+            launch("a prompt", str(tmp))
+        finally:
+            serve.DIGEST, serve.subprocess.run = saved
+            shutil.rmtree(tmp, ignore_errors=True)
+        self.assertEqual(len(ran), 1)
+        return ran[0]
+
+    def test_logging_runs_on_sonnet_and_filling_on_the_default(self):
+        log, fill = self.command(serve.launch_log), self.command(serve.launch_fill)
+        self.assertIn('claude --chrome --model sonnet \\"$p\\"', log)
+        self.assertIn('claude --chrome \\"$p\\"', fill)
+        self.assertNotIn("--model", fill)
 
 
 if __name__ == "__main__":
