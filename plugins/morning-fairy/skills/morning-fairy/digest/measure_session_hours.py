@@ -132,10 +132,14 @@ def is_typed_by_her(obj):
     """True when this user message carries text SHE wrote.
 
     A user-role message is often not a person: tool results, harness notices and
-    automated events all arrive this way. Used by --require-typed to drop stretches
-    where an agent ran on alone with nobody at the keyboard.
+    automated events all arrive this way. Used to drop stretches
+    where an agent ran on alone with nobody at the keyboard (the default; --include-unattended keeps them).
     """
     if obj.get("type") != "user":
+        return False
+    # Not her either: a loaded skill or a /loop's repeated prompt (isMeta), and the summary that carries
+    # a session over a context refresh (isCompactSummary).
+    if obj.get("isMeta") or obj.get("isCompactSummary"):
         return False
     msg = obj.get("message") or {}
     content = msg.get("content")
@@ -188,7 +192,7 @@ def collect(projects_dir, clients, gap_minutes, require_typed=False):
             continue
         name = classify(cwd, clients, first)
         bucket = by_client.setdefault(name, [])
-        # Break the session into stretches first, so --require-typed can judge a
+        # Break the session into stretches first, so the typed check can judge a
         # whole stretch rather than a single pair of messages inside it.
         stretch = [stamps[0]]
         for row in stamps[1:]:
@@ -239,9 +243,12 @@ def main(argv=None):
     ap.add_argument("--clients", default=DEFAULT_MAP, help="path to clients.json")
     ap.add_argument("--meetings", help="JSON list of calendar meetings to union in")
     ap.add_argument("--require-typed", action="store_true",
-                    help="count a stretch only if it holds a message she typed, "
-                         "dropping agent runs nobody was present for. Off by "
-                         "default; use it to check how much a day depends on them.")
+                    help="the default since 1.10.0 (kept so older commands still run): a stretch "
+                         "counts only if it holds a message she typed, so agent runs nobody "
+                         "was present for are dropped.")
+    ap.add_argument("--include-unattended", action="store_true",
+                    help="also count stretches with no message she typed (the count before "
+                         "1.10.0); use it to see how much a day leans on agents running alone.")
     ap.add_argument("--json", action="store_true", dest="as_json")
     args = ap.parse_args(argv)
 
@@ -251,7 +258,7 @@ def main(argv=None):
         ap.error("--end is before --start")
 
     clients = load_clients(args.clients)
-    by_client = collect(args.projects_dir, clients, args.gap, args.require_typed)
+    by_client = collect(args.projects_dir, clients, args.gap, not args.include_unattended)
     if args.meetings:
         add_meetings(by_client, args.meetings)
 

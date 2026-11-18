@@ -295,21 +295,24 @@
         "what": "Client work",
         "key": "LH-10",
         "minutes": 405,
-        "billable": true
+        "billable": true,
+        "desc": "Lighthouse analysis: model checks and deck drafts for the client call"
        },
        {
         "project": "Lighthouse Co",
         "what": "Kick-off workshop",
         "key": "LH-1",
         "minutes": 30,
-        "billable": false
+        "billable": false,
+        "desc": "Lighthouse kick-off workshop"
        },
        {
         "project": "Admin",
         "what": "Team standup",
         "key": "ADMIN-8",
         "minutes": 30,
-        "billable": false
+        "billable": false,
+        "desc": "Team standup"
        }
       ],
       "unattributed": 0,
