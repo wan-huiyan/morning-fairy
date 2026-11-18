@@ -114,6 +114,31 @@ class Timeline(unittest.TestCase):
         self.assertTrue(on.endswith("Counted: click to leave it out.") and off.endswith("Left out: click to count it."))
 
 
+class Meetings(unittest.TestCase):
+    """A calendar meeting is its own row with its calendar start, and the session is told to log it at that time."""
+    def test_the_start_reaches_the_page_and_the_prompt(self):
+        c = content()
+        c["chapters"][0]["hours"]["days"][0]["entries"] += [
+            {"project": "Admin", "what": "Weekly sync", "key": "ADM-8", "minutes": 30, "billable": False, "start": "13:30"},
+            {"project": "Admin", "what": "Odd", "key": "ADM-8", "minutes": 15, "billable": False, "start": "13:30; and also"}]
+        html = bd.render_approve(bd._clean_hours(c["chapters"][0]["hours"]))
+        self.assertIn("non-billable · from 13:30</small>", html)
+        self.assertEqual(html.count("· from "), 1, "a malformed start is not shown")
+        saved, tmp = serve.DIGEST, Path(tempfile.mkdtemp())
+        try:
+            (tmp / "runs").mkdir()
+            (tmp / "runs" / f"content-{TODAY.isoformat()}.json").write_text(json.dumps(c))
+            serve.DIGEST = tmp
+            p = serve.log_prompt(TODAY, date.fromisoformat(DAY), [{"i": 3, "minutes": 30}, {"i": 4, "minutes": 15}, {"i": 1, "minutes": 90}],
+                                 dict(FILL))
+        finally:
+            serve.DIGEST = saved
+            shutil.rmtree(tmp, ignore_errors=True)
+        self.assertIn("work item ADM-8, 0h30, starting at 13:30 (a calendar meeting: log it at that time), non-billable", p)
+        self.assertEqual(p.count("starting at"), 1, "a malformed start never reaches the prompt")
+        self.assertIn("Never merge meetings into one worklog", p)
+
+
 class Route(Config, unittest.TestCase):
     @classmethod
     def setUpClass(cls):

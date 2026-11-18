@@ -405,6 +405,9 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.14.1** (2026-11-18): calendar meetings are logged as the calendar shows them. An hours entry can carry a
+  `start` time; the page shows it ("from 10:00") and the logging session logs that row as its own worklog at that
+  time and length. Both Tempo prompts now say each meeting is its own worklog, never merged with another.
 - **1.14.0** (2026-11-18): quiet stretches. The session log only sees time while messages flow, so reading an
   agent's work or writing your answers in the brief went uncounted. `measure_session_hours.py --spans` now lists
   the silence before each reply you typed, cut around meetings, out-of-office blocks (`"away": true` in

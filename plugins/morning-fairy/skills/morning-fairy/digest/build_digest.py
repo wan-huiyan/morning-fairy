@@ -1159,6 +1159,13 @@ def _hhmm(v):
     return t if t <= 1440 else None
 
 
+def _start_label(e):
+    """' · from 10:00' for an entry that is one calendar meeting (its "start", HH:MM), else ''. The logging session logs
+    such a row at that time and length, as the calendar shows it."""
+    t = _hhmm(e.get("start"))
+    return f" · from {t // 60:02d}:{t % 60:02d}" if t is not None and t < 1440 else ""
+
+
 def _day_spans(dd):
     """A day's stretches that can be drawn: [(row, a, b, kind, span)], kind "typed", "alone", "meeting" or "quiet"."""
     out = []
@@ -1222,7 +1229,7 @@ def _timeline(dd, slot):
             f'<li class="happ-row tlane" data-bill="{1 if e.get("billable") else 0}" data-prop="{e["minutes"]}">'
             f'<input type="checkbox" class="happ-on" checked data-i="{i}" aria-label="Log {esc(name)}">'
             f'<span class="happ-what"><b>{esc(e["project"])}</b><small>{esc(e.get("key") or "no work item")} · '
-            f'{"billable" if e.get("billable") else "non-billable"}</small></span>'
+            f'{"billable" if e.get("billable") else "non-billable"}{_start_label(e)}</small></span>'
             f'<span class="ttrack">{edge}{"".join(blocks)}</span>'
             f'<span class="tsum"><b class="tmin">{_hm(e["minutes"])}</b><label class="tx">+<input type="number" class="happ-x" min="0" '
             f'max="600" step="5" aria-label="Other minutes for {esc(name)}, beyond the blocks">min other</label>'
@@ -1259,7 +1266,7 @@ def render_approve(h, slot=None):
             rows.append(
                 f'<li class="happ-row"><input type="checkbox" class="happ-on" checked data-i="{i}" aria-label="Log {esc(name)}">'
                 f'<span class="happ-what"><b>{esc(e["project"])}</b><small>{esc(e.get("key") or "no work item")} · '
-                f'{"billable" if e.get("billable") else "non-billable"}</small></span>'
+                f'{"billable" if e.get("billable") else "non-billable"}{_start_label(e)}</small></span>'
                 f'<label class="happ-m"><input type="number" class="happ-min" min="5" max="600" step="5" value="{e["minutes"]}" '
                 f'aria-label="Minutes for {esc(name)}"><span>min</span></label>'
                 f'<input type="text" class="happ-desc" maxlength="{LOG_DESC_MAX}" value="{esc(desc)}" aria-label="Tempo description for {esc(name)}"></li>')
