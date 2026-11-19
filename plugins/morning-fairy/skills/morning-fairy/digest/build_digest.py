@@ -3185,7 +3185,7 @@ LOOK_PANEL = """<div class="look-panel" id="look-panel" role="dialog" aria-label
   <button type="button" class="look-switch" id="dark-switch" role="switch" aria-checked="false"><span>Dark mode</span><i class="knob" aria-hidden="true"></i></button>
   <button type="button" class="look-switch" id="sparkle-switch" role="switch" aria-checked="true"><span>Sparkles</span><i class="knob" aria-hidden="true"></i></button>
   <fieldset class="look-layout"><legend>Layout</legend>
-    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Tabs</button><button type="button" data-layout="scene">Scene</button><button type="button" data-layout="map">Map</button></div>
+    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Tabs</button><button type="button" data-layout="deck">Deck</button><button type="button" data-layout="scene">Scene</button><button type="button" data-layout="map">Map</button></div>
   </fieldset>
 """ + FAIRY_BTN + """</div>"""
 
@@ -3627,6 +3627,7 @@ JS = r"""
   var SFX = {
     open: function(){ note(sc(2), 0, .08); note(sc(4), .05, .14); },                        // a section opens
     close: function(){ note(sc(4), 0, .07); note(sc(1), .05, .12, {gain: .8}); },           // and closes
+    flip: function(){ whoosh(0, .16, 1600, 700, .05); note(sc(3), .06, .09, {gain: .6}); }, // a deck card slides past
     step: function(){ whoosh(0, .16, 1600, 700, .05); note(sc(3), .06, .09, {gain: .6}); }, // the mascot hops to another level on the map
     tick: function(){ note(sc(5), 0, .14); note(sc(7), .045, .2, {gain: .55}); },           // a box ticked
     untick: function(){ note(sc(1), 0, .1, {gain: .6}); },                                   // and unticked
@@ -5067,6 +5068,42 @@ html[data-world="candy"] .tab[aria-selected="true"]{background:var(--w-accent);c
 .app[data-layout="stage"] .panel.on{display:flex}
 .app[data-layout="stage"] .main{grid-template-rows:auto 1fr}
 
+/* ---------- LAYOUT B: swipe deck ---------- */
+.app[data-layout="deck"] .main{grid-template-rows:minmax(260px,44%) 1fr auto;padding:0 0 10px}
+.app[data-layout="deck"] .stage{margin:0 clamp(12px,2.4vw,28px);border-radius:30px}
+.app[data-layout="deck"] .panels{display:flex;gap:22px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:18px calc(50% - min(330px,44vw)) 10px;scrollbar-width:none;min-height:0}
+.app[data-layout="deck"] .panels::-webkit-scrollbar{display:none}
+.app[data-layout="deck"] .panel{flex:none;width:min(660px,88vw);scroll-snap-align:center;scroll-snap-stop:always;
+  transform:translateY(calc(var(--a,0)*16px)) rotate(calc(var(--d,0)*3deg)) scale(calc(1 - var(--a,0)*.07));opacity:calc(1 - var(--a,0)*.42);transform-origin:50% 100%}
+.app[data-layout="deck"] .switch{order:3}
+.app[data-layout="deck"] .tabs{justify-content:center;padding:6px 12px;gap:4px}
+.app[data-layout="deck"] .tab{padding:6px 10px;font-size:13px;background:none!important;border-color:transparent!important;box-shadow:none!important}
+.app[data-layout="deck"] .tab .ic{width:17px;height:17px}
+.app[data-layout="deck"] .tab[aria-selected="true"]{background:var(--w-ink)!important;color:var(--w-card)}
+html[data-mode="dark"] .app[data-layout="deck"] .tab[aria-selected="true"]{background:var(--w-accent)!important;color:var(--w-on)}
+html[data-world="candy"] .app[data-layout="deck"] .tab[aria-selected="true"]{background:var(--w-accent)!important;color:#fff}
+.app[data-layout="deck"] .rider{display:none}
+.deckctl{position:absolute;left:0;right:0;top:62%;pointer-events:none;display:none;justify-content:space-between;padding:0 clamp(8px,2vw,24px);z-index:6}
+.app[data-layout="deck"] .deckctl{display:flex}
+.deckctl button{pointer-events:auto;width:48px;height:48px;border-radius:50%;border:1px solid var(--w-line);background:var(--w-card);color:var(--w-ink);display:grid;place-items:center;cursor:pointer;box-shadow:var(--w-shadow);padding:0}
+.deckctl button:disabled{opacity:.35;cursor:default}
+html[data-world="garden"] .deckctl button{border-width:1.6px}
+/* the deck's reading view: a tap on the centred card (or its Enlarge button) grows that card into a big panel over a scrim.
+   It is the real panel, fixed in place (a same-width placeholder keeps its spot in the row), so ticks and Copy keep working. */
+.ph .zx{display:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--w-line);background:none;color:var(--w-ink);cursor:pointer;place-items:center;padding:0}
+.ph .zx:focus-visible,.panel.enlarged .ph .x:focus-visible{outline:3px solid var(--w-accent);outline-offset:2px}
+.app[data-layout="deck"] .ph .zx{display:grid}
+.app[data-layout="deck"] .panel:not(.enlarged) .pb{cursor:zoom-in}
+.app[data-layout="deck"] .panel:not(.enlarged) .pb :is(a,button,input,label,select,textarea,summary){cursor:pointer}
+.zph{flex:none;scroll-snap-align:center}
+.zscrim{position:fixed;inset:0;z-index:60;background:color-mix(in srgb,var(--w-card) 55%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .3s}
+.zscrim.on{opacity:1;pointer-events:auto}
+.app[data-layout="deck"] .panel.enlarged{position:fixed;z-index:61;left:calc(50% - min(550px,47vw));top:5vh;top:5dvh;width:min(1100px,94vw);height:90vh;height:90dvh;transform:none;opacity:1;transform-origin:0 0}
+.panel.enlarged .ph .zx{display:none}
+.panel.enlarged .ph .x{display:grid}
+.panel.enlarged .ph{padding:18px clamp(18px,3vw,36px) 12px}
+.panel.enlarged .pb{padding:4px clamp(18px,3vw,36px) 32px;font-size:17px}
+@media (prefers-reduced-motion:reduce){.zscrim{transition:none}}
 /* the layout switch: a segment in the top bar on a laptop, and in the Look panel at every width */
 .seg{display:inline-flex;padding:3px;border-radius:999px;background:var(--w-chip);border:1px solid var(--w-line);gap:2px}
 html[data-world="garden"] .seg{border-width:1.5px}
@@ -5257,8 +5294,8 @@ html[data-world="garden"] .app .btn-accent[data-copy-btn]{border:1.5px solid var
 .finale-banner{position:absolute;inset:0;z-index:5;display:grid;place-items:center;pointer-events:none;text-align:center;padding:0 20px}
 .finale-banner[hidden]{display:none}
 .finale-banner span{font:800 clamp(28px,4.6vw,64px)/1.05 var(--w-display);color:var(--w-ink);text-shadow:0 3px 0 var(--w-card),0 0 30px var(--w-card)}
-.app[data-layout="stage"] .hotspots{display:none}
-.app[data-layout="scene"] .headline,.app[data-layout="map"] .headline{right:auto;width:min(40%,560px)}
+.app[data-layout="stage"] .hotspots,.app[data-layout="deck"] .hotspots{display:none}
+.app[data-layout="deck"] .headline,.app[data-layout="scene"] .headline,.app[data-layout="map"] .headline{right:auto;width:min(40%,560px)}
 .app .n{font:600 12px var(--mono);padding:2px 8px;border-radius:999px;background:var(--w-chip);color:var(--w-ink)}
 .app .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .rider{position:absolute;left:0;top:0;width:34px;height:34px;pointer-events:none;z-index:2;will-change:transform}
@@ -5307,7 +5344,16 @@ html[data-world="garden"] .app .btn-accent[data-copy-btn]{border:1.5px solid var
   #msg{bottom:84px}
   #out{bottom:84px;height:160px}
   .app[data-layout="stage"] .tab .tl{white-space:normal;text-align:center;line-height:1.05}  /* at 375px a long label takes two lines */
-  .app[data-layout="scene"] .headline,.app[data-layout="map"] .headline{width:auto;right:16px}
+  .app[data-layout="deck"] .headline,.app[data-layout="scene"] .headline,.app[data-layout="map"] .headline{width:auto;right:16px}
+  .app[data-layout="deck"] .main{grid-template-rows:minmax(240px,38%) 1fr auto}
+  .app[data-layout="deck"] .stage{margin:0 10px;border-radius:24px}
+  .app[data-layout="deck"] .panels{padding:14px 6vw 8px;gap:14px}
+  .app[data-layout="deck"] .tab .tl{display:none}
+  .app[data-layout="deck"] .tab[aria-selected="true"] .tl{display:inline}
+  .app[data-layout="deck"] .tabs{justify-content:flex-start}
+  .app[data-layout="deck"] .panel{border-radius:22px}
+  .deckctl{display:none!important}
+  .app[data-layout="deck"] .panel.enlarged{left:0;top:0;width:100%;height:100%;border-radius:0;border:0}
 }
 @media (max-width:420px){
   .bar .brand-name{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -5353,6 +5399,7 @@ html[data-world="candy"] .app .switch .tab{box-shadow:0 6px 14px -10px var(--p-a
 /* a tab's count badge: the deep tone on a chip, and turned over on the open tab so it never matches the tab's own fill */
 .app .switch .tab .n{background:var(--p-chip);color:var(--p-strong)}
 .app .switch .tab[aria-selected="true"] .n{background:var(--p-on-strong);color:var(--p-strong)}
+html[data-world] .app[data-layout="deck"] .switch .tab[aria-selected="true"]{background:var(--p-strong)!important;color:var(--p-on-strong)}
 /* the top bar's Copy button, its progress ring and the layout switch */
 .app .bar .btn-accent[data-copy-btn],.app .panels .btn-accent[data-copy-btn]{background:var(--p-accent);color:var(--p-on-accent);box-shadow:0 8px 18px -14px var(--p-accent)}
 .app .bar .ring{background:conic-gradient(var(--p-accent) calc(var(--p)*1turn),var(--p-line) 0)}  /* the track in the line tone: the bar itself is chip-coloured */
@@ -5384,8 +5431,7 @@ JS_STAGE = r"""
   var st = {t: 0, real: true, flowers: [], sec: SECS[0], layout: 'scene', done: false, night: false};
   // the layout is the owner's saved pick, or by default the scene on a wide screen and the tabs on a narrow one ("Auto")
   var LKEY = 'jira-digest-layout';
-  // (a pick saved as 'deck', the retired swipe layout, opens as the map)
-  function savedLayout(){ try { var v = localStorage.getItem(LKEY); return v === 'stage' || v === 'scene' || v === 'map' ? v : v === 'deck' ? 'map' : null; } catch (e) { return null; } }
+  function savedLayout(){ try { var v = localStorage.getItem(LKEY); return v === 'stage' || v === 'deck' || v === 'scene' || v === 'map' ? v : null; } catch (e) { return null; } }
   var pick = savedLayout();
   function layoutNow(){ return pick || (innerWidth >= 1100 ? 'scene' : 'stage'); }
   // the map is the scene with levels on its hills: everything the scene does (its ground, its sky, the sheet) it does too
@@ -5498,7 +5544,7 @@ JS_STAGE = r"""
   // boards lifted over the mascot need sky above them for the sun. The SUN gets smaller first (to .55 of its size;
   // shrink only the sun, never the boards, posts or mascot); fitSigns(false) then reports how many px of sky are still short,
   // and drawScene gives the scene that much more sky where it can. On the last try (fitSigns(true)) the hill is lowered
-  // for the sun; and where even that leaves no room for the smallest sun, the boards are fitted under the headline
+  // for the sun; and where even that leaves no room for the smallest sun (a swipe deck), the boards are fitted under the headline
   // and clear of the mascot (the hill stays lowered, the boards are drawn a little smaller only if they still do
   // not fit, then G.low), and the sun passes as high as the headline lets it, where it may touch the top board.
   function fitSigns(last){
@@ -5731,7 +5777,7 @@ JS_STAGE = r"""
     // more sky for the sun: where the scene can have it, it gets just enough for a sun of at least .55 to clear every
     // board and post, at most 35% of its height. A phone's stage row grows (the panel row below gives up that height); the scene
     // and map layouts' box already fills the screen, so its ground sits lower in it; a desktop stage's box is fixed. The map
-    // keeps the room its levels need below the ground (mapNeed).
+    // keeps the room its levels need below the ground (mapNeed). A swipe deck's box is fixed too.
     var main = stage.parentElement, row = function(){ main.style.gridTemplateRows = G.extra && st.layout === 'stage' && G.phone ? 'minmax(250px, calc(40% + ' + G.extra.toFixed(0) + 'px)) 1fr auto' : ''; };
     G.extra = 0; row(); geo();
     var short = fitSigns(false), room = st.layout === 'stage' && G.phone ? .35 * G.H : sceneLayout() ? Math.max(0, Math.min(.35 * G.H, G.H - G.ground - (mapLayout() ? mapNeed() : 90 * G.k))) : 0;
@@ -5858,8 +5904,23 @@ JS_STAGE = r"""
   function panel(k){ return document.getElementById('sec-' + k); }
   function setTabs(){
     $$('.tab').forEach(function(t){ t.setAttribute('aria-selected', t.dataset.sec === st.sec ? 'true' : 'false'); t.tabIndex = t.dataset.sec === st.sec ? 0 : -1; });
+    var i = SECS.indexOf(st.sec), a = document.getElementById('deck-prev'), b = document.getElementById('deck-next');
+    if (a) a.disabled = i <= 0; if (b) b.disabled = i >= SECS.length - 1;
+    if (st.layout === 'deck') { var t = $('.tab[aria-selected="true"]'); if (t && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = Math.max(0, t.offsetLeft - (tabs.clientWidth - t.offsetWidth) / 2); }
     $$('.lvl').forEach(function(b){ var on = b.dataset.sec === st.sec; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
   }
+  // the deck moves by scrolling its own row (never scrollIntoView, which can shift the whole page sideways on a phone)
+  function deckTo(k, instant){ var p = panel(k); panelsEl.scrollTo({left: Math.max(0, p.offsetLeft - (panelsEl.clientWidth - p.offsetWidth) / 2), behavior: instant ? 'auto' : 'smooth'}); }
+  // deck: cards lean and fade with their distance from the centre; the nearest one is the open section
+  var draf = 0;
+  function deckFrame(){
+    draf = 0; if (st.layout !== 'deck' || zoomK) return;
+    var pr = panelsEl.getBoundingClientRect(), mid = pr.left + pr.width / 2, best = null, bd = 1e9;
+    $$('.panel').forEach(function(p){ var r = p.getBoundingClientRect(), c = r.left + r.width / 2, d = (c - mid) / (r.width + 22); p.style.setProperty('--d', Math.max(-1, Math.min(1, d)).toFixed(3)); p.style.setProperty('--a', Math.min(1, Math.abs(d)).toFixed(3)); if (Math.abs(c - mid) < bd) { bd = Math.abs(c - mid); best = p; } });
+    if (best && best.dataset.sec !== st.sec && !deckGo) { st.sec = best.dataset.sec; setTabs(); snd('flip'); }
+  }
+  var deckGo = 0, deckGoT = 0;
+  panelsEl.addEventListener('scroll', function(){ if (!draf) draf = requestAnimationFrame(deckFrame); }, {passive: true});
   function moveRider(animate){
     var t = $('.tab[aria-selected="true"]'); if (!t || st.layout !== 'stage') return;
     var tr = t.getBoundingClientRect(), nr = tabs.getBoundingClientRect(), w = rider.offsetWidth;
@@ -5889,11 +5950,16 @@ JS_STAGE = r"""
   function snd(n, x){ if (window.briefSound) window.briefSound.play(n, x); }
   function show(k, o){
     o = o || {};
-    if (!o.instant && (k !== st.sec || sceneLayout())) snd(mapLayout() && k !== st.sec ? 'step' : 'open');
+    if (zoomK && k !== zoomK) zoomOut(true);
+    if (!o.instant && (k !== st.sec || sceneLayout())) snd(st.layout === 'deck' ? 'flip' : mapLayout() && k !== st.sec ? 'step' : 'open');
     var prev = st.sec, i0 = SECS.indexOf(prev), i1 = SECS.indexOf(k), dir = i1 >= i0 ? 1 : -1;
     st.sec = k; setTabs();
     if (mapLayout()) movePet(!o.instant);
-    if (st.layout === 'stage') {
+    if (st.layout === 'deck') {
+      // while the deck glides to the section asked for, the scroll handler must not re-pick the cards it passes
+      deckGo = 1; clearTimeout(deckGoT); deckGoT = setTimeout(function(){ deckGo = 0; deckFrame(); }, rm() || o.instant ? 60 : 700);
+      deckTo(k, rm() || o.instant);
+    } else if (st.layout === 'stage') {
       var old = panel(prev), nw = panel(k);
       if (old === nw) { nw.classList.add('on'); moveRider(false); }
       else {
@@ -5906,12 +5972,12 @@ JS_STAGE = r"""
         }
       }
     } else openSheet(k, o.origin, o.instant);
-    if (o.focus) reveal(o.focus, sceneLayout() ? 380 : 120);
+    if (o.focus) reveal(o.focus, sceneLayout() ? 380 : st.layout === 'deck' ? 500 : 120);
   }
   tabs.addEventListener('click', function(e){ var t = e.target.closest('.tab'); if (t) show(t.dataset.sec); });
   tabs.addEventListener('keydown', function(e){ var i = SECS.indexOf(st.sec); if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var n = SECS[(i + (e.key === 'ArrowRight' ? 1 : SECS.length - 1)) % SECS.length]; show(n); $('#tab-' + n).focus(); e.preventDefault(); } });
   panelsEl.addEventListener('click', function(e){
-    if (e.target.closest('.x')) closeSheet();
+    if (e.target.closest('.x')) { if (zoomK) zoomOut(); else closeSheet(); }
     var b = e.target.closest('.lv-foot [data-lv]'); if (b) stepLevel(+b.dataset.lv);
   });
   // a link to somewhere else on the page (a glance block, a "Quest for Claude" chip, a project) opens the section that holds it
@@ -5929,6 +5995,65 @@ JS_STAGE = r"""
     panelsEl.addEventListener('pointerup', function(e){ if (!on) return; on = false; var dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) { var i = SECS.indexOf(st.sec) + (dx < 0 ? 1 : -1); if (i >= 0 && i < SECS.length) show(SECS[i]); } });
     panelsEl.addEventListener('pointercancel', function(){ on = false; });
   })();
+
+  /* ---------- deck: tap the centred card (or its Enlarge button) to read it big; tap another card to bring it to the centre ---------- */
+  // The enlarged card is the real panel (ids, ticks, Copy and reveal() keep working): fixed over a scrim, it grows out of its own
+  // rect (FLIP: first rect, last rect, animate the difference) and shrinks back into the placeholder holding its place in the row.
+  // While it is open the scrim covers the tabs and arrows; another section asked for (a link) closes it first.
+  var zoomK = null, zoomBack = null, zph = null, zscrim = document.createElement('div');
+  zscrim.className = 'zscrim'; zscrim.setAttribute('aria-hidden', 'true'); app.appendChild(zscrim);
+  function fit(a, b){ return 'translate(' + (a.left - b.left).toFixed(1) + 'px,' + (a.top - b.top).toFixed(1) + 'px) scale(' + (a.width / b.width).toFixed(4) + ',' + (a.height / b.height).toFixed(4) + ')'; }
+  function zoomIn(p, back){
+    if (zoomK || st.layout !== 'deck') return;
+    var r0 = p.getBoundingClientRect();
+    zph = document.createElement('div'); zph.className = 'zph'; zph.style.width = p.offsetWidth + 'px'; p.parentNode.insertBefore(zph, p);
+    zoomK = p.dataset.sec; zoomBack = back || p;
+    p.style.setProperty('--a', 0); p.style.setProperty('--d', 0);
+    p.classList.add('enlarged'); app.classList.add('zoomed'); zscrim.classList.add('on');
+    snd('open'); p.focus({preventScroll: true});
+    if (!rm()) p.animate([{transform: fit(r0, p.getBoundingClientRect())}, {transform: 'none'}], {duration: 440, easing: 'cubic-bezier(.22,1,.36,1)'});
+  }
+  function zoomOut(instant){
+    if (!zoomK) return;
+    var p = panel(zoomK), back = zoomBack, ph = zph;
+    zoomK = zoomBack = zph = null; zscrim.classList.remove('on');
+    if (!instant) snd('close');
+    p.getAnimations().forEach(function(a){ a.cancel(); });
+    var fin = function(){
+      p.classList.remove('enlarged'); app.classList.remove('zoomed'); p.getAnimations().forEach(function(a){ a.cancel(); });
+      if (ph) ph.parentNode.removeChild(ph);
+      if (st.layout === 'deck') { deckTo(p.dataset.sec, true); deckFrame(); }
+      if (!instant && back && back.isConnected) back.focus({preventScroll: true});
+    };
+    if (instant || rm() || !ph) { fin(); return; }
+    p.animate([{transform: 'none'}, {transform: fit(ph.getBoundingClientRect(), p.getBoundingClientRect())}], {duration: 320, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards'}).onfinish = fin;
+  }
+  zscrim.addEventListener('click', function(){ zoomOut(); });
+  (function(){ var sx = 0, sy = 0, sl = 0;
+    panelsEl.addEventListener('pointerdown', function(e){ sx = e.clientX; sy = e.clientY; sl = panelsEl.scrollLeft; }, true);
+    panelsEl.addEventListener('click', function(e){
+      if (st.layout !== 'deck' || zoomK) return;
+      var p = e.target.closest('.panel'); if (!p) return;
+      var zx = e.target.closest('.zx');
+      if (zx) { if (p.dataset.sec === st.sec) zoomIn(p, zx); else show(p.dataset.sec); return; }
+      // not a tap on something that does its own thing, not the end of a drag or a swipe, not a text selection
+      if (e.target.closest('a, button, input, label, select, textarea, summary, [contenteditable], [tabindex]:not(.panel)')) return;
+      if (e.detail && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) return;
+      if (Math.abs(panelsEl.scrollLeft - sl) > 4) return;
+      var sel = window.getSelection && getSelection(); if (sel && !sel.isCollapsed && String(sel)) return;
+      if (p.dataset.sec !== st.sec) { show(p.dataset.sec); return; }
+      zoomIn(p, p);
+    });
+  })();
+  // Tab goes round inside the reading view
+  document.addEventListener('keydown', function(e){
+    if (!zoomK || e.key !== 'Tab') return;
+    var p = panel(zoomK), f = $$('a[href], button:not([disabled]), input, select, textarea, summary, [tabindex]:not([tabindex="-1"])', p).filter(function(x){ return x.offsetParent !== null; });
+    if (!f.length) { e.preventDefault(); p.focus(); return; }
+    var a = f[0], z = f[f.length - 1], at = document.activeElement;
+    if (e.shiftKey && (at === a || at === p)) { e.preventDefault(); z.focus(); }
+    else if (!e.shiftKey && (at === z || !p.contains(at))) { e.preventDefault(); a.focus(); }
+  });
 
   // laptop: a signpost per section standing in the scene; the panel opens in a circle out of the one you tapped
   function placeSpots(){
@@ -6086,7 +6211,7 @@ JS_STAGE = r"""
     p.animate([{clipPath: 'circle(' + c.R + 'px at ' + c.ox + 'px ' + c.oy + 'px)', transform: 'none'}, {clipPath: 'circle(14px at ' + c.ox + 'px ' + c.oy + 'px)', transform: 'translateY(10px) scale(.98)'}], {duration: 380, easing: 'cubic-bezier(.5,0,.75,0)'}).onfinish = fin;
   }
   document.getElementById('scrim').addEventListener('click', function(){ closeSheet(); });
-  document.addEventListener('keydown', function(e){ if (e.key !== 'Escape') return; var lp = document.getElementById('look-panel'); if (lp && !lp.hidden) return; closeSheet(); });
+  document.addEventListener('keydown', function(e){ if (e.key !== 'Escape') return; var lp = document.getElementById('look-panel'); if (lp && !lp.hidden) return; if (zoomK) { zoomOut(); return; } closeSheet(); });
 
   /* ---------- layout: the owner's pick (saved), or the viewport's own choice ---------- */
   function paintLayout(){
@@ -6097,13 +6222,15 @@ JS_STAGE = r"""
   }
   // switching keeps the open section: the tab that was showing, or the sheet or level card that was open
   function applyLayout(L, instant){
+    zoomOut(true);
     var keep = sceneLayout() ? openK : st.sec;
     var go = function(){
       st.layout = L; app.dataset.layout = L; openK = null; app.classList.remove('sheet-open');
-      $$('.panel').forEach(function(p){ p.classList.remove('on'); p.getAnimations && p.getAnimations().forEach(function(a){ a.cancel(); }); });
+      $$('.panel').forEach(function(p){ p.classList.remove('on'); p.style.removeProperty('--d'); p.style.removeProperty('--a'); p.getAnimations && p.getAnimations().forEach(function(a){ a.cancel(); }); });
       if (keep) st.sec = keep;
       setTabs(); drawScene();
       if (L === 'stage') { panel(st.sec).classList.add('on'); moveRider(false); }
+      else if (L === 'deck') { deckGo = 0; deckTo(st.sec, true); deckFrame(); }
       else if (keep) openSheet(keep, spotFor(keep), true);
       paintLayout();
     };
@@ -6115,12 +6242,14 @@ JS_STAGE = r"""
     if (L !== st.layout) applyLayout(L); else paintLayout();
   }
   $$('.seg [data-layout]').forEach(function(b){ b.addEventListener('click', function(){ choose(b.dataset.layout); }); });
+  document.getElementById('deck-prev').addEventListener('click', function(){ var i = SECS.indexOf(st.sec); if (i > 0) show(SECS[i - 1]); });
+  document.getElementById('deck-next').addEventListener('click', function(){ var i = SECS.indexOf(st.sec); if (i < SECS.length - 1) show(SECS[i + 1]); });
   var rs = 0, lastW = innerWidth;
   addEventListener('resize', function(){
     clearTimeout(rs);
     rs = setTimeout(function(){
       var L = layoutNow();
-      if (L !== st.layout) applyLayout(L, true); else { drawScene(); moveRider(false); paintLayout(); }
+      if (L !== st.layout) applyLayout(L, true); else { drawScene(); moveRider(false); deckFrame(); paintLayout(); }
       lastW = innerWidth;
     }, 120);
   });
@@ -6135,8 +6264,8 @@ JS_STAGE = r"""
   // first paint
   app.dataset.layout = st.layout = layoutNow(); setTabs(); paintLayout();
   if (st.layout === 'stage') panel(st.sec).classList.add('on');
-  requestAnimationFrame(function(){ drawScene(); moveRider(false); });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ drawScene(); moveRider(false); });
+  requestAnimationFrame(function(){ drawScene(); moveRider(false); if (st.layout === 'deck') { deckTo(st.sec, true); deckFrame(); } });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ drawScene(); moveRider(false); if (st.layout === 'deck') { deckTo(st.sec, true); deckFrame(); } });
   window.briefStage = {bloom: bloom, unbloom: unbloom, allDone: allDone, finale: finale, show: show, pinDone: pinDone, mascotRect: function(){ var u = $('#whoUse', sceneEl), r = u && u.getBoundingClientRect(); return r && r.width ? r : null; }, state: st, redraw: drawScene};
 })();
 """
@@ -6508,12 +6637,15 @@ SEC_ICON = {
     "scout": '<path d="M3.2 11.6l12.6-5.3 1.9 4.5-12.6 5.3z"/><path d="M15.8 6.3l3-1.3 1.9 4.5-3 1.3"/><path d="M9.6 14l-2.8 6.6M11 13.4l2.8 6.6"/>',
 }
 CLOSE_ICON = '<path d="M6 6l12 12M18 6L6 18"/>'
+ENLARGE_ICON = '<path d="M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5"/>'
 
 
 def _ic(paths, cls="ic"):
     return f'<svg class="{cls}" viewBox="0 0 24 24" aria-hidden="true">{paths}</svg>'
 
 
+DECK_PREV = _ic('<path d="M15 5l-7 7 7 7"/>')
+DECK_NEXT = _ic('<path d="M9 5l7 7-7 7"/>')
 
 
 def _chapter_count(ch):
@@ -6546,6 +6678,7 @@ def _panel(key, nav, title_html, count, body, icon):
     badge = f'<span class="n">{count}</span>' if count else ""
     return (f'<section class="panel" id="sec-{esc(key)}" data-sec="{esc(key)}" role="tabpanel" aria-labelledby="tab-{esc(key)}" tabindex="-1">'
             f'<div class="ph"><span class="phi">{_sec_icon(key, icon)}</span><h2>{title_html}</h2>{badge}'
+            f'<button type="button" class="zx" aria-label="Enlarge">{_ic(ENLARGE_ICON)}</button>'
             f'<button type="button" class="x" aria-label="Close">{_ic(CLOSE_ICON)}</button></div><div class="pb">{body}</div></section>')
 
 
@@ -7492,7 +7625,7 @@ def _build(content, log, admin_log, briefs, look):
 <div class="app" data-layout="scene">
   <header class="bar">
     <div class="brand">{mascot_svg(cls="mascot logo", label="", mood=mood)}<span class="brand-name"><b>{esc(d.get("brand", "Jira digest"))}</b><small>{esc(d["date_short"])}</small></span></div>
-    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Stage + tabs</button><button type="button" data-layout="scene">Tap the scene</button><button type="button" data-layout="map">Map</button></div>
+    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Stage + tabs</button><button type="button" data-layout="deck">Swipe deck</button><button type="button" data-layout="scene">Tap the scene</button><button type="button" data-layout="map">Map</button></div>
     <div class="nav-tools">
       <span id="msg" aria-live="polite"></span>
       <span class="ring" id="ring" role="img" aria-label="rows ticked"><span>0/0</span></span>{tm_btn}
@@ -7514,6 +7647,7 @@ def _build(content, log, admin_log, briefs, look):
     <div class="switch"><nav class="tabs" id="tabs" role="tablist" aria-label="Sections">{tabs}<span class="rider" id="rider" aria-hidden="true"><svg class="mascot" viewBox="0 0 64 64"><use href="#mascot"/></svg></span></nav></div>
     <div class="scrim" id="scrim"></div>
     <div class="panels" id="panels">{panels}</div>
+    <div class="deckctl" id="deckctl"><button type="button" id="deck-prev" aria-label="Previous section">{DECK_PREV}</button><button type="button" id="deck-next" aria-label="Next section">{DECK_NEXT}</button></div>
   </main>{tm_dlg}
 </div>
 <textarea id="out" aria-label="Copied rows"></textarea>
