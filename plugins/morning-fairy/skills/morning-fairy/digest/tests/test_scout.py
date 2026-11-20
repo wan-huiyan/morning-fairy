@@ -2,7 +2,7 @@
 
 Run from the repo root:  python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests -v
 Pages are built in memory from the made-up demo morning; nothing is written anywhere. start.json is a temp file of the
-test's own, so one you keep beside the builder is never read.
+test's own, so one you keep in ~/.morning-fairy is never read.
 """
 import json
 import re

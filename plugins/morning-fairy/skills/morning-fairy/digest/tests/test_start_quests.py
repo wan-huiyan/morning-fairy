@@ -2,7 +2,7 @@
 
 Run from the repo root:  python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests -v
 Nothing is launched: launch_claude (or subprocess.run inside it) is replaced, so no Terminal window opens. start.json is a
-temp file of the test's own, so one you keep beside the builder is never read.
+temp file of the test's own, so one you keep in ~/.morning-fairy is never read.
 """
 import copy
 import http.client
@@ -218,7 +218,7 @@ class Launch(Config, unittest.TestCase):
         self.assertEqual(list(self.box.glob("prompt-*.txt")), [])
 
     def test_builder_and_helper_read_the_same_file(self):
-        self.assertEqual(SHIPPED, (DIGEST / "start.json", DIGEST / "start.json"))
+        self.assertEqual(SHIPPED, (bd.SETTINGS_DIR / "start.json", serve.SETTINGS / "start.json"))
 
 
 class Route(Config, unittest.TestCase):

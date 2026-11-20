@@ -4,9 +4,9 @@
 
 127.0.0.1 only, port 8765. POST /fill-hours {"date"} opens Terminal (macOS) with an attended Claude session that fills
 that day's Tempo hours (POST /log-hours logs the rows approved on the Hours tab, checked against that day's saved brief, the same way): the prompt is fill_hours_prompt.txt beside this file, filled from the "fill_tempo" block of
-clients.json beside this file (no block, no route); the page only sends a date. POST /start-quests {"date", "ids"}
+clients.json in ~/.morning-fairy (no block, no route); the page only sends a date. POST /start-quests {"date", "ids"}
 opens one such session per project for the quests picked on the Quests board, rebuilt from that day's saved brief;
-it needs start.json beside this file. Sessions start in your own default permission mode. Writes that done.jsonl, and look.json
+it needs start.json in ~/.morning-fairy. Sessions start in your own default permission mode. Writes that done.jsonl, and look.json
 in the same folder (beside runs/) when the brief saves a new look, after which it rebuilds today's brief with the
 builder beside this file. Also serves the bundled fanfan icons (fanfan/ beside this file) for the look picker's
 previews. Python standard library only.
@@ -38,6 +38,16 @@ HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}"}
 MAX_BODY = 4096
 START_MAX_BODY = 65536  # /start-quests: up to 20 quest ids with their wording (and notes, up to 2000 characters each)
 CODE = Path(__file__).resolve().parent  # the builder and the bundled fanfan icons always come from beside this file
+# Your own settings (clients.json, start.json) live in the data folder, so a plugin update, which installs a new versioned
+# folder, keeps them. A file still beside the code from before 1.17.0 is read only when the data folder has none.
+SETTINGS = Path(os.environ.get("MORNING_FAIRY_HOME") or Path.home() / ".morning-fairy")
+
+
+def config_path(name):
+    home, old = SETTINGS / name, CODE / name
+    return old if old.exists() and not home.exists() else home
+
+
 # /fanfan/<style>/<animal>-<noun>.svg: only these names, built from the match, never from the request
 FF_STYLES = ("thin", "thick", "thin-highlight", "thick-highlight")
 FF_ANIMALS = ("cat", "dog", "lop", "bunny")
@@ -53,13 +63,13 @@ LOOK_LOCK = threading.Lock()  # one save-and-rebuild at a time
 # /fill-hours: the page sends a date and nothing else; the prompt is this fixed file with the config and the date filled in
 FILL_PROMPT = CODE / "fill_hours_prompt.txt"
 LOG_PROMPT = CODE / "log_hours_prompt.txt"  # Approve and log: the rows approved on the page, logged with no second OK
-FILL_CONFIG = CODE / "clients.json"  # its "fill_tempo" block: tempo_url (required), work_items, folder
+FILL_CONFIG = config_path("clients.json")  # its "fill_tempo" block: tempo_url (required), work_items, folder
 FILL_DAYS = 14  # how far back a day may be filled
 FILL_GAP = 20  # seconds: a double tap opens one session, not two
 FILL_LOCK = threading.Lock()
 _fill_last = [None]  # time.monotonic() of the last launch; None until the first
 # /start-quests: the page sends a date and quest ids; the prompt is rebuilt here from runs/content-<date>.json
-START_CONFIG = CODE / "start.json"  # {"root": "~/Documents"}: Start is off without it; the builder reads the same file
+START_CONFIG = config_path("start.json")  # {"root": "~/Documents"}: Start is off without it; the builder reads the same file
 START_IDS, START_NOTE = 20, 2000
 START_PER_MIN = 8  # sessions opened in any 60 seconds
 START_LOCK = threading.Lock()
@@ -431,7 +441,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, "bad json")
         if route == "/start-quests":
             if start_root() is None:
-                return self._send(404, "not set up")  # no start.json beside this file
+                return self._send(404, "not set up")  # no start.json in the data folder
             req = start_request(r)
             if req is None:
                 return self._send(400, "bad fields")

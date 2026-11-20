@@ -34,7 +34,11 @@ import sys
 
 DEFAULT_PROJECTS = os.path.expanduser("~/.claude/projects")
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_MAP = os.path.join(HERE, "clients.json")
+# clients.json lives in the data folder so a plugin update keeps it; one still beside this file (before 1.17.0) is
+# read only when the data folder has none.
+_HOME_MAP = os.path.join(os.environ.get("MORNING_FAIRY_HOME") or os.path.expanduser("~/.morning-fairy"), "clients.json")
+_OLD_MAP = os.path.join(HERE, "clients.json")
+DEFAULT_MAP = _OLD_MAP if os.path.exists(_OLD_MAP) and not os.path.exists(_HOME_MAP) else _HOME_MAP
 EXAMPLE_MAP = os.path.join(HERE, "clients.example.json")
 
 
