@@ -43,7 +43,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 ## 🔌 Where the data comes from
 
 <p align="center">
-  <img src="docs/how-it-works.svg" width="760" alt="At 08:00 on a weekday the sun rises and the ticket mascot hops across ten little houses, one per connected tool; as it lands on each, a flag pops up naming it: Calendar, Email, Meeting notes, Slack, Jira, GitHub, Cloud spend, Claude sessions, Tempo, The web. It flies to one page, a to-do on the page gets ticked, and a paper plane carries it to a terminal where claude opens in the project folder with that task and its context. Coloured dots carry what the fairy found from the houses to the page."/>
+  <img src="docs/how-it-works.svg" width="760" alt="At 08:00 on a weekday the sun rises and the ticket mascot hops across ten little houses, one per connected tool; as it lands on each, a flag pops up naming it: Calendar, Email, Meeting notes, Slack, Jira, GitHub, Cloud spend, Local Claude logs, Tempo, The web. It flies to one page, a to-do on the page gets ticked, and a paper plane carries it to a terminal where claude opens in the project folder with that task and its context. Coloured dots carry what the fairy found from the houses to the page."/>
   <br/><sub>The morning round: one house per tool you connect, one page, then the to-do you pick goes to Claude with its context.</sub>
 </p>
 
@@ -60,7 +60,7 @@ it can see.
 | 🎫 **Jira** | Your assigned tickets and what each one already says, so a draft never repeats what the ticket shows | Atlassian connector | Jira drafts |
 | 🐙 **GitHub** | Merged pull requests as evidence for Jira; the live state of anything carried over from yesterday ("to merge" may have merged overnight); Scout searches | The `gh` command-line tool, signed in | Jira drafts; Scout (optional) |
 | ☁️ **Google Cloud** | What BigQuery queries cost this month in each project you work in | `gcloud` and `bq`, signed in | Cloud spend (optional) |
-| 🤖 **Your Claude Code sessions** | The time stamp on every message in your session logs (`~/.claude/projects/`), turned into hours per project | Local files, no connector | Timesheet hours (optional) |
+| 🤖 **Your local Claude Code logs** | The time stamp on every message in the session logs Claude Code keeps on this computer (`~/.claude/projects/`), turned into hours per project. Sessions you run elsewhere (claude.ai, Claude Code on the web, another machine) are not seen | Local files, no connector | Timesheet hours (optional) |
 | ⏱ **Tempo** (the timesheet app inside Jira) | What you have already logged, and, after you approve the hours on the page, logging them | Claude in Chrome, signed in to Tempo ([why the browser](#-timesheet-hours-optional-off-by-default)) | Timesheet hours (optional) |
 | 🔭 **The web** | New repositories, the Claude Code changelog and Hacker News, for ideas that could help your projects | `gh`, web search | Scout (optional) |
 | ✅ **Your Done taps** | What you finished on earlier briefs, so it does not come back as a to-do | `~/.morning-fairy/runs/done.jsonl`, written by the local helper | Automatic |
