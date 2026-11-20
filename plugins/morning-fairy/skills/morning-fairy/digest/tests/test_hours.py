@@ -3,7 +3,7 @@ clients.json's "fill_tempo" block, and the helper's /fill-hours route (serve.py)
 
 Run from the repo root:  python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests -v
 Nothing is launched: launch_fill is replaced, so no Terminal window opens and no Claude session starts. The config is a
-temp file of the test's own, so a clients.json you keep beside the builder is never read.
+temp file of the test's own, so a clients.json you keep in ~/.morning-fairy is never read.
 """
 import http.client
 import json
@@ -187,9 +187,23 @@ class FillPrompt(Config, unittest.TestCase):
         self.assertEqual(bd.FILL_PROMPT_FILE, serve.FILL_PROMPT)
         self.assertEqual(bd.fill_prompt_template(), serve.fill_template(serve.fill_config()))
 
-    def test_both_read_clients_json_beside_the_code(self):
-        self.assertEqual(bd.FILL_CONFIG_FILE, DIGEST / "clients.json")
-        self.assertEqual(serve.FILL_CONFIG, DIGEST / "clients.json")
+    def test_both_read_clients_json_from_the_data_folder(self):
+        # a plugin update installs a new folder, so the settings live in the data folder, not beside the code
+        self.assertEqual(bd.FILL_CONFIG_FILE, bd.SETTINGS_DIR / "clients.json")
+        self.assertEqual(serve.FILL_CONFIG, serve.SETTINGS / "clients.json")
+        self.assertNotEqual(bd.SETTINGS_DIR, DIGEST)
+
+    def test_an_old_file_beside_the_code_is_read_until_the_data_folder_has_one(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t); code, home = t / "code", t / "home"; code.mkdir(); home.mkdir()
+            (code / "clients.json").write_text("{}")
+            saved = serve.CODE, serve.SETTINGS
+            self.addCleanup(lambda: (setattr(serve, "CODE", saved[0]), setattr(serve, "SETTINGS", saved[1])))
+            serve.CODE, serve.SETTINGS = code, home
+            self.assertEqual(serve.config_path("clients.json"), code / "clients.json")
+            (home / "clients.json").write_text("{}")
+            self.assertEqual(serve.config_path("clients.json"), home / "clients.json")
+            self.assertEqual(serve.config_path("start.json"), home / "start.json")
 
     def test_folder_comes_from_the_config(self):
         self.assertEqual(serve.fill_folder(FILL), _TMP)

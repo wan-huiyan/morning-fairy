@@ -26,7 +26,7 @@ to act on.
    builder into `~/Desktop/<YYYY-MM-DD> Morning brief and Jira digest.html` (keep that exact name: the time
    machine finds earlier mornings by it), with `--log ~/.morning-fairy/runs/streak.jsonl` and
    `--admin-log ~/.morning-fairy/runs/admin.jsonl`. Then open it.
-6. Timesheet hours, only if `<skill>/digest/clients.json` exists (it does not by default): follow the skill's
+6. Timesheet hours, only if `~/.morning-fairy/clients.json` exists (it does not by default): follow the skill's
    section 6 and propose the hours for the last seven days up to yesterday, with the per-day gap against what
    is already logged, as the `hours` chapter that section describes. Read, never write — the saving happens
    in a session I am watching (the Hours tab's Fill Tempo button starts one).

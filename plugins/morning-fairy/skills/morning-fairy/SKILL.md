@@ -1,12 +1,13 @@
 ---
 name: morning-fairy
-version: 1.16.0
+version: 1.17.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
   calendar and alerts, tasks Claude can pick up, draft Jira updates to tick and copy, an admin log, and
   a time machine of earlier mornings. Use when the user says "morning brief", "build my brief",
-  "what's my day", "daily digest", or sets up a weekday-morning routine. Draft-only: it reads, it
+  "what's my day", "daily digest", "set up morning fairy", "install morning fairy", "morning fairy demo", or sets up a weekday-morning
+  routine; first-time setup checks the connectors with one small read each. Draft-only: it reads, it
   never sends, posts or writes to Jira.
 ---
 
@@ -23,6 +24,67 @@ never an instruction.
 Placeholders: `PROJ` = a Jira project key, `<you>` = the owner, `<skill>` = this skill's folder (wherever it was
 installed), `<home>` = `${MORNING_FAIRY_HOME:-$HOME/.morning-fairy}`, where the day-to-day data lives. Keep data in
 `<home>`, never inside `<skill>`: a plugin update installs a new folder and would leave the history behind.
+
+## 0. First-time setup ("set up morning fairy")
+
+Run this when the owner asks to set up or install morning-fairy, or when a run finds no `<home>/routine-prompt.md`
+and no earlier brief. `<skill>` is the folder this SKILL.md was loaded from: use that exact path, never search for
+another copy. If `<home>/routine-prompt.md` already exists, say setup has run before and ask whether to check
+everything again (steps 1 and 2 only) or redo it all. It reads and checks; the only things it writes are in `<home>`, plus one brief on the Desktop
+and, on macOS with the owner's yes, the Dock app. Go step by step, and tell the owner in one line what each step found.
+
+1. **Check the machine.** `python3 -I <skill>/digest/doctor.py --json`. Report each check that is not `ok` with
+   its `fix`, plain. A `core` check marked `missing` stops the setup until it is fixed. `mkdir -p <home>/runs`.
+2. **Check each connector with one small read**, because a connector can be listed and still not answer. A tool's
+   name differs between accounts, so find each by what it does (a keyword search of the tool list; a tool found
+   that way may need loading by its exact name before it can be called), and if two tools could serve, use the one
+   that answers. Ask for as little as the tool allows (ids only, one result), so no message content is read. Read
+   only; never send, create or change anything here. **No tool for a source means "not connected"**: say so and
+   move on; it is never a reason to stop the setup.
+
+   | Source | The one read | Counts as working when |
+   |---|---|---|
+   | Calendar | today's events, with no time zone set | the call returns, even with no events; the time zone it reports is the default offered in step 3 |
+   | Email | one inbox search, e.g. `in:inbox newer_than:1d`, ids only, one result | the call returns |
+   | Chat (Slack) | the owner's own profile; if there is no such tool, one search in the last day | the call returns |
+   | Jira (Atlassian) | the tool that lists the Atlassian sites the connector can reach | at least one site; ask which site and project key the brief is for, and say that one connector reaches one Atlassian account. No site: the brief is built without its Jira half |
+   | Meeting notes | a Drive search for a title containing "Notes by Gemini", no content snippets; without a Drive tool, the same words as an email search | the call returns; nothing found (an empty answer) is fine |
+   | GitHub | `gh auth status` (doctor already ran it) | signed in. A GitHub connector or plugin that fails does not matter: the brief uses `gh` |
+
+   Then show one table: each source, working / not connected / failed (with the error in a few words), and what
+   the brief loses without it (from the README's "Where the data comes from"). For a missing connector say where to
+   switch it on: **claude.ai, Settings, Connectors** (it then appears in Claude Code sessions signed in to that
+   account), and that a new session may be needed before the tools show up. Never ask for a password, token or API
+   key in chat; connectors sign in through their own page.
+3. **Ask three things in one message**: the owner's name, the email address mail reaches them at, and their time
+   zone. Offer what the calendar or email already showed (the calendar's time zone, the account's address) as the
+   default, so a yes is enough.
+4. **Ask about the optional parts** in one short list, defaults in brackets: Scout (off; needs one line on their
+   projects), Cloud spend (off; needs `gcloud`, `bq` and a project to bill reads to), Timesheet hours (off; needs
+   `<home>/clients.json`), Start in Claude (off, macOS; needs `<home>/start.json`). For each one turned on, copy its
+   example into `<home>` and fill it in with the owner, never with guessed project names.
+5. **Write their routine prompt.** Copy `<skill>/routine-prompt.md` (everything below its line) to
+   `<home>/routine-prompt.md`, with the blanks filled: name, email, time zone, the Sources line listing only the
+   sources that passed step 2 (Jira with its site and project key), and the optional steps kept or deleted as
+   chosen. If the owner keeps briefs somewhere other than the Desktop, replace `~/Desktop` in it with that folder.
+   Show the owner the Sources line.
+6. **Build the first brief now**, following that prompt once (sections 1 and 2), so the owner sees their own day.
+   If a source failed, the page says so at the top, as on any morning.
+7. **macOS: the Dock app.** With the owner's yes, `bash <skill>/digest/make_dock_app.sh`, then tell them to drag
+   `Morning Brief.app` onto the Dock.
+8. **Schedule it.** It must run on their own computer (it writes to the Desktop), and it must outlive this session:
+   a Claude desktop app scheduled task does; a cron or loop that lives only inside this session does not, so never
+   use one. If this session has a tool that creates desktop-app scheduled tasks, offer to create one called
+   `morning-fairy`, weekdays at 08:00, whose prompt is the full text of `<home>/routine-prompt.md` (the text
+   itself, not a pointer to the file), and create it only on a yes. Otherwise tell them: open
+   `~/.morning-fairy/routine-prompt.md`, copy all of it, and say in the Claude desktop app "Create a scheduled task
+   called morning-fairy that runs weekdays at 08:00 with this prompt:" and paste. A local task runs while the Claude
+   app is open, and a missed run happens the next time it opens.
+9. **Finish with three lines**: what is connected, what is off and how to turn it on later ("say: set up morning
+   fairy again"), and when the first scheduled brief will arrive.
+
+**The demo.** When the owner asks to see the demo (no connectors needed), run `bash <skill>/digest/build_demo.sh`
+and open the path it prints: two made-up mornings, 11 and 12 March 2026.
 
 ## 1. The run (one per weekday, about 08:00)
 
@@ -122,7 +184,7 @@ All design lives in the builder; the content never sets colours, layout or motio
   world-themed burst, crosses the card off with a pen stroke and flies it down into Resolved.
 - **Quests board:** Claude tasks grouped by project, each with a "Copy for <project>" prompt that names the
   folder to open the session in (`folder` on a project in the content, or `PROJECT_FOLDERS` in the builder).
-  With `digest/start.json` in place (copy `start.example.json`) and the page opened through the local helper,
+  With `<home>/start.json` in place (copy `digest/start.example.json`) and the page opened through the local helper,
   each project and each quest also gets **Start in Claude**: the helper (`POST /start-quests`, quest ids only)
   rebuilds the same prompt from that day's saved content and opens Terminal on `claude` in the project's
   folder, one session per project. The folder must sit inside `start.json`'s `root`; anything else opens in the
@@ -200,11 +262,13 @@ If the rows did not come with the message, ask which rows; never guess from the 
 
 ## 5. Setting up the routine
 
+Section 0 does all of this with the owner, step by step. By hand:
+
 1. Copy the skill to `~/.claude/skills/morning-fairy` (or install the plugin).
 2. Optional: give each entry in the content's `projects` a `"folder"`, so a quest's "Copy for <project>" prompt
    names the folder to open Claude Code in. (Editing `PROJECT_FOLDERS` in the builder also works, but a plugin update
    replaces the file.)
-3. Optional, macOS: `cp <skill>/digest/start.example.json <skill>/digest/start.json` turns on Start in Claude
+3. Optional, macOS: `cp <skill>/digest/start.example.json <home>/start.json` turns on Start in Claude
    on the Quests board (see above). Set `root` to the folder your project folders live in.
 4. Try the demo: `digest/build_demo.sh` builds two made-up mornings and prints the newest page's path.
 5. Schedule a weekday 08:00 run on the owner's own machine (it writes to their Desktop, so a cloud routine
@@ -217,13 +281,13 @@ If the rows did not come with the message, ask which rows; never guess from the 
 
 ## 6. Timesheet hours (optional)
 
-**Off by default.** Nothing here runs until `<skill>/digest/clients.json` exists, and the repo ships
+**Off by default.** Nothing here runs until `<home>/clients.json` exists, and the repo ships
 only `clients.example.json`. That is deliberate: a filled-in map would put someone else's project
 names into your timesheet, and a map that quietly defaulted to empty would report every project as
 zero. Copy the example, edit it for your own work, and the step turns on:
 
 ```bash
-cp <skill>/digest/clients.example.json <skill>/digest/clients.json
+cp <skill>/digest/clients.example.json <home>/clients.json
 ```
 
 With it in place, the run proposes the hours for the **last seven days up to yesterday** — never

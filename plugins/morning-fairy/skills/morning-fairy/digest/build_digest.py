@@ -796,11 +796,21 @@ def _dedupe_list_ids(chapters):
                 lst["id"] = lid
 
 
-START_CONFIG_FILE = Path(__file__).resolve().parent / "start.json"  # serve.py reads the same file
+# Your own settings (clients.json, start.json) live in the data folder, so a plugin update, which installs a new versioned
+# folder, keeps them. A file still beside the code from before 1.17.0 is read only when the data folder has none.
+SETTINGS_DIR = Path(os.environ.get("MORNING_FAIRY_HOME") or Path.home() / ".morning-fairy")
+
+
+def config_path(name):
+    home, old = SETTINGS_DIR / name, Path(__file__).resolve().parent / name
+    return old if old.exists() and not home.exists() else home
+
+
+START_CONFIG_FILE = config_path("start.json")  # serve.py reads the same file
 
 
 def start_on():
-    """Whether Start in Claude is set up: a start.json beside the builder naming the folder sessions may open under
+    """Whether Start in Claude is set up: a start.json (in ~/.morning-fairy) naming the folder sessions may open under
     ("root"). Without one the Start buttons are not drawn and the Quests board offers Copy only."""
     try:
         root = json.loads(START_CONFIG_FILE.read_text(encoding="utf-8")).get("root")
@@ -1052,7 +1062,7 @@ CSS_SCOUT = """
 # clients.json filled in: the same two files the helper reads. No such block, no button.
 HOURS_SLOTS = 4  # four validated hues (dataviz validator, light and dark); a fifth project and later share the grey
 FILL_PROMPT_FILE = Path(__file__).resolve().parent / "fill_hours_prompt.txt"
-FILL_CONFIG_FILE = Path(__file__).resolve().parent / "clients.json"  # its "fill_tempo" block; serve.py reads the same
+FILL_CONFIG_FILE = config_path("clients.json")  # its "fill_tempo" block; serve.py reads the same
 
 
 def fill_config():

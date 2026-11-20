@@ -164,7 +164,7 @@ running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
 
 ## Quick start
 
-**1. Install it (Claude Code plugin):**
+**1. Install it** (type these in Claude Code):
 
 ```bash
 /plugin marketplace add wan-huiyan/morning-fairy
@@ -174,35 +174,63 @@ running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
 <details><summary>Manual copy instead</summary>
 
 ```bash
-git clone https://github.com/wan-huiyan/morning-fairy.git /tmp/morning-fairy
-cp -r /tmp/morning-fairy/plugins/morning-fairy/skills/morning-fairy ~/.claude/skills/
+mkdir -p ~/.claude/skills
+git clone https://github.com/wan-huiyan/morning-fairy.git ~/morning-fairy-src
+cp -R ~/morning-fairy-src/plugins/morning-fairy/skills/morning-fairy ~/.claude/skills/
 ```
+Then start a new Claude Code session so it sees the skill.
 </details>
 
-**2. See it with made-up data (no connectors needed):**
+**2. Say this to Claude:**
+
+```
+set up morning fairy
+```
+
+Claude walks you through it, about ten minutes, once:
+
+1. **Checks your computer** with `doctor.py`: Python, the folders the brief writes to, `gh` and `gcloud` and
+   whether they are signed in, and your optional settings. Each problem comes with a one-line fix; "off" only
+   means an optional part you have not turned on.
+2. **Tests each connector with one small read** (today's calendar, one email search, Slack, your Jira sites,
+   meeting notes) and shows you a table of what works, what is missing, what the brief loses without it, and
+   where to switch it on (claude.ai, Settings, Connectors). A connector that is listed but does not answer shows up
+   here, not on your first morning. It never asks for a password or key.
+3. **Asks your name, email and time zone**, offering what your calendar already says, and which optional tabs you
+   want (Scout, Cloud spend, Timesheet hours, Start in Claude).
+4. **Writes your routine prompt** to `~/.morning-fairy/routine-prompt.md`, listing only the sources that passed.
+5. **Builds your first brief** on the Desktop, from your real day.
+6. **On a Mac, puts the mascot on your Dock**, if you say yes.
+7. **Schedules the weekday 08:00 run**, if the session can create a local scheduled task and you say yes; if not,
+   it gives you the exact sentence to say in the Claude desktop app.
+
+```
+You:    set up morning fairy
+Claude: Your computer is ready (gh signed in; gcloud not installed, so Cloud spend stays off).
+        Calendar, Gmail and Slack answered. Jira reaches one site: which project key is the brief for?
+        Google Drive is not connected, so meeting transcripts linked from email cannot be opened:
+        switch it on in claude.ai, Settings, Connectors, or carry on without it.
+```
+
+Run the check-up yourself any time:
 
 ```bash
-bash /tmp/morning-fairy/plugins/morning-fairy/skills/morning-fairy/digest/build_demo.sh
+# installed as a plugin
+python3 -I "$(ls -dt ~/.claude/plugins/cache/*/morning-fairy/*/skills/morning-fairy | head -1)/digest/doctor.py"
+# copied by hand
+python3 -I ~/.claude/skills/morning-fairy/digest/doctor.py
 ```
 
-It builds two demo mornings (11 and 12 March 2026) into a temporary folder and prints the path of the newer one.
-Open that file, then click the clock in the top row (the time machine) to jump back to the 11th.
+**Just want to look first?** Say "show me the morning fairy demo". Claude builds two made-up mornings (11 and 12
+March 2026, no connectors needed) and opens the newer one; click the clock in the top row to jump back to the
+11th. By hand (copied install; on Linux use `xdg-open`): `open "$(bash ~/.claude/skills/morning-fairy/digest/build_demo.sh)"`.
+The demo pages go to a new temporary folder.
 
-**3. Make it yours:** ask Claude for your brief now, then [set it up to arrive every morning](#-set-up-your-daily-brief).
+**Phrases that start it:** "morning brief", "build my brief", "what's my day", "daily digest", "set up morning fairy".
 
-```
-You:    build my morning brief
-Claude: [reads today's calendar, unanswered email, chat DMs, alerts, yesterday's meeting notes and your Jira list]
-        Built "2026-03-12 Morning brief and Jira digest.html" on your Desktop.
-        Six things need you, led by the demo prep at 2. Claude can pick up five of them.
-        Two Jira rows are waiting for your tick. Nothing was sent or written.
-```
+## 🌅 Set up your daily brief by hand
 
-**Phrases that start it:** "morning brief", "build my brief", "what's my day", "daily digest".
-
-## 🌅 Set up your daily brief
-
-Three steps, about ten minutes, once.
+"Set up morning fairy" does all of this with you. To do it yourself: four steps, about ten minutes, once.
 
 **1. Put the mascot on your Dock (macOS).**
 
@@ -221,9 +249,10 @@ may ask whether Morning Brief can open files in your Desktop folder: choose Allo
 open. If you already had an app called Morning Brief that this script did not make, it is renamed to
 "Morning Brief (old)", never overwritten.
 
-**2. Schedule the morning run.** Open [`routine-prompt.md`](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md),
-fill in its four blanks (your name, email, time zone, which connectors you have), then in the Claude desktop
-app ask:
+**2. Schedule the morning run.** Open [`routine-prompt.md`](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md)
+(or the filled-in copy setup saved as `~/.morning-fairy/routine-prompt.md`). Fill in your name, email, time zone and
+the Sources line (the connectors you have, Jira with its project key), and delete steps 7 (Scout) and 8 (Cloud
+spend) unless you want them. Copy everything below its line, then in the Claude desktop app ask:
 
 > Create a scheduled task called morning-fairy that runs weekdays at 08:00 with this prompt: *(paste it)*
 
@@ -232,15 +261,19 @@ app ask:
 - **The Claude app needs to be open.** A local task runs while the app is open; if it was closed at 08:00, the
   run happens the next time you open it.
 - Prefer cron? `claude -p "<the filled-in prompt>"` works too, but a headless run cannot stop to ask you for
-  permission, so allow the connector tools it reads with in your Claude Code settings first.
+  permission: first allow the connectors it reads in `~/.claude/settings.json` under `permissions.allow` (for
+  example `"mcp__claude_ai_Gmail"`, `"mcp__claude_ai_Google_Calendar"`), and check that a headless run sees them.
 
-**3. That's it: every morning looks after itself.**
+**3. Build today's brief now** so the Dock app has something to open: in Claude Code, say "build my brief".
+
+**4. That's it: every morning looks after itself.**
 
 | Each weekday at 08:00 | Where it goes |
 |---|---|
 | A new page, `2026-03-12 Morning brief and Jira digest.html` | Your Desktop. Earlier days stay there, and the time machine links them. |
 | That day's content, the streak, the admin log | `~/.morning-fairy/runs/`, outside the skill folder, so updates never touch it |
 | Your fairy (from the picker) | `~/.morning-fairy/look.json`, read by every morning's build |
+| Your settings (`routine-prompt.md`, and `clients.json`, `start.json` if you turned those on) | `~/.morning-fairy/`, so a plugin update keeps them |
 | Your Done taps (through the Dock app's helper) | `~/.morning-fairy/runs/done.jsonl`, read by the next morning's run |
 
 Nothing in that folder leaves your machine, and the page is never rebuilt over an earlier day.
@@ -278,7 +311,7 @@ session you open yourself, in the folder it names. That way you choose the sessi
 Terminal in that project's folder and runs `claude` on the same prompt, one session per project. Turn it on with:
 
 ```bash
-cp <skill>/digest/start.example.json <skill>/digest/start.json
+cp <skill>/digest/start.example.json ~/.morning-fairy/start.json
 # then set "root" to the folder your projects live in, e.g. "~/Documents"
 ```
 
@@ -335,7 +368,7 @@ not logged yet — the last seven days up to yesterday, never today.
 It is **off until you turn it on**, because it needs to know which folder belongs to which project:
 
 ```bash
-cp <skill>/digest/clients.example.json <skill>/digest/clients.json
+cp <skill>/digest/clients.example.json ~/.morning-fairy/clients.json
 # then edit clients.json for your own projects
 ```
 
@@ -478,6 +511,13 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.17.0** (2026-11-20): easy setup. Say "set up morning fairy" and Claude checks your computer with the new
+  `digest/doctor.py` (Python, folders, `gh` and `gcloud` sign-ins, settings files, the helper, the Dock app; read-only,
+  each problem with its fix), tests each connector with one small read, asks your name, email and time zone, writes
+  your routine prompt to `~/.morning-fairy/routine-prompt.md`, builds your first brief, and schedules the run or tells
+  you how. Your settings files `clients.json` and `start.json` now live in `~/.morning-fairy/`, so a plugin update
+  (which installs a new folder) no longer loses them; a file still beside the code is read until you move it, and
+  `doctor.py` tells you how.
 - **1.16.0** (2026-11-19): the swipe deck is back, beside the map, so there are four layouts to pick from. Tap the card in
   the middle of the deck (or the Enlarge button in its header) and it grows into a big reading view, nearly the whole
   window on a laptop and the whole screen on a phone, with its own scroll. Close it with ×, Escape or a tap outside and it
