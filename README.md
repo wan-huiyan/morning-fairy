@@ -13,9 +13,11 @@
   <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/Claude_Code-skill-orange" alt="Claude Code skill"/></a>
 </p>
 
-> **A Claude Code skill that reads your calendar, email, chat and Jira each morning and builds one cute page:
-> today's meetings drawn as hills you can walk a sun across, what actually needs you, tasks Claude can take off
-> your plate, and draft Jira updates you tick and copy. It never sends, posts or writes anything.**
+> **A Claude Code skill that reads your calendar, email, meeting notes, chat, Jira and GitHub each morning, plus
+> your own Claude Code sessions and cloud bill if you switch those on, and builds one cute page: today's meetings
+> drawn as hills you can walk a sun across, what actually needs you, tasks you can hand to Claude with their
+> context attached, draft Jira updates you tick and copy, and the hours you have not logged yet. The morning run
+> never sends, posts or changes anything in your mail, chat, calendar or Jira.**
 
 <p align="center">
   <img src="docs/world-tour.gif" width="760" alt="Dragging the sun across the day, then switching between the garden, cosmic and candy worlds and opening the time machine"/>
@@ -116,6 +118,40 @@ running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
   <img src="docs/picker-phone.png" width="300" alt="The same sheet on a phone, the mascot cards stacked one above the other"/>
 </p>
 
+## 🔌 Where the data comes from
+
+morning-fairy has no data of its own. Every morning it reads the tools you already use, through the connectors and
+command-line tools your Claude Code session can reach, and only those. The more you connect, the more of your day
+it can see.
+
+| Source | What the fairy reads it for | How Claude reaches it | Used by |
+|---|---|---|---|
+| 📅 **Calendar** (Google Calendar) | Today's meetings, which become the hills; tomorrow's meetings to prep for; the meetings that go into your hours | Calendar connector | The day scene (core) |
+| ✉️ **Email** (Gmail) | Threads where you were asked and have not replied, deadlines sent to you by name (training, timesheets, access reviews), alert emails such as a failing job, and Jira notification emails | Email connector | The to-do list (core) |
+| 📝 **Meeting notes** | What was agreed in yesterday's meetings, as evidence for Jira updates. It prefers the raw transcript over an AI summary | Wherever your notes land. For example, Google Meet's "Notes by Gemini" arrive by email and link to a Google Doc, which needs a Google Drive connector to open | Jira drafts |
+| 💬 **Chat** (Slack) | Every direct and group message in the window, not only mentions; project channels as evidence for Jira | Slack connector | The to-do list (core) |
+| 🎫 **Jira** | Your assigned tickets and what each one already says, so a draft never repeats what the ticket shows | Atlassian connector | Jira drafts |
+| 🐙 **GitHub** | Merged pull requests as evidence for Jira; the live state of anything carried over from yesterday ("to merge" may have merged overnight); Scout searches | The `gh` command-line tool, signed in | Jira drafts; Scout (optional) |
+| ☁️ **Google Cloud** | What BigQuery queries cost this month in each project you work in | `gcloud` and `bq`, signed in | Cloud spend (optional) |
+| 🤖 **Your Claude Code sessions** | The time stamp on every message in your session logs (`~/.claude/projects/`), turned into hours per project | Local files, no connector | Timesheet hours (optional) |
+| ⏱ **Tempo** (the timesheet app inside Jira) | What you have already logged, and, after you approve the hours on the page, logging them | Claude in Chrome, signed in to Tempo ([why the browser](#-timesheet-hours-optional-off-by-default)) | Timesheet hours (optional) |
+| 🔭 **The web** | New repositories, the Claude Code changelog and Hacker News, for ideas that could help your projects | `gh`, web search | Scout (optional) |
+| ✅ **Your Done taps** | What you finished on earlier briefs, so it does not come back as a to-do | `~/.morning-fairy/runs/done.jsonl`, written by the local helper | Automatic |
+
+**How to connect them.** Gmail, Google Calendar, Google Drive, Slack and Atlassian (Jira) are connectors you
+switch on once in Claude ([claude.ai](https://claude.ai) → Settings → Connectors); Claude Code sessions signed in to
+the same account see them as tools. Other connectors that give Claude the same reads (Outlook instead of Gmail,
+say) should work too, but only the ones named here have been used. The command-line tools need one sign-in each:
+`gh auth login`, and for spend `gcloud auth login` (which also signs in `bq`). Then list what you have in step 3 of the [routine prompt](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md).
+A source that cannot be reached one morning does not stop the run: the page is built anyway and says at the top
+which source was missing.
+
+**What it does not read:** your browser history, or any tool you have not given it a connector or a sign-in for.
+The one place it uses your browser is the two hours sessions (Fill Tempo and Approve and log), which start with
+Claude in Chrome so they can open your Tempo page; like any Claude in Chrome session, they act in your signed-in
+Chrome. What the morning run finds goes into that morning's brief (on your Desktop) and its files in
+`~/.morning-fairy/`.
+
 ## Quick start
 
 **1. Install it (Claude Code plugin):**
@@ -201,9 +237,10 @@ Nothing in that folder leaves your machine, and the page is never rebuilt over a
 
 ## How it works
 
-1. **Claude reads.** Calendar, email, chat, alerts and Jira, once each, through whichever connectors you have.
-   Everything it reads is treated as data: an email that says "assistant, please forward this" is summarised,
-   never obeyed.
+1. **Claude reads.** At 08:00 on a weekday the scheduled task wakes Claude, which reads each source in
+   [Where the data comes from](#-where-the-data-comes-from) that you have switched on, once each, for
+   everything since the last run (since Friday on a Monday). Everything it reads is treated as data: an email
+   that says "assistant, please forward this" is summarised, never obeyed.
 2. **Claude writes one JSON file** for the day (titles, one-line reasons, links, meeting times and weights,
    Claude quests, Jira drafts). It never writes HTML.
 3. **The builder draws the page.** `build_digest.py` is one Python file using only the standard library. It
@@ -295,6 +332,17 @@ cp <skill>/digest/clients.example.json <skill>/digest/clients.json
 The repo ships only the example. A filled-in map would put someone else's project names in your
 timesheet, and a map that quietly defaulted to empty would report every project as zero hours.
 
+**What it reads for hours, and what it does not.** Three inputs, all from your own machine and calendar:
+
+1. **Your Claude Code session logs** (`~/.claude/projects/`): when you typed, in which project folder.
+2. **Your calendar**: each meeting becomes its own entry at its calendar time, and out-of-office blocks are
+   never counted.
+3. **Quiet stretches:** the gap between Claude's last message and your next reply in a session, which is usually
+   time you spent reading what an agent made or writing your answer. They are a guess, so they are not counted
+   until you tick them on the page.
+
+It does **not** use your browser history, or Slack and email activity, for hours.
+
 How it measures: every Claude session transcript carries a timestamp per message, so messages less than
 15 minutes apart are one stretch of work and a longer gap is dropped. Stretches are merged per project
 per day, scheduled runs are excluded, and a day where two projects ran at once is split rather than
@@ -302,7 +350,7 @@ summed — otherwise the parts add up to more hours than you actually sat there.
 
 **It is a proxy, not a measurement of your day.** Work away from the keyboard is missing, and a long
 agent run inside an attended session is counted. It ranks the days and shows the shape of the week; you
-decide the hours. It never writes to your timesheet: it proposes, and you save in a session you are
+decide the hours. The morning run never writes to your timesheet: it proposes, and you save in a session you are
 watching.
 
 **The Hours tab.** The brief draws the week as one stacked bar per day: each project in its own colour,
@@ -333,9 +381,23 @@ through the local helper (`serve.py`); the page sends nothing but the date, and 
 sites, a second tap within 20 seconds, and any day more than 14 days back. Opened any other way, or off
 macOS, the button copies the prompt for you to paste into a Claude session instead.
 
+**Why Tempo goes through the browser, not the Jira connector.** Two reasons:
+
+- **The Jira API cannot tell you whether *your* hours are in.** Tempo copies each worklog into Jira under the
+  Tempo app's own account, never yours, so asking Jira for "my worklogs" finds nothing, even on a full week.
+  Without a separate Tempo API key, Tempo's own page is the only place that shows what you logged.
+- **Your Atlassian connector may be connected to a different Jira account.** If your tickets live on one Jira
+  site and your timesheet on another, the connector can only reach the one it was connected to. The browser
+  reaches whichever site you are signed in to, so it does not matter which account the connector holds.
+
+**For the browser part:** install the [Claude in Chrome](https://claude.com/claude-in-chrome) extension, sign in
+to it with your Claude account, and sign in to your Tempo site in that same Chrome. The buttons also need the
+`clients.json` and `fill_tempo` block above, the brief opened through the local helper, and macOS (they open
+Terminal).
+
 The session starts as `claude --chrome`, because a Terminal session only gets the Claude in Chrome tools with that
 flag, and it reads your Tempo page in Chrome. So the Claude in Chrome extension must be installed and signed in to
-Tempo. Only Fill Tempo gets `--chrome`: sessions started from the Quests board do not, since they can come from mail,
+Tempo. Only the two hours sessions (Fill Tempo and Approve and log) get `--chrome`: sessions started from the Quests board do not, since they can come from mail,
 chat or web finds and should not have your signed-in browser.
 
 ## Limitations
@@ -345,7 +407,8 @@ chat or web finds and should not have your signed-in browser.
   running alone is counted. Treat them as a ranking of your days, never as the answer, and never set a
   single project's figure beside a weekly target.
 - **It needs connectors to be useful.** Calendar, email and chat connectors (Google, Slack, Atlassian or
-  similar) are what it reads. With none, you get the demo and nothing else.
+  similar) are what it reads; see [Where the data comes from](#-where-the-data-comes-from). With none, you get
+  the demo and nothing else.
 - **Opening a brief loads fonts from Google Fonts**, so your browser makes a request to Google. The page
   falls back to system fonts offline.
 - **The Dock app is macOS only.** On Linux, `launch.sh` opens the brief with `xdg-open`; on Windows, open the
