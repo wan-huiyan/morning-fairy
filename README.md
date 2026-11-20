@@ -20,8 +20,8 @@
 > never sends, posts or changes anything in your mail, chat, calendar or Jira.**
 
 <p align="center">
-  <img src="docs/world-tour.gif" width="760" alt="Dragging the sun across the day, then switching between the garden, cosmic and candy worlds and opening the time machine"/>
-  <br/><sub>Drag the sun and the mascot walks the day. Switch worlds, switch to dark, open the time machine. (All data here is made up.)</sub>
+  <img src="docs/world-tour.gif" width="760" alt="Dragging the sun across the day, then switching between the garden, cosmic, candy and caterpillar worlds, switching to dark and opening the time machine"/>
+  <br/><sub>Drag the sun and the mascot walks the day. Switch worlds (garden, cosmic, candy, caterpillar), switch to dark, open the time machine. (All data here is made up.)</sub>
 </p>
 
 ## What it is, and why
@@ -38,6 +38,11 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 <p align="center">
   <img src="docs/done-flight.gif" width="760" alt="Tapping Done: a heart burst, a pen stroke crosses the card off, and the card flies down into the Resolved list"/>
   <br/><sub>The Done flight: a heart burst, a pen stroke, then the card flies down to Resolved so you can see where it went. Tap again and it flies back.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/hours-and-scout.gif" width="760" alt="The Hours tab: Wednesday's timeline of work blocks per project, a quiet stretch ticked in so the Orchard row grows from 3h20 to 4h25, the Approve and log button, and the week's stacked bars. Then the Scout tab: a flaky-test finder for the Orchard nightly build, accepted, landing on the Quests board under Orchard app"/>
+  <br/><sub>Two optional tabs. <b>Hours</b>: your week measured from your local Claude Code logs and calendar, a timeline you click blocks in and out of, and one button that has Claude log the day in Tempo. <b>Scout</b>: web finds tied to your own projects (here, a tool for this week's failing Orchard build); accept one and it joins that project's quests. (Made-up data.)</sub>
 </p>
 
 ## 🔌 Where the data comes from
