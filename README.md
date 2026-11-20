@@ -120,6 +120,11 @@ running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
 
 ## 🔌 Where the data comes from
 
+<p align="center">
+  <img src="docs/how-it-works.svg" width="760" alt="At 08:00 on a weekday the sun rises and the ticket mascot hops across ten little houses, one per connected tool; as it lands on each, a flag pops up naming it: Calendar, Email, Meeting notes, Slack, Jira, GitHub, Cloud spend, Claude sessions, Tempo, The web. It flies to one page, a to-do on the page gets ticked, and a paper plane carries it to a terminal where claude opens in the project folder with that task and its context. Coloured dots carry what the fairy found from the houses to the page."/>
+  <br/><sub>The morning round: one house per tool you connect, one page, then the to-do you pick goes to Claude with its context.</sub>
+</p>
+
 morning-fairy has no data of its own. Every morning it reads the tools you already use, through the connectors and
 command-line tools your Claude Code session can reach, and only those. The more you connect, the more of your day
 it can see.
@@ -237,7 +242,7 @@ Nothing in that folder leaves your machine, and the page is never rebuilt over a
 
 ## How it works
 
-1. **Claude reads.** At 08:00 on a weekday the scheduled task wakes Claude, which reads each source in
+1. **Claude reads** (the animation [above](#-where-the-data-comes-from)). At 08:00 on a weekday the scheduled task wakes Claude, which reads each source in
    [Where the data comes from](#-where-the-data-comes-from) that you have switched on, once each, for
    everything since the last run (since Friday on a Monday). Everything it reads is treated as data: an email
    that says "assistant, please forward this" is summarised, never obeyed.
