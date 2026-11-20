@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""doctor.py: is this machine ready for morning-fairy? Read-only; it changes nothing.
+"""doctor.py: is this machine ready for morning-fairy? Read-only: it changes none of your files (gh and gcloud may
+create their own config folder when asked whether you are signed in).
 
     python3 -I <skill>/digest/doctor.py          # a checklist, each line with its fix
     python3 -I <skill>/digest/doctor.py --json   # the same, for Claude to read during setup
@@ -12,6 +13,7 @@ through each. Exit code 1 when a core check fails, else 0.
 import json
 import os
 import platform
+import shlex
 import shutil
 import socket
 import subprocess
@@ -43,6 +45,10 @@ def run(cmd, timeout=15):
         return None, str(e)
 
 
+def q(p):
+    return shlex.quote(str(p))
+
+
 def item(group, name, status, detail, fix=""):
     return {"group": group, "name": name, "status": status, "detail": detail, "fix": fix}
 
@@ -60,7 +66,7 @@ def check_folder(name, path, group="core"):
     p = Path(path)
     probe = p if p.exists() else p.parent
     if not probe.exists():
-        return item(group, name, MISSING, f"{p} does not exist", f"mkdir -p '{p}'")
+        return item(group, name, MISSING, f"{p} does not exist", f"mkdir -p {q(p)}")
     if not os.access(probe, os.W_OK):
         return item(group, name, MISSING, f"{probe} is not writable", f"Check the permissions on {probe}.")
     if not p.exists():
@@ -101,16 +107,24 @@ def check_settings(name, purpose, needed_key, home, code_dir):
     example = code_dir / name.replace(".json", ".example.json")
     if path is None:
         return item("optional", name, OFF, f"not set up, so {purpose} stays off",
-                    f"cp '{example}' '{at_home}'  # then edit it")
+                    f"mkdir -p {q(home)} && cp {q(example)} {q(at_home)}  # then edit it")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
         return item("optional", name, MISSING, f"{path} is not valid JSON ({e})", f"Fix or re-copy it from {example.name}.")
+    if not isinstance(data, dict):
+        return item("optional", name, MISSING, f"{path} is not a JSON object", f"Re-copy it from {example.name}.")
     if needed_key not in data:
         return item("optional", name, WARN, f"{path} has no \"{needed_key}\"", f"Compare it with {example.name}.")
     if path == beside:
         return item("optional", name, WARN, f"{path} sits inside the skill folder, which a plugin update replaces",
-                    f"mkdir -p '{home}' && mv '{beside}' '{at_home}'")
+                    f"mkdir -p {q(home)} && mv {q(beside)} {q(at_home)}, then restart the helper: "
+                    "pkill -f 'morning-fairy/digest/serve.py' and click Morning Brief in the Dock")
+    if name == "start.json":
+        root = data.get("root")
+        if not isinstance(root, str) or not Path(root.strip() or "/nonexistent-root").expanduser().is_dir():
+            return item("optional", name, WARN, f"its \"root\" ({root!r}) is not a folder on this computer, so Start stays off",
+                        "Set \"root\" to the folder your project folders live in, e.g. \"~/Documents\".")
     return item("optional", name, OK, str(path))
 
 
@@ -150,7 +164,7 @@ def check_helper(port=8765):
             return item("optional", "Local helper", OK, f"answering on 127.0.0.1:{port}")
     except OSError:
         return item("optional", "Local helper", OFF, "not running (Done taps then stay in one browser)",
-                    "Click Morning Brief in the Dock, or run: bash '" + str(CODE / "launch.sh") + "'")
+                    "Click Morning Brief in the Dock, or run: bash " + q(CODE / "launch.sh"))
 
 
 def check_dock_app():
@@ -159,24 +173,32 @@ def check_dock_app():
     app = Path.home() / "Applications" / "Morning Brief.app"
     if app.exists():
         return item("optional", "Dock app", OK, str(app))
-    return item("optional", "Dock app", OFF, "not made yet", "bash '" + str(CODE / "make_dock_app.sh") + "'")
+    return item("optional", "Dock app", OFF, "not made yet", "bash " + q(CODE / "make_dock_app.sh"))
+
+
+def safe(fn, *a):
+    """One check that fails unexpectedly is reported, never allowed to hide the rest."""
+    try:
+        return fn(*a)
+    except Exception as e:  # noqa: BLE001
+        return item("optional", fn.__name__.replace("check_", ""), WARN, f"the check itself failed ({e})")
 
 
 def checks():
     home, code_dir = home_dir(), CODE
-    return [
-        check_python(),
-        check_folder("Data folder", home),
-        check_folder("Desktop (where briefs go)", desktop_dir()),
-        check_gh(),
-        check_transcripts(),
-        check_settings("clients.json", "the Hours tab", "clients", home, code_dir),
-        check_tempo(home, code_dir),
-        check_settings("start.json", "Start in Claude", "root", home, code_dir),
-        check_gcloud(),
-        check_helper(),
-        check_dock_app(),
-    ]
+    return [safe(*c) for c in (
+        (check_python,),
+        (check_folder, "Data folder", home),
+        (check_folder, "Desktop (where briefs go)", desktop_dir()),
+        (check_gh,),
+        (check_transcripts,),
+        (check_settings, "clients.json", "the Hours tab", "clients", home, code_dir),
+        (check_tempo, home, code_dir),
+        (check_settings, "start.json", "Start in Claude", "root", home, code_dir),
+        (check_gcloud,),
+        (check_helper,),
+        (check_dock_app,),
+    )]
 
 
 MARK = {OK: "ok  ", WARN: "warn", MISSING: "FIX ", OFF: "off "}

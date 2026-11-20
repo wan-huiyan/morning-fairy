@@ -28,23 +28,28 @@ installed), `<home>` = `${MORNING_FAIRY_HOME:-$HOME/.morning-fairy}`, where the 
 ## 0. First-time setup ("set up morning fairy")
 
 Run this when the owner asks to set up or install morning-fairy, or when a run finds no `<home>/routine-prompt.md`
-and no earlier brief. It reads and checks; the only things it writes are in `<home>`, plus one brief on the Desktop
+and no earlier brief. `<skill>` is the folder this SKILL.md was loaded from: use that exact path, never search for
+another copy. If `<home>/routine-prompt.md` already exists, say setup has run before and ask whether to check
+everything again (steps 1 and 2 only) or redo it all. It reads and checks; the only things it writes are in `<home>`, plus one brief on the Desktop
 and, on macOS with the owner's yes, the Dock app. Go step by step, and tell the owner in one line what each step found.
 
 1. **Check the machine.** `python3 -I <skill>/digest/doctor.py --json`. Report each check that is not `ok` with
    its `fix`, plain. A `core` check marked `missing` stops the setup until it is fixed. `mkdir -p <home>/runs`.
 2. **Check each connector with one small read**, because a connector can be listed and still not answer. A tool's
-   name differs between accounts, so find each by what it does, and if two tools could serve, use the one that
-   answers. Read only; never send, create or change anything here.
+   name differs between accounts, so find each by what it does (a keyword search of the tool list; a tool found
+   that way may need loading by its exact name before it can be called), and if two tools could serve, use the one
+   that answers. Ask for as little as the tool allows (ids only, one result), so no message content is read. Read
+   only; never send, create or change anything here. **No tool for a source means "not connected"**: say so and
+   move on; it is never a reason to stop the setup.
 
    | Source | The one read | Counts as working when |
    |---|---|---|
-   | Calendar | today's events | the call returns, even with no events |
-   | Email | search the inbox for one thread from the last day | the call returns |
-   | Chat (Slack) | the owner's own profile, or one search in the last day | the call returns |
-   | Jira (Atlassian) | the list of sites the connector can reach | at least one site; ask which site and project key the brief is for, and say that one connector reaches one Atlassian account |
-   | Meeting notes | one search for a meeting-notes doc or email (e.g. "Notes by Gemini") | the call returns; nothing found is fine |
-   | GitHub | `gh auth status` (doctor already ran it) | signed in |
+   | Calendar | today's events, with no time zone set | the call returns, even with no events; the time zone it reports is the default offered in step 3 |
+   | Email | one inbox search, e.g. `in:inbox newer_than:1d`, ids only, one result | the call returns |
+   | Chat (Slack) | the owner's own profile; if there is no such tool, one search in the last day | the call returns |
+   | Jira (Atlassian) | the tool that lists the Atlassian sites the connector can reach | at least one site; ask which site and project key the brief is for, and say that one connector reaches one Atlassian account. No site: the brief is built without its Jira half |
+   | Meeting notes | a Drive search for a title containing "Notes by Gemini", no content snippets; without a Drive tool, the same words as an email search | the call returns; nothing found (an empty answer) is fine |
+   | GitHub | `gh auth status` (doctor already ran it) | signed in. A GitHub connector or plugin that fails does not matter: the brief uses `gh` |
 
    Then show one table: each source, working / not connected / failed (with the error in a few words), and what
    the brief loses without it (from the README's "Where the data comes from"). For a missing connector say where to
@@ -61,16 +66,20 @@ and, on macOS with the owner's yes, the Dock app. Go step by step, and tell the 
 5. **Write their routine prompt.** Copy `<skill>/routine-prompt.md` (everything below its line) to
    `<home>/routine-prompt.md`, with the blanks filled: name, email, time zone, the Sources line listing only the
    sources that passed step 2 (Jira with its site and project key), and the optional steps kept or deleted as
-   chosen. Show the owner the Sources line.
+   chosen. If the owner keeps briefs somewhere other than the Desktop, replace `~/Desktop` in it with that folder.
+   Show the owner the Sources line.
 6. **Build the first brief now**, following that prompt once (sections 1 and 2), so the owner sees their own day.
    If a source failed, the page says so at the top, as on any morning.
 7. **macOS: the Dock app.** With the owner's yes, `bash <skill>/digest/make_dock_app.sh`, then tell them to drag
    `Morning Brief.app` onto the Dock.
-8. **Schedule it.** It must run on their own computer (it writes to the Desktop). If this session has a tool that
-   creates local scheduled tasks, offer to create one called `morning-fairy`, weekdays at 08:00, with the prompt
-   from `<home>/routine-prompt.md`, and create it only on a yes. Otherwise give them the exact words to say in the
-   Claude desktop app: "Create a scheduled task called morning-fairy that runs weekdays at 08:00 with the prompt in
-   ~/.morning-fairy/routine-prompt.md". A local task runs while the Claude app is open.
+8. **Schedule it.** It must run on their own computer (it writes to the Desktop), and it must outlive this session:
+   a Claude desktop app scheduled task does; a cron or loop that lives only inside this session does not, so never
+   use one. If this session has a tool that creates desktop-app scheduled tasks, offer to create one called
+   `morning-fairy`, weekdays at 08:00, whose prompt is the full text of `<home>/routine-prompt.md` (the text
+   itself, not a pointer to the file), and create it only on a yes. Otherwise tell them: open
+   `~/.morning-fairy/routine-prompt.md`, copy all of it, and say in the Claude desktop app "Create a scheduled task
+   called morning-fairy that runs weekdays at 08:00 with this prompt:" and paste. A local task runs while the Claude
+   app is open, and a missed run happens the next time it opens.
 9. **Finish with three lines**: what is connected, what is off and how to turn it on later ("say: set up morning
    fairy again"), and when the first scheduled brief will arrive.
 

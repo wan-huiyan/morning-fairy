@@ -174,9 +174,11 @@ running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
 <details><summary>Manual copy instead</summary>
 
 ```bash
-git clone https://github.com/wan-huiyan/morning-fairy.git /tmp/morning-fairy
-cp -r /tmp/morning-fairy/plugins/morning-fairy/skills/morning-fairy ~/.claude/skills/
+mkdir -p ~/.claude/skills
+git clone https://github.com/wan-huiyan/morning-fairy.git ~/morning-fairy-src
+cp -R ~/morning-fairy-src/plugins/morning-fairy/skills/morning-fairy ~/.claude/skills/
 ```
+Then start a new Claude Code session so it sees the skill.
 </details>
 
 **2. Say this to Claude:**
@@ -188,7 +190,8 @@ set up morning fairy
 Claude walks you through it, about ten minutes, once:
 
 1. **Checks your computer** with `doctor.py`: Python, the folders the brief writes to, `gh` and `gcloud` and
-   whether they are signed in, and your optional settings. Each problem comes with the command that fixes it.
+   whether they are signed in, and your optional settings. Each problem comes with a one-line fix; "off" only
+   means an optional part you have not turned on.
 2. **Tests each connector with one small read** (today's calendar, one email search, Slack, your Jira sites,
    meeting notes) and shows you a table of what works, what is missing, what the brief loses without it, and
    where to switch it on (claude.ai, Settings, Connectors). A connector that is listed but does not answer shows up
@@ -209,22 +212,25 @@ Claude: Your computer is ready (gh signed in; gcloud not installed, so Cloud spe
         switch it on in claude.ai, Settings, Connectors, or carry on without it.
 ```
 
-Run the check-up yourself any time, from the skill folder (`~/.claude/skills/morning-fairy`, or for the plugin
-`"$(ls -dt ~/.claude/plugins/cache/*/morning-fairy/*/skills/morning-fairy | head -1)"`):
+Run the check-up yourself any time:
 
 ```bash
-python3 -I digest/doctor.py
+# installed as a plugin
+python3 -I "$(ls -dt ~/.claude/plugins/cache/*/morning-fairy/*/skills/morning-fairy | head -1)/digest/doctor.py"
+# copied by hand
+python3 -I ~/.claude/skills/morning-fairy/digest/doctor.py
 ```
 
 **Just want to look first?** Say "show me the morning fairy demo". Claude builds two made-up mornings (11 and 12
 March 2026, no connectors needed) and opens the newer one; click the clock in the top row to jump back to the
-11th. By hand: `bash digest/build_demo.sh` from the skill folder.
+11th. By hand (copied install; on Linux use `xdg-open`): `open "$(bash ~/.claude/skills/morning-fairy/digest/build_demo.sh)"`.
+The demo pages go to a new temporary folder.
 
 **Phrases that start it:** "morning brief", "build my brief", "what's my day", "daily digest", "set up morning fairy".
 
 ## 🌅 Set up your daily brief by hand
 
-"Set up morning fairy" does all of this with you. To do it yourself: three steps, about ten minutes, once.
+"Set up morning fairy" does all of this with you. To do it yourself: four steps, about ten minutes, once.
 
 **1. Put the mascot on your Dock (macOS).**
 
@@ -244,8 +250,9 @@ open. If you already had an app called Morning Brief that this script did not ma
 "Morning Brief (old)", never overwritten.
 
 **2. Schedule the morning run.** Open [`routine-prompt.md`](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md)
-(or the filled-in copy setup saved as `~/.morning-fairy/routine-prompt.md`), fill in its four blanks (your name,
-email, time zone, which connectors you have), then in the Claude desktop app ask:
+(or the filled-in copy setup saved as `~/.morning-fairy/routine-prompt.md`). Fill in your name, email, time zone and
+the Sources line (the connectors you have, Jira with its project key), and delete steps 7 (Scout) and 8 (Cloud
+spend) unless you want them. Copy everything below its line, then in the Claude desktop app ask:
 
 > Create a scheduled task called morning-fairy that runs weekdays at 08:00 with this prompt: *(paste it)*
 
@@ -254,9 +261,12 @@ email, time zone, which connectors you have), then in the Claude desktop app ask
 - **The Claude app needs to be open.** A local task runs while the app is open; if it was closed at 08:00, the
   run happens the next time you open it.
 - Prefer cron? `claude -p "<the filled-in prompt>"` works too, but a headless run cannot stop to ask you for
-  permission, so allow the connector tools it reads with in your Claude Code settings first.
+  permission: first allow the connectors it reads in `~/.claude/settings.json` under `permissions.allow` (for
+  example `"mcp__claude_ai_Gmail"`, `"mcp__claude_ai_Google_Calendar"`), and check that a headless run sees them.
 
-**3. That's it: every morning looks after itself.**
+**3. Build today's brief now** so the Dock app has something to open: in Claude Code, say "build my brief".
+
+**4. That's it: every morning looks after itself.**
 
 | Each weekday at 08:00 | Where it goes |
 |---|---|

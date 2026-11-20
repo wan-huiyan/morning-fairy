@@ -103,7 +103,7 @@ describe("README", () => {
   });
   it("every repo path the README's install block names actually exists", () => {
     const readme = readFileSync(resolve(ROOT, "README.md"), "utf-8");
-    const paths = [...readme.matchAll(/\/tmp\/morning-fairy\/(\S+)/g)].map((m) => m[1]);
+    const paths = [...readme.matchAll(/~\/morning-fairy-src\/(\S+)/g)].map((m) => m[1]);
     assert.ok(paths.length, "the install block should name the skill directory to copy");
     for (const p of paths) {
       assert.ok(existsSync(resolve(ROOT, p)), `README install block names a path that does not exist: ${p}`);

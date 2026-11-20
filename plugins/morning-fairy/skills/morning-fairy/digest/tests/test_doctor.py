@@ -44,6 +44,21 @@ class Settings(unittest.TestCase):
         (self.home / "clients.json").write_text("{nope")
         self.assertEqual(self.check()["status"], doctor.MISSING)
 
+    def test_json_that_is_not_an_object_is_reported_not_raised(self):
+        (self.home / "clients.json").write_text("5")
+        self.assertEqual(self.check()["status"], doctor.MISSING)
+
+    def test_the_copy_fix_makes_the_data_folder_first(self):
+        self.assertTrue(self.check()["fix"].startswith("mkdir -p "))
+
+    def test_start_root_must_be_a_real_folder(self):
+        (self.home / "start.json").write_text(json.dumps({"root": "/no/such/folder-xyz"}))
+        r = doctor.check_settings("start.json", "Start in Claude", "root", self.home, self.code)
+        self.assertEqual(r["status"], doctor.WARN)
+        (self.home / "start.json").write_text(json.dumps({"root": str(self.home)}))
+        r = doctor.check_settings("start.json", "Start in Claude", "root", self.home, self.code)
+        self.assertEqual(r["status"], doctor.OK)
+
     def test_missing_key_is_a_warning(self):
         (self.home / "clients.json").write_text("{}")
         self.assertEqual(self.check()["status"], doctor.WARN)
@@ -90,6 +105,11 @@ class Report(unittest.TestCase):
         names = {c["name"] for c in out["checks"]}
         for n in ("Python", "Data folder", "GitHub CLI (gh)", "clients.json", "start.json", "Tempo buttons"):
             self.assertIn(n, names)
+
+    def test_a_check_that_raises_does_not_stop_the_rest(self):
+        def boom():
+            raise RuntimeError("x")
+        self.assertEqual(doctor.safe(boom)["status"], doctor.WARN)
 
     def test_a_failed_core_check_exits_1(self):
         bad = [doctor.item("core", "Python", doctor.MISSING, "old")]
