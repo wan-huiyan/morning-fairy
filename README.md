@@ -40,6 +40,45 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
   <br/><sub>The Done flight: a heart burst, a pen stroke, then the card flies down to Resolved so you can see where it went. Tap again and it flies back.</sub>
 </p>
 
+## 🔌 Where the data comes from
+
+<p align="center">
+  <img src="docs/how-it-works.svg" width="760" alt="At 08:00 on a weekday the sun rises and the ticket mascot hops across ten little houses, one per connected tool; as it lands on each, a flag pops up naming it: Calendar, Email, Meeting notes, Slack, Jira, GitHub, Cloud spend, Claude sessions, Tempo, The web. It flies to one page, a to-do on the page gets ticked, and a paper plane carries it to a terminal where claude opens in the project folder with that task and its context. Coloured dots carry what the fairy found from the houses to the page."/>
+  <br/><sub>The morning round: one house per tool you connect, one page, then the to-do you pick goes to Claude with its context.</sub>
+</p>
+
+morning-fairy has no data of its own. Every morning it reads the tools you already use, through the connectors and
+command-line tools your Claude Code session can reach, and only those. The more you connect, the more of your day
+it can see.
+
+| Source | What the fairy reads it for | How Claude reaches it | Used by |
+|---|---|---|---|
+| 📅 **Calendar** (Google Calendar) | Today's meetings, which become the hills; tomorrow's meetings to prep for; the meetings that go into your hours | Calendar connector | The day scene (core) |
+| ✉️ **Email** (Gmail) | Threads where you were asked and have not replied, deadlines sent to you by name (training, timesheets, access reviews), alert emails such as a failing job, and Jira notification emails | Email connector | The to-do list (core) |
+| 📝 **Meeting notes** | What was agreed in yesterday's meetings, as evidence for Jira updates. It prefers the raw transcript over an AI summary | Wherever your notes land. For example, Google Meet's "Notes by Gemini" arrive by email and link to a Google Doc, which needs a Google Drive connector to open | Jira drafts |
+| 💬 **Chat** (Slack) | Every direct and group message in the window, not only mentions; project channels as evidence for Jira | Slack connector | The to-do list (core) |
+| 🎫 **Jira** | Your assigned tickets and what each one already says, so a draft never repeats what the ticket shows | Atlassian connector | Jira drafts |
+| 🐙 **GitHub** | Merged pull requests as evidence for Jira; the live state of anything carried over from yesterday ("to merge" may have merged overnight); Scout searches | The `gh` command-line tool, signed in | Jira drafts; Scout (optional) |
+| ☁️ **Google Cloud** | What BigQuery queries cost this month in each project you work in | `gcloud` and `bq`, signed in | Cloud spend (optional) |
+| 🤖 **Your Claude Code sessions** | The time stamp on every message in your session logs (`~/.claude/projects/`), turned into hours per project | Local files, no connector | Timesheet hours (optional) |
+| ⏱ **Tempo** (the timesheet app inside Jira) | What you have already logged, and, after you approve the hours on the page, logging them | Claude in Chrome, signed in to Tempo ([why the browser](#-timesheet-hours-optional-off-by-default)) | Timesheet hours (optional) |
+| 🔭 **The web** | New repositories, the Claude Code changelog and Hacker News, for ideas that could help your projects | `gh`, web search | Scout (optional) |
+| ✅ **Your Done taps** | What you finished on earlier briefs, so it does not come back as a to-do | `~/.morning-fairy/runs/done.jsonl`, written by the local helper | Automatic |
+
+**How to connect them.** Gmail, Google Calendar, Google Drive, Slack and Atlassian (Jira) are connectors you
+switch on once in Claude ([claude.ai](https://claude.ai) → Settings → Connectors); Claude Code sessions signed in to
+the same account see them as tools. Other connectors that give Claude the same reads (Outlook instead of Gmail,
+say) should work too, but only the ones named here have been used. The command-line tools need one sign-in each:
+`gh auth login`, and for spend `gcloud auth login` (which also signs in `bq`). Then list what you have in step 3 of the [routine prompt](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md).
+A source that cannot be reached one morning does not stop the run: the page is built anyway and says at the top
+which source was missing.
+
+**What it does not read:** your browser history, or any tool you have not given it a connector or a sign-in for.
+The one place it uses your browser is the two hours sessions (Fill Tempo and Approve and log), which start with
+Claude in Chrome so they can open your Tempo page; like any Claude in Chrome session, they act in your signed-in
+Chrome. What the morning run finds goes into that morning's brief (on your Desktop) and its files in
+`~/.morning-fairy/`.
+
 ## What you get
 
 | | Feature | The specifics |
@@ -117,45 +156,6 @@ running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
 <p align="center">
   <img src="docs/picker-phone.png" width="300" alt="The same sheet on a phone, the mascot cards stacked one above the other"/>
 </p>
-
-## 🔌 Where the data comes from
-
-<p align="center">
-  <img src="docs/how-it-works.svg" width="760" alt="At 08:00 on a weekday the sun rises and the ticket mascot hops across ten little houses, one per connected tool; as it lands on each, a flag pops up naming it: Calendar, Email, Meeting notes, Slack, Jira, GitHub, Cloud spend, Claude sessions, Tempo, The web. It flies to one page, a to-do on the page gets ticked, and a paper plane carries it to a terminal where claude opens in the project folder with that task and its context. Coloured dots carry what the fairy found from the houses to the page."/>
-  <br/><sub>The morning round: one house per tool you connect, one page, then the to-do you pick goes to Claude with its context.</sub>
-</p>
-
-morning-fairy has no data of its own. Every morning it reads the tools you already use, through the connectors and
-command-line tools your Claude Code session can reach, and only those. The more you connect, the more of your day
-it can see.
-
-| Source | What the fairy reads it for | How Claude reaches it | Used by |
-|---|---|---|---|
-| 📅 **Calendar** (Google Calendar) | Today's meetings, which become the hills; tomorrow's meetings to prep for; the meetings that go into your hours | Calendar connector | The day scene (core) |
-| ✉️ **Email** (Gmail) | Threads where you were asked and have not replied, deadlines sent to you by name (training, timesheets, access reviews), alert emails such as a failing job, and Jira notification emails | Email connector | The to-do list (core) |
-| 📝 **Meeting notes** | What was agreed in yesterday's meetings, as evidence for Jira updates. It prefers the raw transcript over an AI summary | Wherever your notes land. For example, Google Meet's "Notes by Gemini" arrive by email and link to a Google Doc, which needs a Google Drive connector to open | Jira drafts |
-| 💬 **Chat** (Slack) | Every direct and group message in the window, not only mentions; project channels as evidence for Jira | Slack connector | The to-do list (core) |
-| 🎫 **Jira** | Your assigned tickets and what each one already says, so a draft never repeats what the ticket shows | Atlassian connector | Jira drafts |
-| 🐙 **GitHub** | Merged pull requests as evidence for Jira; the live state of anything carried over from yesterday ("to merge" may have merged overnight); Scout searches | The `gh` command-line tool, signed in | Jira drafts; Scout (optional) |
-| ☁️ **Google Cloud** | What BigQuery queries cost this month in each project you work in | `gcloud` and `bq`, signed in | Cloud spend (optional) |
-| 🤖 **Your Claude Code sessions** | The time stamp on every message in your session logs (`~/.claude/projects/`), turned into hours per project | Local files, no connector | Timesheet hours (optional) |
-| ⏱ **Tempo** (the timesheet app inside Jira) | What you have already logged, and, after you approve the hours on the page, logging them | Claude in Chrome, signed in to Tempo ([why the browser](#-timesheet-hours-optional-off-by-default)) | Timesheet hours (optional) |
-| 🔭 **The web** | New repositories, the Claude Code changelog and Hacker News, for ideas that could help your projects | `gh`, web search | Scout (optional) |
-| ✅ **Your Done taps** | What you finished on earlier briefs, so it does not come back as a to-do | `~/.morning-fairy/runs/done.jsonl`, written by the local helper | Automatic |
-
-**How to connect them.** Gmail, Google Calendar, Google Drive, Slack and Atlassian (Jira) are connectors you
-switch on once in Claude ([claude.ai](https://claude.ai) → Settings → Connectors); Claude Code sessions signed in to
-the same account see them as tools. Other connectors that give Claude the same reads (Outlook instead of Gmail,
-say) should work too, but only the ones named here have been used. The command-line tools need one sign-in each:
-`gh auth login`, and for spend `gcloud auth login` (which also signs in `bq`). Then list what you have in step 3 of the [routine prompt](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md).
-A source that cannot be reached one morning does not stop the run: the page is built anyway and says at the top
-which source was missing.
-
-**What it does not read:** your browser history, or any tool you have not given it a connector or a sign-in for.
-The one place it uses your browser is the two hours sessions (Fill Tempo and Approve and log), which start with
-Claude in Chrome so they can open your Tempo page; like any Claude in Chrome session, they act in your signed-in
-Chrome. What the morning run finds goes into that morning's brief (on your Desktop) and its files in
-`~/.morning-fairy/`.
 
 ## Quick start
 
