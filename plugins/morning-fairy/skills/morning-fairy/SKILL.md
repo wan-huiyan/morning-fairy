@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.17.1
+version: 1.17.2
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -416,9 +416,13 @@ Tempo; Start in Claude sessions never get `--chrome`.
 **More than one Chrome can be connected, and the one the session uses may not be signed in.** The Tempo link
 then lands on the Atlassian login page even though the owner is signed in on another Chrome, and asking them
 to sign in, or reloading, goes nowhere. Both prompts tell the session to run `list_connected_browsers` before
-it asks the owner to sign in. With two or more connected, it asks which one is signed in (it never picks one
-itself), selects that one and opens the Tempo link again in a new tab. The browsers' names and ids change
-between sessions, so the session re-runs the list instead of remembering which is which.
+it asks the owner to sign in. With two or more connected, it finds the signed-in one itself: it selects each
+browser it is not already in, opens the Tempo link in a new tab only to look at the page, and uses the one that
+does not show the login page, closing the tab it opened in any browser it does not use. This overrides the Chrome
+tool's own default of asking the owner which browser to use; looking at a login page changes nothing. It asks
+the owner only if none, or more than one, is signed in, and it never types a password or picks a sign-in
+provider. The browsers' names and ids change between sessions, so the session re-runs the list instead of
+remembering which is which.
 
 **Guard rails for the attended session.** Show one proposed entry per work item, every project
 included, and wait for the owner's OK on the hours. Then log one entry per click and read the week
