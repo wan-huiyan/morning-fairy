@@ -511,6 +511,9 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.17.1** (2026-11-24): Fill Tempo and Approve and log no longer get stuck on a login page. If the Tempo link lands
+  on the Atlassian login page, the session now checks which Chrome browsers are connected to Claude and asks which
+  one you are signed in on, instead of asking you to sign in again in a browser you are not using.
 - **1.17.0** (2026-11-20): easy setup. Say "set up morning fairy" and Claude checks your computer with the new
   `digest/doctor.py` (Python, folders, `gh` and `gcloud` sign-ins, settings files, the helper, the Dock app; read-only,
   each problem with its fix), tests each connector with one small read, asks your name, email and time zone, writes

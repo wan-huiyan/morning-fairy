@@ -4,4 +4,5 @@ Follow the "Timesheet hours" section of {skill_md} in full, including its guard 
 2. Read what Tempo already holds for {date} from {tempo_url} in the browser.
 3. Show me one proposed entry per work item for that day, except that each calendar meeting is its own entry at its calendar start time and length (two meetings on one work item are two worklogs, never one merged entry), every project included, each rounded to 5 minutes and marked billable or non-billable, with the gap against what Tempo already has. {work_items}
 4. Wait for my OK on the hours. Then log one entry per click and read the week total back after each save.
+If {tempo_url} lands on the Atlassian login page, do not ask me to sign in yet: more than one Chrome may be connected to Claude, and the one you are using may not be the one I am signed in on. Run list_connected_browsers first. If two or more are connected, ask me which one is signed in to Atlassian, select that one, and open the link again in a new tab.
 Never use Log All Activities, never use Submit Period, and never click a worklog card anywhere but its pencil.
