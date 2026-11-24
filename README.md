@@ -511,6 +511,9 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.17.2** (2026-11-24): the same login-page check now finds the right browser for you. When more than one Chrome is
+  connected to Claude, the session opens the Tempo link in each one, just to look, and carries on in the one that is
+  signed in. It asks you only if none, or more than one, is signed in. Before this it asked you which one to use.
 - **1.17.1** (2026-11-24): Fill Tempo and Approve and log no longer get stuck on a login page. If the Tempo link lands
   on the Atlassian login page, the session now checks which Chrome browsers are connected to Claude and asks which
   one you are signed in on, instead of asking you to sign in again in a browser you are not using.
