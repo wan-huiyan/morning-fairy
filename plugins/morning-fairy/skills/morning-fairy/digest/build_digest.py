@@ -3190,7 +3190,7 @@ LOOK_PANEL = """<div class="look-panel" id="look-panel" role="dialog" aria-label
   <button type="button" class="look-switch" id="dark-switch" role="switch" aria-checked="false"><span>Dark mode</span><i class="knob" aria-hidden="true"></i></button>
   <button type="button" class="look-switch" id="sparkle-switch" role="switch" aria-checked="true"><span>Sparkles</span><i class="knob" aria-hidden="true"></i></button>
   <fieldset class="look-layout"><legend>Layout</legend>
-    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Tabs</button><button type="button" data-layout="deck">Deck</button><button type="button" data-layout="scene">Scene</button><button type="button" data-layout="map">Map</button></div>
+    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Tabs</button><button type="button" data-layout="deck">Deck</button><button type="button" data-layout="scene">Scene</button></div>
   </fieldset>
 <!--sources--></div>"""
 
@@ -3241,10 +3241,15 @@ def look_panel_html(kind, d):
     """The Look panel: the Ticket | Clawd switch first (when Clawd is offered), then the worlds and switches, then the sources."""
     mascot = ""
     if OFFER_CLAWD:
-        btn = "".join(f'<button type="button" data-mascot="{k}" aria-pressed="{str(k == kind).lower()}">{t}</button>'
-                      for k, t in (("ticket", "Ticket"), ("clawd", "Clawd")))
+        # pictures, no words. Clawd's sticker is only fetched once the Look panel opens (data-src), unless Clawd is already the mascot
+        clawd = CLAWD_BASE + CLAWD_IDLE
+        pics = {"ticket": f'<img src="{favicon_href("calm")}" alt="" width="40" height="40">',
+                "clawd": (f'<img src="{clawd}"' if kind == "clawd" else f'<img data-src="{clawd}"') + ' alt="" width="40" height="40">'}
+        btn = "".join(f'<button type="button" class="mpick" data-mascot="{k}" aria-pressed="{str(k == kind).lower()}" '
+                      f'aria-label="{t}" title="{t}">{pics[k]}</button>'
+                      for k, t in (("ticket", "The ticket"), ("clawd", "Clawd (fan art by alwinecor)")))
         mascot = ('  <fieldset class="look-mascot"><legend>Mascot</legend>'
-                  f'<div class="seg" role="group" aria-label="Mascot">{btn}</div>'
+                  f'<div class="mpicks" role="group" aria-label="Mascot">{btn}</div>'
                   '<p class="look-say" id="mascot-say" role="status" aria-live="polite"></p></fieldset>\n')
     label = {k: (lab, why) for k, lab, why, _ in SOURCES}
     read = sources_read(d)
@@ -3272,9 +3277,19 @@ CSS_LOOK_MORE = r"""
 /* ===== the Look panel's mascot switch and sources ===== */
 .look-mascot{margin:0;padding:0;border:0;min-width:0}
 .look-mascot legend{float:left;width:100%;padding:0;margin:0 0 8px;font-size:13px;font-weight:650;color:var(--muted)}
-.look-mascot .seg{display:flex;clear:both}
-.look-mascot .seg button{flex:1;padding:6px 4px}
-.look-mascot .seg button:disabled{opacity:.6;cursor:progress}
+.look-mascot .mpicks{display:flex;gap:10px;clear:both}
+.look-mascot .mpick{flex:1;display:grid;place-items:center;height:64px;padding:0;border-radius:16px;border:2px solid var(--line-strong);
+  background:var(--bg);cursor:pointer;transition:transform .15s,border-color .15s}
+.look-mascot .mpick img{display:block;width:44px;height:44px;object-fit:contain}
+.look-mascot .mpick{overflow:hidden}
+.look-mascot .mpick[data-mascot="clawd"] img{width:56px;height:56px;image-rendering:pixelated;transform:scale(1.55);transform-origin:50% 82%}  /* Clawd stands small in the lower middle of its sticker */
+.look-mascot .mpick:hover{transform:translateY(-1px)}
+.look-mascot .mpick[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--bg));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.look-mascot .mpick:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.look-mascot .mpick:disabled{opacity:.6;cursor:progress}
+.look-mascot .mpick.nopic::after{content:attr(aria-label);font:600 13px/1.2 "Geist",system-ui,sans-serif;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.look-mascot .mpick{transition:none}.look-mascot .mpick:hover{transform:none}}
 .look-say{margin:6px 2px 0;font-size:12.5px;line-height:1.4;color:var(--muted)}
 .look-say:empty{display:none}
 .look-sources{display:grid;gap:6px;padding-top:10px;border-top:1px dashed var(--line-strong)}
@@ -3300,6 +3315,11 @@ JS_LOOK_MORE = r"""(function(){
 
   /* ---------- Ticket | Clawd: saved through the helper (POST /look, a whole look), which rebuilds today's brief ---------- */
   var btns = Array.prototype.slice.call(document.querySelectorAll('.look-mascot [data-mascot]')), busy = false;
+  // Clawd's picture loads only when the Look panel first opens; offline, its button shows its name instead
+  var lp = document.getElementById('look-panel');
+  btns.forEach(function(b){ var im = b.querySelector('img'); if (im) im.addEventListener('error', function(){ im.remove(); b.classList.add('nopic'); }); });
+  function wake(){ btns.forEach(function(b){ var im = b.querySelector('img[data-src]'); if (im) { im.src = im.getAttribute('data-src'); im.removeAttribute('data-src'); } }); }
+  if (lp) { if (!lp.hidden) wake(); else new MutationObserver(function(ms, o){ if (!lp.hidden) { wake(); o.disconnect(); } }).observe(lp, {attributes: true, attributeFilter: ['hidden']}); }
   btns.forEach(function(b){ b.addEventListener('click', function(){
     var k = b.getAttribute('data-mascot');
     if (busy || b.getAttribute('aria-pressed') === 'true') return;
@@ -3768,7 +3788,6 @@ JS = r"""
     open: function(){ note(sc(2), 0, .08); note(sc(4), .05, .14); },                        // a section opens
     close: function(){ note(sc(4), 0, .07); note(sc(1), .05, .12, {gain: .8}); },           // and closes
     flip: function(){ whoosh(0, .16, 1600, 700, .05); note(sc(3), .06, .09, {gain: .6}); }, // a deck card slides past
-    step: function(){ whoosh(0, .16, 1600, 700, .05); note(sc(3), .06, .09, {gain: .6}); }, // the mascot hops to another level on the map
     tick: function(){ note(sc(5), 0, .14); note(sc(7), .045, .2, {gain: .55}); },           // a box ticked
     untick: function(){ note(sc(1), 0, .1, {gain: .6}); },                                   // and unticked
     done: function(){ run([3, 5, 7], .07, .16); note(sc(7) * 2, .22, .35, {gain: .35}); },  // a to-do marked Done
@@ -5173,7 +5192,7 @@ html[data-world="garden"] .phi{border:1.5px solid var(--w-line);border-radius:50
 .ph .x{display:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--w-line);background:none;cursor:pointer;place-items:center}
 .pb{padding:4px 18px 22px;overflow:auto;overscroll-behavior:contain;min-height:0;flex:1;scrollbar-width:thin}
 .intro{color:var(--w-muted);font-size:14.5px;margin-bottom:14px!important;max-width:62ch}
-.app[data-layout="scene"] .headline p,.app[data-layout="map"] .headline p{display:block}
+.app[data-layout="scene"] .headline p{display:block}
 .lede-m{display:block;color:var(--w-muted);font-size:14.5px;margin-bottom:6px!important}
 /* ---------- section switcher (tabs / dots / hidden) ---------- */
 .tabs{display:flex;gap:6px;align-items:flex-end;position:relative;overflow-x:auto;scrollbar-width:none;padding:22px 2px 6px}
@@ -5252,25 +5271,23 @@ html[data-world="garden"] .seg{border-width:1.5px}
 html[data-world="garden"][data-mode="light"] .seg button[aria-pressed="true"]{color:#fffaf0}
 html[data-mode="dark"] .seg button[aria-pressed="true"]{background:var(--w-accent);color:var(--w-on)}
 .seg button:focus-visible{outline:3px solid var(--w-accent);outline-offset:2px}
-.bar>.seg{display:none}
-@media (min-width:1100px){.bar>.seg{display:inline-flex}}
 .look-layout{margin:0;padding:0;border:0;min-width:0}
 .look-layout legend{float:left;width:100%;padding:0;margin:0 0 8px;font-size:13px;font-weight:650;color:var(--muted)}
 .look-layout .seg{display:flex;clear:both}
 .look-layout .seg button{flex:1;padding:6px 4px}
 
 /* ---------- LAYOUT C: tap the scene ---------- */
-.app[data-layout="scene"] .main,.app[data-layout="map"] .main{grid-template-rows:1fr;padding:0 clamp(12px,2.4vw,28px) clamp(12px,2vw,24px)}
-.app[data-layout="scene"] .stage,.app[data-layout="map"] .stage{border-radius:30px}
-.app[data-layout="scene"] .switch,.app[data-layout="map"] .switch{display:none}
-.app[data-layout="scene"] .panels,.app[data-layout="map"] .panels{position:absolute;inset:0;pointer-events:none;z-index:20}
-.app[data-layout="scene"] .panel,.app[data-layout="map"] .panel{position:absolute;display:none;pointer-events:auto;right:clamp(24px,4vw,56px);top:16px;bottom:clamp(24px,3vw,40px);width:min(600px,48vw)}
-.app[data-layout="scene"] .panel.on,.app[data-layout="map"] .panel.on{display:flex}
-.app[data-layout="scene"] .ph .x,.app[data-layout="map"] .ph .x{display:grid}
-.app[data-layout="scene"] .lede-m,.app[data-layout="map"] .lede-m{display:none}
+.app[data-layout="scene"] .main{grid-template-rows:1fr;padding:0 clamp(12px,2.4vw,28px) clamp(12px,2vw,24px)}
+.app[data-layout="scene"] .stage{border-radius:30px}
+.app[data-layout="scene"] .switch{display:none}
+.app[data-layout="scene"] .panels{position:absolute;inset:0;pointer-events:none;z-index:20}
+.app[data-layout="scene"] .panel{position:absolute;display:none;pointer-events:auto;right:clamp(24px,4vw,56px);top:16px;bottom:clamp(24px,3vw,40px);width:min(600px,48vw)}
+.app[data-layout="scene"] .panel.on{display:flex}
+.app[data-layout="scene"] .ph .x{display:grid}
+.app[data-layout="scene"] .lede-m{display:none}
 .scrim{position:absolute;inset:0;z-index:15;background:color-mix(in srgb,var(--w-ink) 9%,transparent);opacity:0;pointer-events:none;transition:opacity .35s;border-radius:30px;margin:0 clamp(12px,2.4vw,28px) clamp(12px,2vw,24px)}
-.app[data-layout="scene"].sheet-open .scrim,.app[data-layout="map"].sheet-open .scrim{opacity:1;pointer-events:auto}
-.app[data-layout="scene"].sheet-open .stage,.app[data-layout="map"].sheet-open .stage{filter:saturate(.85)}
+.app[data-layout="scene"].sheet-open .scrim{opacity:1;pointer-events:auto}
+.app[data-layout="scene"].sheet-open .stage{filter:saturate(.85)}
 /* the meetings in the scene: a see-through link over each (see placeMeets), and its board lifts a little on hover or focus */
 .meetlinks{position:absolute;inset:0;z-index:4;pointer-events:none}
 .meetlink{position:absolute;display:block;pointer-events:none;border-radius:8px;-webkit-tap-highlight-color:transparent}
@@ -5299,42 +5316,6 @@ html[data-world="cosmic"] .spot .post{width:2px;background:linear-gradient(var(-
 .spot.sunspot.l{transform:translate(-100%,-50%)}
 .spot.sunspot .tok{font-size:13px}
 
-/* ---------- LAYOUT B: the map. Every section is a numbered level on the hills, joined by a dashed path; the mascot hops to the
-   open one and its level pops up as a card over the scene (the scene layout's sheet, scrim and close button) ---------- */
-.lv-k,.lv-foot,.lvxp{display:none}
-.lvl{position:absolute;pointer-events:auto;transform:translate(-50%,-23px);display:flex;flex-direction:column;align-items:center;gap:4px;width:118px;border:0;background:none;padding:0;cursor:pointer;color:var(--w-ink);font:inherit;-webkit-tap-highlight-color:transparent}
-.lvl .disc{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--w-card);border:3px solid var(--p-strong);color:var(--w-ink);font:800 18px/1 var(--w-display);box-shadow:var(--w-shadow);transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s}
-.lvl .disc svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.lvl.empty .disc{border-style:dashed;border-color:var(--w-line);color:var(--w-muted);box-shadow:none}
-.lvl.done .disc{background:var(--p-done);border-color:var(--p-done);color:var(--p-on-strong)}
-.lvl.on .disc{border-color:var(--w-accent);box-shadow:0 0 0 6px color-mix(in srgb,var(--w-accent) 30%,transparent),var(--w-shadow)}
-.lvl:hover .disc{transform:scale(1.08)}
-.lvl:focus-visible{outline:none}
-.lvl:focus-visible .disc{outline:3px solid var(--w-accent);outline-offset:4px}
-.lvl .nl{font:650 13px/1.15 var(--ui);text-align:center;background:color-mix(in srgb,var(--w-card) 88%,transparent);border-radius:9px;padding:3px 7px;max-width:100%}
-.lvl .nl i{display:block;font:500 11.5px/1.2 var(--ui);color:var(--w-muted);font-style:normal}
-.lvl.empty .nl{color:var(--w-muted)}
-html[data-world="garden"] .lvl .disc{border-radius:50% 46% 52% 44%}
-html[data-world="candy"] .lvl .disc{border-width:4px}
-html[data-world="cosmic"] .lvl .nl{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-@keyframes lv-pop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
-.lvl.popped .disc{animation:lv-pop .45s cubic-bezier(.2,.8,.2,1)}
-.lvpath{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
-.lvpath path{fill:none;stroke:var(--w-line);stroke-width:5;stroke-dasharray:2 11;stroke-linecap:round}
-.lvpet{position:absolute;left:0;top:0;width:40px;height:40px;pointer-events:none;z-index:2;will-change:transform}
-.lvpet svg{width:100%;height:100%;overflow:visible}
-.app[data-layout="map"] .lvxp{display:grid;grid-template-columns:auto minmax(60px,1fr) auto;gap:10px;align-items:center;margin-top:10px;max-width:360px;font:600 12.5px var(--mono);color:var(--w-ink);pointer-events:none}
-.lvxp b{font:700 13px var(--ui)}
-.lvxp .bar{height:10px;border-radius:6px;background:var(--p-chip);overflow:hidden;border:1px solid var(--p-line)}
-.lvxp .bar span{display:block;height:100%;background:var(--p-accent);border-radius:6px;transform-origin:left;transform:scaleX(var(--xp,0));transition:transform .6s cubic-bezier(.2,.8,.2,1)}
-.app[data-layout="map"] .panel{left:0;right:0;margin:0 auto;top:auto;bottom:clamp(20px,3vw,36px);width:min(620px,calc(100% - 48px));height:auto;max-height:min(80%,720px)}
-.app[data-layout="map"] .lv-k{display:block;font:600 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--w-accent);margin-bottom:3px}
-.app[data-layout="map"] .lv-foot{display:flex;justify-content:space-between;gap:10px;padding:10px 18px 16px;border-top:1px solid var(--w-line)}
-.lv-foot button{border:1px solid var(--w-line);background:var(--w-card);color:var(--w-ink);border-radius:999px;padding:8px 16px;font:650 14px var(--ui);cursor:pointer}
-.lv-foot button[data-lv="1"]{background:var(--p-strong);border-color:var(--p-strong);color:var(--p-on-strong)}
-.lv-foot button:disabled{opacity:.4;cursor:default}
-.lv-foot button:focus-visible{outline:3px solid var(--w-accent);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){.lvl .disc,.lvxp .bar span{transition:none}.lvl.popped .disc{animation:none}}
 
 /* ---------- phone ---------- */
 @media (max-width:820px){
@@ -5351,33 +5332,24 @@ html[data-world="cosmic"] .lvl .nl{backdrop-filter:blur(8px);-webkit-backdrop-fi
   .app[data-layout="stage"] .panel{border-radius:22px}
   .rider{width:26px;height:26px}
   .app[data-layout="stage"] .tab[aria-selected="true"] .n{display:none}
-  .app[data-layout="scene"] .headline p,.app[data-layout="map"] .headline p{display:none}
-  .app[data-layout="scene"] .lede-m,.app[data-layout="map"] .lede-m{display:block}
+  .app[data-layout="scene"] .headline p{display:none}
+  .app[data-layout="scene"] .lede-m{display:block}
   #hint{display:none}
   .headline h1{font-size:clamp(20px,5.6vw,26px);max-width:none}
   .headline .when{font-size:15px;margin-bottom:4px}
   html[data-world="cosmic"] .headline .when,html[data-world="candy"] .headline .when{font-size:11.5px}
-  .app[data-layout="scene"] .main,.app[data-layout="map"] .main{padding:0 10px 10px}
-  .app[data-layout="scene"] .stage,.app[data-layout="map"] .stage{border-radius:24px}
-  .app[data-layout="scene"] .panel,.app[data-layout="map"] .panel{left:0;right:0;top:auto;bottom:0;width:auto;height:84%;border-radius:28px 28px 0 0;border-bottom:0}
-  html[data-world="candy"] .app[data-layout="scene"] .panel,html[data-world="candy"] .app[data-layout="map"] .panel{border-bottom:0}
-  .app[data-layout="scene"] .ph::before,.app[data-layout="map"] .ph::before{content:"";position:absolute;left:50%;top:7px;width:42px;height:5px;margin-left:-21px;border-radius:9px;background:color-mix(in srgb,var(--w-ink) 25%,transparent)}
-  .app[data-layout="scene"] .ph,.app[data-layout="map"] .ph{position:relative;padding-top:20px}
+  .app[data-layout="scene"] .main{padding:0 10px 10px}
+  .app[data-layout="scene"] .stage{border-radius:24px}
+  .app[data-layout="scene"] .panel{left:0;right:0;top:auto;bottom:0;width:auto;height:84%;border-radius:28px 28px 0 0;border-bottom:0}
+  html[data-world="candy"] .app[data-layout="scene"] .panel{border-bottom:0}
+  .app[data-layout="scene"] .ph::before{content:"";position:absolute;left:50%;top:7px;width:42px;height:5px;margin-left:-21px;border-radius:9px;background:color-mix(in srgb,var(--w-ink) 25%,transparent)}
+  .app[data-layout="scene"] .ph{position:relative;padding-top:20px}
   .scrim{margin:0 10px 10px;border-radius:24px}
   .spot .tok{font-size:13px;gap:6px;padding:5px 10px 5px 5px}
   .spot .tok .ic{width:24px;height:24px;padding:4px}
   .spot .post{height:20px}
   html[data-world="garden"] .spot .tok{font-size:19px}
   .clockchip{bottom:8px}
-  .app[data-layout="map"] .panel{margin:0;width:auto;max-height:none}
-  .app[data-layout="map"] .lv-foot{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
-  .lvl{width:auto;flex-direction:row;gap:6px;transform:translate(-20px,-50%)}
-  .lvl.r{flex-direction:row-reverse;transform:translate(calc(-100% + 20px),-50%)}
-  .lvl .disc{width:40px;height:40px;font-size:16px}
-  .lvl .nl{text-align:left;font-size:12.5px;white-space:nowrap}
-  .lvl.r .nl{text-align:right}
-  .lvpet{width:32px;height:32px}
-  .app[data-layout="map"] .lvxp{max-width:none;margin-top:6px}
   .clockchip span{display:none}
 }
 
@@ -5435,7 +5407,7 @@ html[data-world="garden"] .app .btn-accent[data-copy-btn]{border:1.5px solid var
 .finale-banner[hidden]{display:none}
 .finale-banner span{font:800 clamp(28px,4.6vw,64px)/1.05 var(--w-display);color:var(--w-ink);text-shadow:0 3px 0 var(--w-card),0 0 30px var(--w-card)}
 .app[data-layout="stage"] .hotspots,.app[data-layout="deck"] .hotspots{display:none}
-.app[data-layout="deck"] .headline,.app[data-layout="scene"] .headline,.app[data-layout="map"] .headline{right:auto;width:min(40%,560px)}
+.app[data-layout="deck"] .headline,.app[data-layout="scene"] .headline{right:auto;width:min(40%,560px)}
 .app .n{font:600 12px var(--mono);padding:2px 8px;border-radius:999px;background:var(--w-chip);color:var(--w-ink)}
 .app .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .rider{position:absolute;left:0;top:0;width:34px;height:34px;pointer-events:none;z-index:2;will-change:transform}
@@ -5484,7 +5456,7 @@ html[data-world="garden"] .app .btn-accent[data-copy-btn]{border:1.5px solid var
   #msg{bottom:84px}
   #out{bottom:84px;height:160px}
   .app[data-layout="stage"] .tab .tl{white-space:normal;text-align:center;line-height:1.05}  /* at 375px a long label takes two lines */
-  .app[data-layout="deck"] .headline,.app[data-layout="scene"] .headline,.app[data-layout="map"] .headline{width:auto;right:16px}
+  .app[data-layout="deck"] .headline,.app[data-layout="scene"] .headline{width:auto;right:16px}
   .app[data-layout="deck"] .main{grid-template-rows:minmax(240px,38%) 1fr auto}
   .app[data-layout="deck"] .stage{margin:0 10px;border-radius:24px}
   .app[data-layout="deck"] .panels{padding:14px 6vw 8px;gap:14px}
@@ -5571,12 +5543,10 @@ JS_STAGE = r"""
   var st = {t: 0, real: true, flowers: [], sec: SECS[0], layout: 'scene', done: false, night: false};
   // the layout is the owner's saved pick, or by default the scene on a wide screen and the tabs on a narrow one ("Auto")
   var LKEY = 'jira-digest-layout';
-  function savedLayout(){ try { var v = localStorage.getItem(LKEY); return v === 'stage' || v === 'deck' || v === 'scene' || v === 'map' ? v : null; } catch (e) { return null; } }
+  function savedLayout(){ try { var v = localStorage.getItem(LKEY); return v === 'map' ? 'scene' : v === 'stage' || v === 'deck' || v === 'scene' ? v : null; } catch (e) { return null; } }
   var pick = savedLayout();
   function layoutNow(){ return pick || (innerWidth >= 1100 ? 'scene' : 'stage'); }
-  // the map is the scene with levels on its hills: everything the scene does (its ground, its sky, the sheet) it does too
-  function sceneLayout(){ return st.layout === 'scene' || st.layout === 'map'; }
-  function mapLayout(){ return st.layout === 'map'; }
+  function sceneLayout(){ return st.layout === 'scene'; }
 
   /* ---------- light or dark: the page's own switch sets data-theme (or leaves it to the system); the scene reads data-mode ---------- */
   function modeNow(){ var t = root.getAttribute('data-theme'); return t === 'light' || t === 'dark' ? t : (dq.matches ? 'dark' : 'light'); }
@@ -5916,11 +5886,10 @@ JS_STAGE = r"""
   function drawScene(){
     // more sky for the sun: where the scene can have it, it gets just enough for a sun of at least .55 to clear every
     // board and post, at most 35% of its height. A phone's stage row grows (the panel row below gives up that height); the scene
-    // and map layouts' box already fills the screen, so its ground sits lower in it; a desktop stage's box is fixed. The map
-    // keeps the room its levels need below the ground (mapNeed). A swipe deck's box is fixed too.
+    // layout's box already fills the screen, so its ground sits lower in it; a desktop stage's box is fixed. A swipe deck's box is fixed too.
     var main = stage.parentElement, row = function(){ main.style.gridTemplateRows = G.extra && st.layout === 'stage' && G.phone ? 'minmax(250px, calc(40% + ' + G.extra.toFixed(0) + 'px)) 1fr auto' : ''; };
     G.extra = 0; row(); geo();
-    var short = fitSigns(false), room = st.layout === 'stage' && G.phone ? .35 * G.H : sceneLayout() ? Math.max(0, Math.min(.35 * G.H, G.H - G.ground - (mapLayout() ? mapNeed() : 90 * G.k))) : 0;
+    var short = fitSigns(false), room = st.layout === 'stage' && G.phone ? .35 * G.H : sceneLayout() ? Math.max(0, Math.min(.35 * G.H, G.H - G.ground - 90 * G.k)) : 0;
     for (var gn = 0; short > 0 && room > 0 && gn < 8; gn++) { if (G.extra >= room) break; G.extra = Math.min(room, G.extra + short + 2); row(); geo(); short = fitSigns(false); }
     if (short > 0) fitSigns(true);  // still short at the cap: keep the extra sky, and lower the hill for the rest (fitSigns)
     seed = 7;
@@ -6037,7 +6006,6 @@ JS_STAGE = r"""
   function allDone(all, fresh){
     st.done = all; var u = $('#whoUse', sceneEl); if (u) u.setAttribute('href', moodRef());
     if (all && fresh) banner(world() === 'garden' ? 'The garden is in bloom' : world() === 'candy' ? 'Sweet! All clear' : 'Orbit clear');
-    petMood();
   }
 
   /* ---------- sections: tabs under the scene on a phone, signposts in the scene on a laptop ---------- */
@@ -6047,7 +6015,6 @@ JS_STAGE = r"""
     var i = SECS.indexOf(st.sec), a = document.getElementById('deck-prev'), b = document.getElementById('deck-next');
     if (a) a.disabled = i <= 0; if (b) b.disabled = i >= SECS.length - 1;
     if (st.layout === 'deck') { var t = $('.tab[aria-selected="true"]'); if (t && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = Math.max(0, t.offsetLeft - (tabs.clientWidth - t.offsetWidth) / 2); }
-    $$('.lvl').forEach(function(b){ var on = b.dataset.sec === st.sec; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
   }
   // the deck moves by scrolling its own row (never scrollIntoView, which can shift the whole page sideways on a phone)
   function deckTo(k, instant){ var p = panel(k); panelsEl.scrollTo({left: Math.max(0, p.offsetLeft - (panelsEl.clientWidth - p.offsetWidth) / 2), behavior: instant ? 'auto' : 'smooth'}); }
@@ -6091,10 +6058,9 @@ JS_STAGE = r"""
   function show(k, o){
     o = o || {};
     if (zoomK && k !== zoomK) zoomOut(true);
-    if (!o.instant && (k !== st.sec || sceneLayout())) snd(st.layout === 'deck' ? 'flip' : mapLayout() && k !== st.sec ? 'step' : 'open');
+    if (!o.instant && (k !== st.sec || sceneLayout())) snd(st.layout === 'deck' ? 'flip' : 'open');
     var prev = st.sec, i0 = SECS.indexOf(prev), i1 = SECS.indexOf(k), dir = i1 >= i0 ? 1 : -1;
     st.sec = k; setTabs();
-    if (mapLayout()) movePet(!o.instant);
     if (st.layout === 'deck') {
       // while the deck glides to the section asked for, the scroll handler must not re-pick the cards it passes
       deckGo = 1; clearTimeout(deckGoT); deckGoT = setTimeout(function(){ deckGo = 0; deckFrame(); }, rm() || o.instant ? 60 : 700);
@@ -6118,7 +6084,6 @@ JS_STAGE = r"""
   tabs.addEventListener('keydown', function(e){ var i = SECS.indexOf(st.sec); if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var n = SECS[(i + (e.key === 'ArrowRight' ? 1 : SECS.length - 1)) % SECS.length]; show(n); $('#tab-' + n).focus(); e.preventDefault(); } });
   panelsEl.addEventListener('click', function(e){
     if (e.target.closest('.x')) { if (zoomK) zoomOut(); else closeSheet(); }
-    var b = e.target.closest('.lv-foot [data-lv]'); if (b) stepLevel(+b.dataset.lv);
   });
   // a link to somewhere else on the page (a glance block, a "Quest for Claude" chip, a project) opens the section that holds it
   document.addEventListener('click', function(e){
@@ -6199,7 +6164,6 @@ JS_STAGE = r"""
   function placeSpots(){
     var host = document.getElementById('hotspots'); host.innerHTML = '';
     if (!sceneLayout()) return;
-    if (mapLayout()) { placeLevels(host); return; }
     var counts = {}, names = {}; D.secs.forEach(function(x){ names[x[0]] = x[1]; counts[x[0]] = x[2]; });
     var W = G.W, H = G.H, n = SECS.length, band0 = G.ground + (G.phone ? 96 : 130), band1 = H - 18;
     SECS.forEach(function(k, i){
@@ -6218,113 +6182,9 @@ JS_STAGE = r"""
     sun.innerHTML = '<span class="tok">Your day</span>'; host.appendChild(sun);
     moveNow(st.t);
   }
-  document.getElementById('hotspots').addEventListener('click', function(e){ var b = e.target.closest('.spot, .lvl'); if (b) show(b.dataset.sec, {origin: b}); });
-  function spotFor(k){ return $('.spot[data-sec="' + k + '"]:not(.sunspot)') || $('.lvl[data-sec="' + k + '"]'); }
+  document.getElementById('hotspots').addEventListener('click', function(e){ var b = e.target.closest('.spot'); if (b) show(b.dataset.sec, {origin: b}); });
+  function spotFor(k){ return $('.spot[data-sec="' + k + '"]:not(.sunspot)'); }
 
-  /* ---------- the map: each section a numbered level on the hills, the mascot on the open one ---------- */
-  // A level's numbers come from its own tick boxes, live: "N to do" is how many are still unticked, it is done (a check)
-  // once it had some and none is left, and empty (a dashed ring) when it never had a box or a count. A section with a count
-  // but no box to tick (rows to read) shows that count and is never done. The XP bar counts the boxes ticked today of all.
-  var NAMES = {}, COUNT = {}; D.secs.forEach(function(x){ NAMES[x[0]] = x[1]; COUNT[x[0]] = x[2]; });
-  var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-  var wasDone = {};
-  function lvBoxes(k){ var p = panel(k); return p ? $$('.tick input', p) : []; }
-  function lvState(k){
-    var b = lvBoxes(k), open = b.filter(function(x){ return !x.checked; }).length;
-    return {boxes: b.length, open: open, done: b.length > 0 && !open, empty: !b.length && !COUNT[k]};
-  }
-  function lvSays(k, s){ return s.done ? 'cleared' : s.boxes ? s.open + ' to do' : s.empty ? 'nothing today' : COUNT[k] + (COUNT[k] === 1 ? ' item' : ' items'); }
-  // where the levels stand: a laptop's wave (up to 5) or two-row snake across the hill below the ground line; a phone's zig-zag down it
-  function mapNeed(){ var n = SECS.length; return G.phone ? 34 * Math.max(0, n - 1) + 96 : 250; }
-  function lvSpots(){
-    var n = SECS.length, W = G.W, top = G.ground + (G.phone ? 34 : 50), bot = G.H - (G.phone ? 34 : 60), p = [];
-    SECS.forEach(function(k, i){
-      if (G.phone) { var dy = Math.min(76, (bot - top) / Math.max(1, n - 1)), y0 = top + Math.max(0, (bot - top - dy * (n - 1)) / 2); p.push([W * (i % 2 ? .66 : .16), y0 + i * dy, i % 2]); return; }
-      if (n <= 5) { p.push([W * (.13 + .74 * (n > 1 ? i / (n - 1) : .5)), top + (bot - top) * (i % 2 ? .78 : .22), 0]); return; }
-      var per = Math.ceil(n / 2), r = i < per ? 0 : 1, c = r ? i - per : i, cols = r ? n - per : per;
-      if (r) c = per - 1 - c;  // the second row runs back right to left
-      p.push([W * (.12 + .76 * (per > 1 ? c / (per - 1) : .5)), top + (bot - top) * (r ? .92 : .08) + (c % 2 ? 10 : -10), 0]);
-    });
-    return p;
-  }
-  function lvPath(p){
-    var d = 'M' + p[0][0].toFixed(1) + ' ' + p[0][1].toFixed(1);
-    for (var i = 1; i < p.length; i++) { var a = p[i - 1], b = p[i], my = (a[1] + b[1]) / 2, mx = (a[0] + b[0]) / 2;
-      d += G.phone ? ' C' + a[0].toFixed(1) + ' ' + my.toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + my.toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1)
-                   : ' C' + mx.toFixed(1) + ' ' + a[1].toFixed(1) + ' ' + mx.toFixed(1) + ' ' + b[1].toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1); }
-    return d;
-  }
-  var pet = document.createElement('span'); pet.className = 'lvpet'; pet.setAttribute('aria-hidden', 'true');
-  pet.innerHTML = '<svg viewBox="0 0 64 64"><use href="#mascot"/></svg>';
-  function petMood(){ var u = pet.querySelector('use'); if (u) u.setAttribute('href', moodRef()); }
-  var LVP = [];
-  function placeLevels(host){
-    LVP = lvSpots(); if (!LVP.length) return;
-    host.insertAdjacentHTML('beforeend', '<svg class="lvpath" aria-hidden="true" viewBox="0 0 ' + G.W.toFixed(0) + ' ' + G.H.toFixed(0) + '"><path d="' + lvPath(LVP) + '"/></svg>');
-    SECS.forEach(function(k, i){
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'lvl' + (LVP[i][2] ? ' r' : ''); b.dataset.sec = k; b.dataset.i = i;
-      b.style.left = LVP[i][0].toFixed(1) + 'px'; b.style.top = LVP[i][1].toFixed(1) + 'px';
-      b.innerHTML = '<span class="disc"></span><span class="nl"><span class="nm"></span><i></i></span>';
-      b.querySelector('.nm').textContent = NAMES[k];
-      host.appendChild(b);
-    });
-    host.appendChild(pet); petMood();
-    paintLevels(false); setTabs(); movePet(false);
-  }
-  // the numbers on the levels and the XP bar, from the boxes as they are now; a level that has just been cleared pops
-  function paintLevels(fresh){
-    var all = 0, got = 0;
-    SECS.forEach(function(k, i){
-      var s = lvState(k), b = $('.lvl[data-sec="' + k + '"]');
-      all += s.boxes; got += s.boxes - s.open;
-      if (b) {
-        b.classList.toggle('done', s.done); b.classList.toggle('empty', s.empty);
-        b.querySelector('.disc').innerHTML = s.done ? CHECK : String(i + 1);
-        b.querySelector('i').textContent = lvSays(k, s);
-        b.setAttribute('aria-label', 'Level ' + (i + 1) + ': ' + NAMES[k] + ', ' + lvSays(k, s));
-        if (fresh && s.done && !wasDone[k] && !rm()) { b.classList.remove('popped'); void b.offsetWidth; b.classList.add('popped'); }
-      }
-      wasDone[k] = s.done;
-    });
-    var xp = document.getElementById('lvxp'); if (!xp) return;
-    xp.querySelector('b').textContent = all && got >= all ? 'All clear' : 'Lv ' + (1 + Math.floor(got / 3));
-    xp.querySelector('.bar span').style.setProperty('--xp', all ? (got / all).toFixed(3) : 0);
-    xp.querySelector('.pts').textContent = got + ' / ' + all + ' XP';
-    xp.setAttribute('aria-label', got + ' of ' + all + ' items ticked today');
-  }
-  document.addEventListener('change', function(e){ if (mapLayout() && e.target.closest && e.target.closest('.tick input')) paintLevels(true); });
-  document.addEventListener('animationend', function(e){ var b = e.target.closest && e.target.closest('.lvl.popped'); if (b) b.classList.remove('popped'); });
-  // the mascot stands on the open level; it hops along an arc to a new one (with reduced motion it is simply there)
-  function movePet(animate){
-    var b = $('.lvl[data-sec="' + st.sec + '"]'); if (!b || !pet.isConnected) return;
-    var w = pet.offsetWidth, d = b.querySelector('.disc'), hr = document.getElementById('hotspots').getBoundingClientRect(), r = d.getBoundingClientRect();
-    var x = r.left - hr.left + r.width / 2 - w / 2, y = r.top - hr.top - w + 6;
-    var to = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)', from = pet.style.transform;
-    pet.style.transform = to;
-    pet.getAnimations().forEach(function(a){ a.cancel(); });
-    if (animate && from && from !== to && !rm()) {
-      var m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(from), fx = m ? +m[1] : x, fy = m ? +m[2] : y;
-      pet.animate([{transform: from}, {transform: 'translate(' + ((fx + x) / 2).toFixed(1) + 'px,' + (Math.min(fy, y) - 44).toFixed(1) + 'px) rotate(' + (x > fx ? 12 : -12) + 'deg)', offset: .45}, {transform: to}], {duration: 600, easing: 'cubic-bezier(.3,.9,.4,1)'});
-    }
-  }
-  // the level card: "Level i of n" over its title, Back and Next level under it; it pops in, and its content steps in
-  $$('.panel').forEach(function(p){
-    var i = SECS.indexOf(p.dataset.sec), h = $('.ph h2', p); if (i < 0) return;
-    if (h) h.insertAdjacentHTML('afterbegin', '<small class="lv-k">Level ' + (i + 1) + ' of ' + SECS.length + '</small>');
-    p.insertAdjacentHTML('beforeend', '<div class="lv-foot"><button type="button" data-lv="-1"' + (i ? '' : ' disabled') + '>← Back</button><button type="button" data-lv="1"' + (i < SECS.length - 1 ? '' : ' disabled') + '>Next level →</button></div>');
-  });
-  function stepLevel(d){ var i = SECS.indexOf(openK || st.sec) + d; if (i >= 0 && i < SECS.length) show(SECS[i], {origin: spotFor(SECS[i])}); }
-  function cardIn(p, was, instant){
-    if (rm() || instant) return;
-    if (!was) p.animate([{opacity: 0, transform: 'translateY(14px) scale(.96)'}, {opacity: 1, transform: 'none'}], {duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)'});
-    $$('.pb > *', p).slice(0, 7).forEach(function(el, i){ el.animate([{opacity: 0, transform: 'translateX(14px)'}, {opacity: 1, transform: 'none'}], {duration: 380, delay: (was ? 0 : 60) + i * 50, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards'}); });
-  }
-  // Left and Right move between levels while a card is open (not while typing, or on the sun)
-  document.addEventListener('keydown', function(e){
-    if (!mapLayout() || !openK || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey) return;
-    var t = e.target; if (t && (t.closest('input, textarea, select, [contenteditable], #sun, dialog') || t.isContentEditable)) return;
-    e.preventDefault(); stepLevel(e.key === 'ArrowRight' ? 1 : -1);
-  });
   var openK = null, openOrigin = null;
   function circle(p, origin, r0){
     var pr = p.getBoundingClientRect(), or = origin.getBoundingClientRect(), ox = or.left + or.width / 2 - pr.left, oy = or.top + or.height / 2 - pr.top;
@@ -6334,7 +6194,6 @@ JS_STAGE = r"""
     var p = panel(k); origin = origin || spotFor(k);
     if (openK && openK !== k) panel(openK).classList.remove('on');
     var was = openK; openK = k; openOrigin = origin; app.classList.add('sheet-open'); p.classList.add('on'); p.focus({preventScroll: true});
-    if (mapLayout()) { cardIn(p, was, instant); return; }
     if (rm() || !origin || instant) return;
     var c = circle(p, origin);
     p.animate([{clipPath: 'circle(18px at ' + c.ox + 'px ' + c.oy + 'px)', transform: 'translateY(16px) scale(.97)'}, {clipPath: 'circle(' + c.R + 'px at ' + c.ox + 'px ' + c.oy + 'px)', transform: 'none'}], {duration: 680, easing: 'cubic-bezier(.22,1,.36,1)'});
@@ -6346,7 +6205,6 @@ JS_STAGE = r"""
     openK = null; snd('close');
     var fin = function(){ p.classList.remove('on'); app.classList.remove('sheet-open'); if (origin && origin.focus && origin.isConnected) origin.focus({preventScroll: true}); if (cb) cb(); };
     if (rm() || !origin || !origin.isConnected) { fin(); return; }
-    if (mapLayout()) { p.animate([{opacity: 1, transform: 'none'}, {opacity: 0, transform: 'translateY(12px) scale(.97)'}], {duration: 220, easing: 'cubic-bezier(.5,0,.75,0)'}).onfinish = fin; return; }
     var c = circle(p, origin);
     p.animate([{clipPath: 'circle(' + c.R + 'px at ' + c.ox + 'px ' + c.oy + 'px)', transform: 'none'}, {clipPath: 'circle(14px at ' + c.ox + 'px ' + c.oy + 'px)', transform: 'translateY(10px) scale(.98)'}], {duration: 380, easing: 'cubic-bezier(.5,0,.75,0)'}).onfinish = fin;
   }
@@ -6360,7 +6218,7 @@ JS_STAGE = r"""
     var cur = layoutNow();
     $$('.seg [data-layout]').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.layout === cur ? 'true' : 'false'); });
   }
-  // switching keeps the open section: the tab that was showing, or the sheet or level card that was open
+  // switching keeps the open section for the tabs and the deck; the scene always opens on the scene alone, no sheet
   function applyLayout(L, instant){
     zoomOut(true);
     var keep = sceneLayout() ? openK : st.sec;
@@ -6371,7 +6229,6 @@ JS_STAGE = r"""
       setTabs(); drawScene();
       if (L === 'stage') { panel(st.sec).classList.add('on'); moveRider(false); }
       else if (L === 'deck') { deckGo = 0; deckTo(st.sec, true); deckFrame(); }
-      else if (keep) openSheet(keep, spotFor(keep), true);
       paintLayout();
     };
     if (instant || rm() || !document.startViewTransition) go(); else document.startViewTransition(go);
@@ -7410,7 +7267,6 @@ def _build(content, log, admin_log, briefs, look):
 <div class="app" data-layout="scene">
   <header class="bar">
     <div class="brand">{mascot_svg(cls="mascot logo", label="", mood=mood)}<span class="brand-name"><b>{esc(d.get("brand", "Jira digest"))}</b><small>{esc(d["date_short"])}</small></span></div>
-    <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Stage + tabs</button><button type="button" data-layout="deck">Swipe deck</button><button type="button" data-layout="scene">Tap the scene</button><button type="button" data-layout="map">Map</button></div>
     <div class="nav-tools">
       <span id="msg" aria-live="polite"></span>
       <span class="ring" id="ring" role="img" aria-label="rows ticked"><span>0/0</span></span>{tm_btn}
@@ -7423,7 +7279,7 @@ def _build(content, log, admin_log, briefs, look):
   <main class="main">
     <section class="stage" id="stage" aria-label="Your day, 8 AM to 6 PM">
       <svg class="scene" id="scene" aria-hidden="true"></svg>
-      <div class="headline" id="headline"><span class="when">{esc(d["date_label"])}<span id="clockwrap"> · <b id="clock"></b></span><span id="hint"> · drag the sun</span></span><h1>{headline}</h1><p>{d["lede_html"]}</p><div class="lvxp" id="lvxp" role="img" aria-label="items ticked today"><b>Lv 1</b><span class="bar"><span></span></span><span class="pts">0 / 0 XP</span></div></div>
+      <div class="headline" id="headline"><span class="when">{esc(d["date_label"])}<span id="clockwrap"> · <b id="clock"></b></span><span id="hint"> · drag the sun</span></span><h1>{headline}</h1><p>{d["lede_html"]}</p></div>
       <div class="meetlinks" id="meetlinks"></div>
       <div class="hotspots" id="hotspots"></div>
       <div class="pinlinks" id="pinlinks"></div>

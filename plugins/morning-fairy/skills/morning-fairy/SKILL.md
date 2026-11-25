@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.18.0
+version: 1.19.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -172,10 +172,11 @@ All design lives in the builder; the content never sets colours, layout or motio
 
 - **Four worlds**, each light or dark: Storybook garden, Cosmic orbit, Candy pop, Caterpillar.
 - **The scene is clickable:** each meeting's hill and sign, and each admin clipboard, opens its row in Your day.
-- **Four layouts**: Tap the scene (signposts on the scene), Stage + tabs, Swipe deck (a tap on the centred card, or its
-  Enlarge button, grows it into a big reading view) and Map (numbered levels on the hills, a
-  level card with Back and Next level, an XP bar of today's ticks). Until the reader picks one,
-  the page follows the window (the scene on a wide one, tabs on a narrow one); a pick is saved in the browser.
+- **Three layouts**, picked in Look (the top bar has no layout switch since 1.19.0): Scene (signposts on the scene;
+  it always opens with no section open, also when switched to), Tabs, and Deck (a tap on the centred card, or its
+  Enlarge button, grows it into a big reading view). Map was retired in 1.19.0; a saved Map opens the scene. Until
+  the reader picks one, the page follows the window (the scene on a wide one, tabs on a narrow one); a pick is saved
+  in the browser.
 - **The day scene:** the sun rides 8 AM to 6 PM and can be dragged; the ground rises at each meeting by
   its weight; the mascot stands at "now" with a mood (sweat for a stamp, starry when nothing waits,
   sleepy after 6 PM).
@@ -216,7 +217,8 @@ All design lives in the builder; the content never sets colours, layout or motio
   all six. The helper accepts a request without it and always writes all six.
 - **moves:** one-shot motions; none under reduced motion. The icons are decoration (`aria-hidden`), outside
   everything the copy button copies.
-- **The Look panel** starts with a Ticket | Clawd switch (only when the builder offers Clawd). It posts the whole
+- **The Look panel** starts with the mascot switch, two pictures (the ticket, Clawd), only when the builder offers
+  Clawd; Clawd's picture is fetched only once Look opens (`data-src`). It posts the whole
   look to the helper (`POST /look`), so it only saves on a brief opened through it (the Dock app or `launch.sh`);
   on a plain file it says so. "Build your fairy…" and its picker were removed in 1.18.0.
 - **What your fairy reads**, at the bottom of Look, lists every source in the README's table as "Read this

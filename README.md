@@ -91,7 +91,7 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 | 🌍 | **Four worlds** | Storybook garden, Cosmic orbit, Candy pop and Caterpillar, each with a light and a dark version (8 looks), its own cursor wand and its own fairy dust. In the caterpillar world the day is a leaf, the caterpillar's body is the part of the day already lived, and at 6 PM it curls into a cocoon. |
 | 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. Click a hill or its sign to open that meeting; click an admin clipboard to open its admin row. |
 | 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. |
-| 🧚 | **Ticket or Clawd** | Switch the mascot at the top of Look. A little dog draws every tab and icon on the page, with 5 small moves. |
+| 🧚 | **Ticket or Clawd** | Tap a picture at the top of Look to switch the mascot. A little dog draws every tab and icon on the page, with 5 small moves. |
 | 🔌 | **What your fairy reads** | Look lists the sources this morning's brief read and the ones it did not, with one button that copies a prompt asking Claude to help set up the rest. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. Optionally, a **Start in Claude** button opens the session for you. |
@@ -99,14 +99,14 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 | 💸 | **Cloud spend** | Optional. What BigQuery queries have cost this month in each Google Cloud project you work in: a little bar per day, the month-end pace, the account that spent most, and a sweating mascot when a day jumps. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. Tickets that already match sit folded underneath as "Already up to date". |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
-| 📐 | **Four layouts** | Tap the scene (signposts on the hills), Stage + tabs, Swipe deck (tap the card in the middle, or its Enlarge button, and it grows into a big reading view), and Map: every section is a numbered level on the hills, joined by a dashed path; the mascot hops to the one you open, its level pops up as a card with Back and Next level, a level turns into a check once you have ticked everything in it, and an XP bar counts today's ticks. Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
+| 📐 | **Three layouts** | Picked in Look. Scene (signposts on the hills; it always opens on the scene alone, with no section open), Tabs, and Deck (tap the card in the middle, or its Enlarge button, and it grows into a big reading view). Until you pick one, the page follows your window: the scene when it's wide, tabs when it's narrow or on a phone. |
 | 🔊 | **18 sound effects** | Off until you switch them on. Each world has its own voice: a triangle wave in the garden, a detuned sine in space, a square wave in candy, a soft sine pluck on the leaf. |
 | 🎉 | **Small secrets** | Type `magic` anywhere for a party. Tick every box on the page and the mascot hops into an all-done finale. |
 | ♿ | **Calm when asked** | With reduced motion on, nothing flies, bobs, wiggles or sparkles. |
 
 <p align="center">
   <img src="docs/three-worlds.png" alt="The same morning in the garden, cosmic and candy worlds"/>
-  <br/><sub>One morning, three worlds: Tap the scene in the garden, Stage + tabs in space, the Quests board in candy.</sub>
+  <br/><sub>One morning, three worlds: the Scene layout in the garden, Tabs in space, the Quests board in candy.</sub>
 </p>
 
 <p align="center">
@@ -129,8 +129,9 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 ## 🧚 The Look panel
 
 <p align="center">
-  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: a Ticket or Clawd switch at the top, the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
-  <br/><sub>Look, over the demo morning. (Made-up data.)</sub>
+  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: two mascot pictures at the top (the ticket picked; the Clawd button is left blank in this picture), the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
+  <br/><sub>Look, over the demo morning. Clawd's button shows the artist's sticker once Look opens; it is left blank
+  here so this repository holds no copy of it. (Made-up data.)</sub>
 </p>
 
 <p align="center">
@@ -141,8 +142,8 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
   <a href="https://github.com/alwinecor/clawd-stickers">alwinecor/clawd-stickers</a> as you read this page; they are not part of this repository.</sub>
 </p>
 
-- **Mascot: Ticket or Clawd.** The brief's own blue ticket, or **Clawd**, as fan-art stickers loaded from the
-  artist's own repository. The switch saves through the local helper: open the brief from the Dock app (or
+- **Mascot: Ticket or Clawd**, two pictures, no words. The brief's own blue ticket, or **Clawd**, as fan-art stickers
+  loaded from the artist's own repository (Clawd's picture on the switch loads only when you open Look). The switch saves through the local helper: open the brief from the Dock app (or
   `launch.sh`), tap the other mascot, and it writes `~/.morning-fairy/look.json` and rebuilds today's brief. Opened
   straight from the file, the switch says to open it from the Dock app instead.
 - **The little dog icons.** One fanfan style (the dog, thick lines, shiny eyes) draws the tabs and signposts, quest
@@ -282,7 +283,8 @@ Nothing in that folder leaves your machine, and the page is never rebuilt over a
    Claude quests, Jira drafts). It never writes HTML.
 3. **The builder draws the page.** `build_digest.py` is one Python file using only the standard library. It
    escapes every text field, keeps only `https` links, and puts everything into one self-contained HTML file
-   (the one exception: if you pick Clawd, its stickers load as pictures from the artist's repository).
+   (the one exception: Clawd's stickers load as pictures from the artist's repository, all of them when Clawd is
+   your mascot, and one picture for the Clawd button the first time you open Look).
 4. **You act.** Tick the Jira rows you agree with, accept the quests you want, tap Done on what you finished,
    then press **Copy ticked** and paste the result back to Claude. Claude applies only what you pasted.
 
@@ -457,7 +459,7 @@ chat or web finds and should not have your signed-in browser.
 - **The time machine only knows mornings it built.** It finds earlier briefs by their file name in the output
   folder, so keep the name `YYYY-MM-DD Morning brief and Jira digest.html`.
 - **Clawd needs the internet.** Its stickers load from jsDelivr each time the page opens; offline, or if a
-  picture fails to load, the ticket stands in. The little animals are bundled and work offline.
+  picture fails to load, the ticket stands in (and the Clawd button in Look shows its name instead of its picture). The little animals are bundled and work offline.
 - **The helper only listens on your own machine** (127.0.0.1), checks the page's origin and host, accepts 4 KB
   at most, writes two files (`runs/done.jsonl` and `look.json`), and runs only the builder beside it, to redraw
   today's brief after you save a fairy. It refuses to be shown inside another site's frame. It is not meant to
@@ -490,8 +492,9 @@ python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy
 - **fanfan icons** by 唐幡 ([TangfanOVO/fanfan-icons](https://github.com/TangfanOVO/fanfan-icons)), MIT licence.
   The little animals are bundled in `digest/fanfan/`, with their licence and the commit they came from.
 - **Clawd stickers** by alwinecor ([alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers)),
-  CC BY-NC-SA 4.0. The code does not bundle them: if you pick Clawd, your browser loads them from the artist's
-  repository (through jsDelivr, pinned to one commit) when the page opens. No copy of them is in this repository. Clawd belongs to
+  CC BY-NC-SA 4.0. The code does not bundle them: your browser loads them from the artist's repository (through
+  jsDelivr, pinned to one commit), every sticker when the page opens if Clawd is your mascot, and otherwise one
+  picture the first time you open Look. No copy of them is in this repository. Clawd belongs to
   Anthropic; these are unofficial fan art, licensed for non-commercial use only. Whether your own use fits that
   licence is your call.
 
@@ -502,6 +505,10 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.19.0** (2026-11-25): tidier layouts. The mascot switch in Look is two pictures instead of the words Ticket and
+  Clawd. The layout switch in the top bar is gone (Look has the same one). Map is retired: it looked busy, and a
+  browser that had saved Map opens the scene instead. Switching to Scene no longer opens the section you were reading:
+  the scene always opens on the scene alone.
 - **1.18.0** (2026-11-25): a simpler Look panel. "Build your fairy…" and its picker are gone: the mascot is now a
   Ticket | Clawd switch at the top of Look, and every page draws the same little dog icons, including the tabs added
   since the picker (Hours, Cloud spend, Scout), which had kept plain line drawings. In the picker's place, Look lists

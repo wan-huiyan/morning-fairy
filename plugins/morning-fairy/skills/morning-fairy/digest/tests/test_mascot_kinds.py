@@ -38,7 +38,9 @@ class MascotKinds(unittest.TestCase):
 
     def test_ticket_look_has_no_mascot_script_and_no_clawd(self):
         html = self.page(dict(FULL_LOOK, mascot="ticket"))
-        self.assertNotIn(bd.CLAWD_BASE, html)
+        # the Look panel's Clawd button names the sticker as data-src only: nothing is fetched until Look opens
+        self.assertEqual(html.count(bd.CLAWD_BASE), 1)
+        self.assertIn(f'data-src="{bd.CLAWD_BASE}{bd.CLAWD_IDLE}"', html)
         self.assertNotIn("clawd-credit", html)
         self.assertNotIn("tk-mascot", html)
         self.assertNotIn('"kind":', html)
