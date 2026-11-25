@@ -283,7 +283,8 @@ Nothing in that folder leaves your machine, and the page is never rebuilt over a
    Claude quests, Jira drafts). It never writes HTML.
 3. **The builder draws the page.** `build_digest.py` is one Python file using only the standard library. It
    escapes every text field, keeps only `https` links, and puts everything into one self-contained HTML file
-   (the one exception: if you pick Clawd, its stickers load as pictures from the artist's repository).
+   (the one exception: Clawd's stickers load as pictures from the artist's repository, all of them when Clawd is
+   your mascot, and one picture for the Clawd button the first time you open Look).
 4. **You act.** Tick the Jira rows you agree with, accept the quests you want, tap Done on what you finished,
    then press **Copy ticked** and paste the result back to Claude. Claude applies only what you pasted.
 
@@ -458,7 +459,7 @@ chat or web finds and should not have your signed-in browser.
 - **The time machine only knows mornings it built.** It finds earlier briefs by their file name in the output
   folder, so keep the name `YYYY-MM-DD Morning brief and Jira digest.html`.
 - **Clawd needs the internet.** Its stickers load from jsDelivr each time the page opens; offline, or if a
-  picture fails to load, the ticket stands in. The little animals are bundled and work offline.
+  picture fails to load, the ticket stands in (and the Clawd button in Look shows its name instead of its picture). The little animals are bundled and work offline.
 - **The helper only listens on your own machine** (127.0.0.1), checks the page's origin and host, accepts 4 KB
   at most, writes two files (`runs/done.jsonl` and `look.json`), and runs only the builder beside it, to redraw
   today's brief after you save a fairy. It refuses to be shown inside another site's frame. It is not meant to
@@ -491,8 +492,9 @@ python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy
 - **fanfan icons** by 唐幡 ([TangfanOVO/fanfan-icons](https://github.com/TangfanOVO/fanfan-icons)), MIT licence.
   The little animals are bundled in `digest/fanfan/`, with their licence and the commit they came from.
 - **Clawd stickers** by alwinecor ([alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers)),
-  CC BY-NC-SA 4.0. The code does not bundle them: if you pick Clawd, your browser loads them from the artist's
-  repository (through jsDelivr, pinned to one commit) when the page opens. No copy of them is in this repository. Clawd belongs to
+  CC BY-NC-SA 4.0. The code does not bundle them: your browser loads them from the artist's repository (through
+  jsDelivr, pinned to one commit), every sticker when the page opens if Clawd is your mascot, and otherwise one
+  picture the first time you open Look. No copy of them is in this repository. Clawd belongs to
   Anthropic; these are unofficial fan art, licensed for non-commercial use only. Whether your own use fits that
   licence is your call.
 

@@ -35,14 +35,15 @@ SOFTWARE.
 The same notice is in `digest/fanfan/LICENSE`, and the builder keeps fanfan's own MIT header on the motion
 CSS and script it copies into a page.
 
-## Clawd stickers (loaded from the artist, plus two screenshots)
+## Clawd stickers (loaded from the artist)
 
-If you pick Clawd as your mascot, the page shows stickers by alwinecor from
+If you pick Clawd as your mascot, and on the Clawd button of the Look panel, the page shows stickers by alwinecor from
 [alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers), licensed
 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 - **The code bundles no Clawd file.** Your browser loads each sticker as a picture from the artist's
-  repository through jsDelivr, pinned to commit `516f40536c9e3aaaa9995c267daad6e4d45e3d80`, when the page opens.
+  repository through jsDelivr, pinned to commit `516f40536c9e3aaaa9995c267daad6e4d45e3d80`: every sticker when
+  the page opens if Clawd is your mascot, and otherwise one picture (Clawd standing) the first time you open Look.
 - The page credits the artist wherever Clawd appears.
 - Clawd is a character that belongs to Anthropic. These stickers are unofficial fan art, and their licence
   allows non-commercial use only. Whether your own use fits that licence is your call.
