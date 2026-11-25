@@ -129,7 +129,7 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 ## 🧚 The Look panel
 
 <p align="center">
-  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: the mascot pictures at the top (the ticket picked), the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
+  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: four mascot pictures at the top (the ticket picked, then Nib the crayon, Pip the laptop, and the Clawd button, left blank in this picture), the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
   <br/><sub>Look, over the demo morning. Clawd's button shows the artist's sticker once Look opens; it is left blank
   here so this repository holds no copy of it. (Made-up data.)</sub>
 </p>

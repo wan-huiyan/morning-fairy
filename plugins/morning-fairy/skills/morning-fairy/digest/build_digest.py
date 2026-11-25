@@ -6101,9 +6101,12 @@ JS_STAGE = r"""
   }
   function placePet(){
     var b = document.getElementById('petme'), u = $('#whoUse', sceneEl); if (!b || !u) return;
-    var r = u.getBoundingClientRect(), s = stage.getBoundingClientRect(); if (!r.width) return;
-    b.style.left = (r.left - s.left).toFixed(1) + 'px'; b.style.top = (r.top - s.top).toFixed(1) + 'px';
-    b.style.width = r.width.toFixed(1) + 'px'; b.style.height = r.height.toFixed(1) + 'px';
+    // the mascot's own frame (the <use>'s x, y, width, height), not what it draws: a Clawd sticker spills well past it
+    var m = u.getScreenCTM(), s = stage.getBoundingClientRect(); if (!m) return;
+    var x = +u.getAttribute('x'), y = +u.getAttribute('y'), w = +u.getAttribute('width'), h = +u.getAttribute('height');
+    var l = m.a * x + m.c * y + m.e, t = m.b * x + m.d * y + m.f, W = m.a * w, H = m.d * h; if (!W) return;
+    b.style.left = (l - s.left).toFixed(1) + 'px'; b.style.top = (t - s.top).toFixed(1) + 'px';
+    b.style.width = W.toFixed(1) + 'px'; b.style.height = H.toFixed(1) + 'px';
   }
 
   /* ---------- the mascot reacts: a click (the logo, or the one in the scene), a tick, Done, and now and then by itself ---------- */
