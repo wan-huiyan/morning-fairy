@@ -51,7 +51,7 @@ def config_path(name):
 FF_ANIMALS = ("cat", "dog", "lop", "bunny")
 # look.json: every key required except "places", nothing else allowed (the builder is more forgiving; this is the one place that writes it).
 # "places" is no longer chosen: an older page may still send it (checked, then ignored); what gets written always lists all six.
-LOOK_ONE = {"mascot": ("ticket", "clawd", "fanfan"), "animal": FF_ANIMALS, "line": ("thin", "thick"), "eyes": ("dots", "shiny")}
+LOOK_ONE = {"mascot": ("ticket", "nib", "pip", "clawd", "fanfan"), "animal": FF_ANIMALS, "line": ("thin", "thick"), "eyes": ("dots", "shiny")}
 LOOK_MANY = {"places": ("tabs", "quests", "toolbar", "done", "empty", "favicon"), "moves": ("wake", "sleep", "bounce", "blush", "trick")}
 LOOK_LOCK = threading.Lock()  # one save-and-rebuild at a time
 # /fill-hours: the page sends a date and nothing else; the prompt is this fixed file with the config and the date filled in

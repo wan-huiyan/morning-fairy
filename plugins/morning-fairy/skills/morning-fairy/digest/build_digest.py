@@ -118,6 +118,141 @@ def mascot_parts(mood="calm", live=True):
     return shadow + legs + body + face
 
 
+# ---- two more drawn mascots (1.21.0): Nib, a wax crayon drawn in crayon, and Pip, a little laptop whose face glows on
+# its screen. Same 64-unit box as the ticket (feet on y 59, centred on x 32), same nine faces, so everything the ticket
+# does (moods, click faces, hop, idle moments, eyes that follow the pointer) works for them unchanged. ----
+DRAWN_KINDS = ("ticket", "nib", "pip")
+KIND_LABELS = {"ticket": "The ticket", "nib": "Nib, a wax crayon", "pip": "Pip, a little laptop",
+               "clawd": "Clawd (fan art by alwinecor)"}
+NIB_INK = "#4a3b2c"
+PIP_GLOW = "#7ef3cf"
+
+
+def _face(mood, lx, rx, y, pal, live):
+    """The nine faces for Nib and Pip, eyes at (lx, y) and (rx, y). pal: ink, blush (or None), top (x, y) where a sweat drop,
+    a z, a heart or a star goes, w (line width)."""
+    ink, w, (tx, ty) = pal["ink"], pal["w"], pal["top"]
+    cx = (lx + rx) / 2
+    line = lambda d, sw=w: f'<path d="{d}" fill="none" stroke="{ink}" stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"/>'
+    dots = (f'<circle cx="{lx}" cy="{y}" r="2.4" fill="{ink}"/><circle cx="{rx}" cy="{y}" r="2.4" fill="{ink}"/>'
+            + ("" if pal.get("flat") else f'<circle cx="{lx - .8}" cy="{y - .9}" r=".8" fill="#fff"/><circle cx="{rx - .8}" cy="{y - .9}" r=".8" fill="#fff"/>'))
+    shut = lambda x: line(f"M{x - 3.2} {y + 1.4}Q{x} {y - 2.6} {x + 3.2} {y + 1.4}", w + .3)
+    blush = lambda o: ("" if not pal.get("blush") else
+                       f'<ellipse cx="{lx - 4}" cy="{y + 5.5}" rx="3" ry="1.8" fill="{pal["blush"]}" opacity="{o}"/>'
+                       f'<ellipse cx="{rx + 4}" cy="{y + 5.5}" rx="3" ry="1.8" fill="{pal["blush"]}" opacity="{o}"/>')
+    star = lambda x, yy, r, c="#ffd24a": ('<path d="' + "".join(
+        ("M" if i == 0 else "L") + f"{x + (r if i % 2 == 0 else r * .45) * math.cos(-math.pi / 2 + i * math.pi / 5):.1f} "
+        f"{yy + (r if i % 2 == 0 else r * .45) * math.sin(-math.pi / 2 + i * math.pi / 5):.1f}" for i in range(10))
+        + f'Z" fill="{c}" stroke="{pal.get("edge", ink)}" stroke-width=".9" stroke-linejoin="round"/>')
+    heart = lambda x, yy, s, c="#e24b5b": (f'<path d="M{x} {yy + 2.6 * s}C{x - 4.5 * s} {yy - .4 * s} {x - 3 * s} {yy - 3.6 * s} {x} {yy - 1.4 * s}'
+                                           f'C{x + 3 * s} {yy - 3.6 * s} {x + 4.5 * s} {yy - .4 * s} {x} {yy + 2.6 * s}Z" fill="{c}" '
+                                           f'stroke="{pal.get("edge", ink)}" stroke-width=".9" stroke-linejoin="round"/>')
+    smile = line(f"M{cx - 3} {y + 5}Q{cx} {y + 8.2} {cx + 3} {y + 5}")
+    if mood == "sweat":
+        return (_eyes(dots, live) + blush(".35") + line(f"M{cx - 4} {y + 7}q2-2 4 0t4 0")
+                + f'<path d="M{tx} {ty}q3.4 4.4 0 6.6q-3.4-2.2 0-6.6Z" fill="#7dd3fc" stroke="{pal.get("edge", ink)}" stroke-width="1"/>')
+    if mood == "sleepy":
+        return (line(f"M{lx - 3} {y}q3 2.6 6 0M{rx - 3} {y}q3 2.6 6 0") + blush(".5") + f'<circle cx="{cx}" cy="{y + 6.5}" r="1.6" fill="{ink}"/>'
+                f'<text x="{tx - 2}" y="{ty + 4}" font-family="Georgia,serif" font-weight="700" font-size="10" fill="{ink}">z</text>'
+                f'<text x="{tx + 4}" y="{ty - 3}" font-family="Georgia,serif" font-weight="700" font-size="7" fill="{ink}">z</text>')
+    if mood == "starry":
+        return (_eyes(star(lx, y, 4.4) + star(rx, y, 4.4), live) + blush(".7")
+                + f'<path d="M{cx - 4} {y + 5.2}Q{cx} {y + 10.5} {cx + 4} {y + 5.2}Z" fill="{ink}"/>' + star(tx, ty + 2, 3))
+    if mood == "happy":
+        return (shut(lx) + shut(rx) + blush(".85") + f'<path d="M{cx - 4.6} {y + 4.4}Q{cx} {y + 12.4} {cx + 4.6} {y + 4.4}Z" fill="{ink}"/>'
+                f'<path d="M{cx - 2} {y + 7.9}Q{cx} {y + 9.8} {cx + 2} {y + 7.9}" fill="#f08a9b"/>' + star(tx, ty + 2, 3))
+    if mood == "love":
+        return heart(lx, y, 1.3) + heart(rx, y, 1.3) + blush(".9") + smile + heart(tx, ty + 2, .9, "#f472b6")
+    if mood == "wow":
+        e = lambda x: (f'<circle cx="{x}" cy="{y}" r="3.7" fill="#fff" stroke="{ink}" stroke-width="1.7"/>'
+                       f'<circle cx="{x}" cy="{y}" r="1.6" fill="{ink}"/>')
+        return (line(f"M{lx - 3.5} {y - 6.4}Q{lx} {y - 8.6} {lx + 3.5} {y - 6.4}M{rx - 3.5} {y - 6.4}Q{rx} {y - 8.6} {rx + 3.5} {y - 6.4}", w - .4)
+                + e(lx) + e(rx) + blush(".4") + f'<ellipse cx="{cx}" cy="{y + 7.6}" rx="2.4" ry="3" fill="{ink}"/>')
+    if mood == "wink":
+        return (f'<circle cx="{lx}" cy="{y}" r="2.4" fill="{ink}"/>' + shut(rx) + blush(".75") + line(f"M{cx - 3.5} {y + 5}Q{cx} {y + 9} {cx + 3.6} {y + 4.4}")
+                + f'<path d="M{cx + .8} {y + 7.4}q1.6 3 3 0" fill="#f08a9b" stroke="{ink}" stroke-width=".8"/>' + star(tx, ty + 2, 3))
+    if mood == "dizzy":
+        x = lambda c: f"M{c - 2.5} {y - 2.5}l5 5M{c + 2.5} {y - 2.5}l-5 5"
+        return (line(x(lx) + x(rx), w + .1) + blush(".5") + line(f"M{cx - 5} {y + 7}q1.25-2 2.5 0t2.5 0 2.5 0 2.5 0", w - .2)
+                + star(tx, ty, 2.8) + star(tx - 30, ty - 2, 2.4))
+    if mood == "sad":
+        return dots + line(f"M{cx - 3} {y + 7.5}Q{cx} {y + 4.5} {cx + 3} {y + 7.5}")
+    return _eyes(dots, live) + blush(".6") + smile
+
+
+def _zig(x0, x1, y0, y1, step, col, w):
+    pts, up, x = [], True, x0
+    while x <= x1:
+        pts.append(f"{x:g} {y0 if up else y1}"); up = not up; x += step
+    return (f'<path d="M{" L".join(pts)}" fill="none" stroke="{col}" stroke-width="{w}" stroke-linecap="round" '
+            'stroke-linejoin="round" opacity=".55"/>')
+
+
+def _crayon_filter(fid, seed):
+    # wobbly lines (a displacement from low noise) and wax grain (fine noise cut out of the drawing's alpha)
+    return (f'<filter id="{fid}" x="-20%" y="-20%" width="140%" height="140%">'
+            f'<feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="{seed}" result="w"/>'
+            '<feDisplacementMap in="SourceGraphic" in2="w" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/>'
+            f'<feTurbulence type="fractalNoise" baseFrequency="1.1" seed="{seed + 6}" result="g"/>'
+            '<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.4 0 0 0 2.2" result="m"/>'
+            '<feComposite in="d" in2="m" operator="in"/></filter>')
+
+
+# Nib's defs: three crayon filters, one per frame of the line boil (the lines redraw themselves a few times a second,
+# like hand-drawn animation, only where the page sets --nib-boil: the scene and the top-left logo), and the clip of its wrapper.
+NIB_DEFS = ("".join(_crayon_filter(f"nib-cr{i}", s) for i, s in ((1, 1), (2, 4), (3, 8)))
+            + '<clipPath id="nib-clip"><rect x="20" y="18" width="24" height="36" rx="5"/></clipPath>')
+
+
+def nib_parts(mood="calm", live=True):
+    ink = NIB_INK
+    legs = f'<path d="M27 52L26 59M37 52L38 59" fill="none" stroke="{ink}" stroke-width="2.6" stroke-linecap="round"/>'
+    body = (f'<path d="M21 18L32 3 43 18Z" fill="#f2a93b" stroke="{ink}" stroke-width="2.6" stroke-linejoin="round"/>'
+            f'<rect x="20" y="18" width="24" height="36" rx="5" fill="#f6c94c" stroke="{ink}" stroke-width="2.6"/>'
+            f'<g clip-path="url(#nib-clip)">{_zig(18, 46, 19, 27, 3.2, "#e0a52a", 1.6)}<rect x="20" y="27" width="24" height="22" fill="#fff6e2"/>'
+            f'{_zig(18, 46, 28, 48, 4.5, "#efd9b0", 1.4)}</g>'
+            f'<path d="M20 27H44M20 49H44" stroke="{ink}" stroke-width="2" fill="none"/>')
+    face = _face(mood, 26, 38, 37, {"ink": ink, "w": 2, "blush": "#f08a9b", "top": (49, 10)}, live)
+    shadow = '<ellipse cx="32" cy="60" rx="13" ry="2.6" fill="#000" opacity=".12"/>' if live else ""
+    boil = ' style="animation:var(--nib-boil,none)"' if live else ""
+    return f'{shadow}<g filter="url(#nib-cr1)"{boil}>{legs}{body}{face}</g>'
+
+
+PIP_DEFS = ('<linearGradient id="pip-lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f5"/><stop offset="1" stop-color="#b9c0cb"/></linearGradient>'
+            '<linearGradient id="pip-base" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3e7ed"/><stop offset="1" stop-color="#9ea6b3"/></linearGradient>'
+            '<linearGradient id="pip-scr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26334a"/><stop offset="1" stop-color="#0d1424"/></linearGradient>'
+            '<filter id="pip-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation=".9" result="b"/>'
+            '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>')
+
+
+def pip_parts(mood="calm", live=True):
+    edge = "#4b5563"
+    glow = "#3f8f7a" if mood == "sleepy" else PIP_GLOW  # the screen dims at night
+    legs = "".join(f'<rect x="{x}" y="50" width="7" height="9" rx="3.5" fill="#aab2be" stroke="{edge}" stroke-width="1.6"/>' for x in (21, 36))
+    lid = (f'<rect x="10" y="7" width="44" height="39" rx="5" fill="url(#pip-lid)" stroke="{edge}" stroke-width="2"/>'
+           '<rect x="14" y="11" width="36" height="30" rx="2.5" fill="url(#pip-scr)"/>'
+           '<path d="M36 11H46L30 41H20Z" fill="#fff" opacity=".07"/>')
+    base = (f'<path d="M5 46H59L56 52H8Z" fill="url(#pip-base)" stroke="{edge}" stroke-width="2" stroke-linejoin="round"/>'
+            f'<path d="M27 46.2H37" stroke="{edge}" stroke-width="1.6" stroke-linecap="round"/>')
+    face = _face(mood, 25.5, 38.5, 24, {"ink": glow, "w": 2, "blush": "#f9a8d4", "top": (46, 2), "edge": glow, "flat": True}, live)
+    shadow = '<ellipse cx="32" cy="59.5" rx="20" ry="2.8" fill="#000" opacity=".13"/>' if live else ""
+    return f'{shadow}{legs}{base}{lid}<g filter="url(#pip-glow)">{face}</g>'
+
+
+KIND_PARTS = {"ticket": mascot_parts, "nib": nib_parts, "pip": pip_parts}
+KIND_DEFS = {"ticket": "", "nib": NIB_DEFS, "pip": PIP_DEFS}
+
+
+def kind_icon_href(kind, mood="calm"):
+    """A standalone picture of a drawn mascot (the Look switch's buttons), its own defs inside."""
+    if kind == "ticket":
+        return _icon_href(mood)
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs>{KIND_DEFS[kind]}</defs>'
+           f'{KIND_PARTS[kind](mood, live=False)}</svg>')
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+
+
 def _mood_id(m, prefix=""):
     return prefix + ("mascot" if m == "calm" else "mascot-" + m)
 
@@ -132,8 +267,10 @@ def mascot_defs(kind="ticket"):
                'image-rendering="pixelated" preserveAspectRatio="xMidYMid meet"/>')
         sym = "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{pic}</symbol>' for m in MOODS)
         sym += "".join(f'<symbol id="{_mood_id(m, "tk-")}" viewBox="0 0 64 64" overflow="visible">{mascot_parts(m)}</symbol>' for m in MOODS)
-    else:
-        sym = "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{mascot_parts(m)}</symbol>' for m in MOODS + REACTIONS)
+    else:  # a drawn mascot (the ticket, Nib or Pip): every mood and every reaction face, with that drawing's own defs
+        parts = KIND_PARTS.get(kind, mascot_parts)
+        sym = KIND_DEFS.get(kind, "") + "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{parts(m)}</symbol>'
+                                                for m in MOODS + REACTIONS)
     return ('<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>'
             '<linearGradient id="mbody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c2e0ff"/><stop offset="1" stop-color="#7cb2f6"/></linearGradient>'
             f'{sym}</defs></svg>')
@@ -3274,19 +3411,18 @@ def sources_prompt(d):
 
 
 def look_panel_html(kind, d):
-    """The Look panel: the Ticket | Clawd switch first (when Clawd is offered), then the worlds and switches, then the sources."""
-    mascot = ""
+    """The Look panel: the mascot switch first (the drawn mascots, and Clawd when it is offered), then the worlds and
+    switches, then the sources."""
+    # pictures, no words. Clawd's sticker is only fetched once the Look panel opens (data-src), unless Clawd is already the mascot
+    pics = {k: f'<img src="{kind_icon_href(k)}" alt="" width="40" height="40">' for k in DRAWN_KINDS}
     if OFFER_CLAWD:
-        # pictures, no words. Clawd's sticker is only fetched once the Look panel opens (data-src), unless Clawd is already the mascot
         clawd = CLAWD_BASE + CLAWD_IDLE
-        pics = {"ticket": f'<img src="{favicon_href("calm")}" alt="" width="40" height="40">',
-                "clawd": (f'<img src="{clawd}"' if kind == "clawd" else f'<img data-src="{clawd}"') + ' alt="" width="40" height="40">'}
-        btn = "".join(f'<button type="button" class="mpick" data-mascot="{k}" aria-pressed="{str(k == kind).lower()}" '
-                      f'aria-label="{t}" title="{t}">{pics[k]}</button>'
-                      for k, t in (("ticket", "The ticket"), ("clawd", "Clawd (fan art by alwinecor)")))
-        mascot = ('  <fieldset class="look-mascot"><legend>Mascot</legend>'
-                  f'<div class="mpicks" role="group" aria-label="Mascot">{btn}</div>'
-                  '<p class="look-say" id="mascot-say" role="status" aria-live="polite"></p></fieldset>\n')
+        pics["clawd"] = (f'<img src="{clawd}"' if kind == "clawd" else f'<img data-src="{clawd}"') + ' alt="" width="40" height="40">'
+    btn = "".join(f'<button type="button" class="mpick" data-mascot="{k}" aria-pressed="{str(k == kind).lower()}" '
+                  f'aria-label="{KIND_LABELS[k]}" title="{KIND_LABELS[k]}">{pic}</button>' for k, pic in pics.items())
+    mascot = ('  <fieldset class="look-mascot"><legend>Mascot</legend>'
+              f'<div class="mpicks" role="group" aria-label="Mascot">{btn}</div>'
+              '<p class="look-say" id="mascot-say" role="status" aria-live="polite"></p></fieldset>\n')
     label = {k: (lab, why) for k, lab, why, _ in SOURCES}
     read = sources_read(d)
 
@@ -5965,9 +6101,12 @@ JS_STAGE = r"""
   }
   function placePet(){
     var b = document.getElementById('petme'), u = $('#whoUse', sceneEl); if (!b || !u) return;
-    var r = u.getBoundingClientRect(), s = stage.getBoundingClientRect(); if (!r.width) return;
-    b.style.left = (r.left - s.left).toFixed(1) + 'px'; b.style.top = (r.top - s.top).toFixed(1) + 'px';
-    b.style.width = r.width.toFixed(1) + 'px'; b.style.height = r.height.toFixed(1) + 'px';
+    // the mascot's own frame (the <use>'s x, y, width, height), not what it draws: a Clawd sticker spills well past it
+    var m = u.getScreenCTM(), s = stage.getBoundingClientRect(); if (!m) return;
+    var x = +u.getAttribute('x'), y = +u.getAttribute('y'), w = +u.getAttribute('width'), h = +u.getAttribute('height');
+    var l = m.a * x + m.c * y + m.e, t = m.b * x + m.d * y + m.f, W = m.a * w, H = m.d * h; if (!W) return;
+    b.style.left = (l - s.left).toFixed(1) + 'px'; b.style.top = (t - s.top).toFixed(1) + 'px';
+    b.style.width = W.toFixed(1) + 'px'; b.style.height = H.toFixed(1) + 'px';
   }
 
   /* ---------- the mascot reacts: a click (the logo, or the one in the scene), a tick, Done, and now and then by itself ---------- */
@@ -6050,7 +6189,8 @@ JS_STAGE = r"""
     // (a post is a vertical line, so its box has no width: it is given its line's width, 1.5 px either side, or it would never count)
     var sr = sceneEl.getBoundingClientRect(), box = function(e){ var q = e.getBoundingClientRect(), d = q.width < 3 ? 1.5 : 0; return [q.left - sr.left - d, q.top - sr.top, q.right - sr.left + d, q.bottom - sr.top]; };
     var hop = $('#hop', sceneEl), walls = [].map.call(sceneEl.querySelectorAll('.g-sign rect, .g-sign path, .c-gum, .k-moon'), box).concat([[G.hl.x0, G.hl.y0, G.hl.x1, G.hl.y1]]); if (hop) walls.push(box(hop));
-    walls.push([x - 30 * G.k, gy - 59 * G.k, x + 30 * G.k, gy + 3 * G.k]);  // and the frame a Clawd sticker fills once it loads (CLAWD_BOX)
+    var cw = clawdOn() ? 42 : 30, ct = clawdOn() ? 82 : 59;  // a Clawd sticker (CLAWD_BOX) is drawn bigger than the ticket
+    walls.push([x - cw * G.k, gy - ct * G.k, x + cw * G.k, gy + 3 * G.k]);  // and the frame a Clawd sticker fills once it loads
     var ov = function(a, b){ return Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1])); };
     var put = function(p){ nt.setAttribute('x', p[0]); nt.setAttribute('y', p[1]); if (p[2]) nt.setAttribute('text-anchor', p[2]); else nt.removeAttribute('text-anchor'); };
     var cost = function(){ var b = box(nt), out = Math.max(0, 2 - b[0]) + Math.max(0, b[2] - G.W + 2) + Math.max(0, 2 - b[1]) + Math.max(0, b[3] - G.H + 2);
@@ -6801,7 +6941,7 @@ def _panel(key, nav, title_html, count, body, icon):
 # as a <template>, and every place that uses it
 # holds a small placeholder <svg data-ff="noun"> that a script swaps for a copy before anything else on the page runs.
 FF_DIR = HERE / "fanfan"
-LOOK_CHOICES = {"mascot": ("ticket", "clawd", "fanfan"), "animal": ("cat", "dog", "lop", "bunny"),
+LOOK_CHOICES = {"mascot": ("ticket", "nib", "pip", "clawd", "fanfan"), "animal": ("cat", "dog", "lop", "bunny"),
                 "line": ("thin", "thick"), "eyes": ("dots", "shiny")}
 # Every place always draws the animal when a look is set (nobody picks places any more): a look.json that lists fewer, or none, is read as all six.
 FF_PLACES = ("tabs", "quests", "toolbar", "done", "empty", "favicon")
@@ -6836,7 +6976,9 @@ CLAWD_STICKERS = {"sweat": ["deadline.apng", 4280], "starry": ["passed_long.apng
                   # what a click, lots of clicks, or an idle moment plays
                   "right": ["right.apng", 3660], "duck": ["duck.apng", 4620], "coffee": ["coffee.apng", 5010],
                   "clear": ["clear.apng", 4380], "dizzy": ["dizzy.apng", 5800]}
-CLAWD_BOX = (-4, -7, 72)   # where a sticker sits in the mascot's 64-unit box (x, y, size): feet on the ticket's feet line
+CLAWD_BOX = (-18, -32.67, 100)   # where a sticker sits in the mascot's 64-unit box (x, y, size): feet on the ticket's feet line.
+# Clawd stands small in the lower middle of its 24-unit sticker (x 0-15, feet at y 15 of a canvas from -4.5,-7): at 100 it spans
+# about 62 of the 64 units, feet still at y 59 and centred on x 32 (1.21.0; it was 72, which left Clawd about 45 units wide)
 CLAWD_CREDIT = ('<p class="foot credit" id="clawd-credit">Clawd stickers: fan art by '
                 '<a href="https://github.com/alwinecor/clawd-stickers" target="_blank" rel="noopener noreferrer">alwinecor</a>'
                 ' (CC BY-NC-SA 4.0). Clawd belongs to Anthropic; unofficial.</p>')
@@ -6845,10 +6987,10 @@ FF_CREDIT = ('<p class="foot credit">Little animals: <a href="https://github.com
 
 
 def mascot_kind(look, fan):
-    """Who the mascot is on this page: Clawd when the look asks for it, else the ticket. An older look.json that says
-    "fanfan" (once a mascot choice) still reads, as the ticket."""
+    """Who the mascot is on this page: one of the drawn ones (the ticket, Nib, Pip), or Clawd when it is offered; anything
+    else is the ticket. An older look.json that says "fanfan" (once a mascot choice) still reads, as the ticket."""
     kind = (look or {}).get("mascot", "ticket")
-    return "clawd" if kind == "clawd" and OFFER_CLAWD else "ticket"
+    return kind if kind in DRAWN_KINDS or (kind == "clawd" and OFFER_CLAWD) else "ticket"
 
 
 def read_look(path):
@@ -6980,6 +7122,13 @@ CSS_FAN = r"""
 """
 
 # Only on a page whose mascot is not the ticket, or that credits someone's art.
+# Nib's lines redraw themselves about 6 times a second (three crayon frames), only in the scene and the top-left logo: the
+# small repeated copies (time machine, spend) hold still. Reduced motion stops it with every other animation.
+CSS_NIB = r"""
+.scene .who,.pet-logo{--nib-boil:nibboil .5s steps(1) infinite}
+@keyframes nibboil{0%{filter:url(#nib-cr1)}33.3%{filter:url(#nib-cr2)}66.6%{filter:url(#nib-cr3)}}
+"""
+
 CSS_MASCOT = r"""
 /* ===== the mascot kinds: Clawd's pixels stay crisp, the animal draws in the page's ink; the credit lines under the last section ===== */
 .who-pic{pointer-events:none}
@@ -7184,8 +7333,7 @@ def build(content, log=None, admin_log=None, briefs=None, look=None):
     # every page draws the one fanfan style (FF_LOOK); the look only says who the mascot is and which moves play
     look = dict(LOOK_DEFAULT, **{k: v for k, v in (look or {}).items() if k in ("mascot", "moves")}, **FF_LOOK)
     look["places"] = list(FF_PLACES)
-    if look.get("mascot") != "clawd" or not OFFER_CLAWD:
-        look["mascot"] = "ticket"  # an older "fanfan" mascot, or Clawd where it is not offered: the ticket
+    look["mascot"] = mascot_kind(look, None)  # an older "fanfan" mascot, or Clawd where it is not offered: the ticket
     try:
         FAN = Fan(look)
     except (OSError, ValueError, KeyError) as e:
@@ -7294,7 +7442,9 @@ def _build(content, log, admin_log, briefs, look):
         look_panel = (look_panel.replace("<span>Dark mode</span>", f'<span>{FAN.ph("moon")}Dark mode</span>')
                       .replace("<span>Sparkles</span>", f'<span>{FAN.ph("wand")}Sparkles</span>'))
     css += CSS_LOOK_MORE
-    if kind != "ticket":
+    if kind == "nib":
+        css += CSS_NIB
+    if kind == "clawd":  # the drawn mascots need no script of their own: the scene's faces, hops and idle moments work on their symbols
         cfg = {"kind": kind}
         if kind == "clawd":  # only a Clawd page names the sticker addresses
             cfg.update(base=CLAWD_BASE, idle=CLAWD_IDLE, stickers=CLAWD_STICKERS, box=list(CLAWD_BOX))
