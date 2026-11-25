@@ -3181,13 +3181,8 @@ HEAD_SCRIPT = ("<script>(function(){var r=document.documentElement;r.setAttribut
                "var t=localStorage.getItem('jira-digest-theme');if(t==='light'||t==='dark')r.setAttribute('data-theme',t);}catch(e){}"
                "var th=r.getAttribute('data-theme');r.setAttribute('data-mode',th||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));})();</script>")
 
-# The Look panel's way back into "Build your own fairy" (the picker, see fairy_picker): a row in the switches' own style.
-FAIRY_BTN = ('  <button type="button" class="look-switch fairy-open" id="fairy-open" aria-haspopup="dialog"><span>Build your fairy…</span>'
-             '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" '
-             'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>\n')
-
 LOOK_PANEL = """<div class="look-panel" id="look-panel" role="dialog" aria-label="Look" hidden>
-  <fieldset class="look-worlds"><legend>World</legend>
+<!--mascot-->  <fieldset class="look-worlds"><legend>World</legend>
     <label class="world-opt"><input type="radio" name="brief-world" value="garden"><span class="swatch" aria-hidden="true"><svg viewBox="0 0 60 40"><rect width="60" height="40" fill="#f6efe1"/><path d="M0 32 Q14 18 28 28 T60 24 V40 H0Z" fill="#cfe0b5" stroke="#2d2a32" stroke-width="1.4"/><circle cx="44" cy="12" r="6" fill="#f6c453" stroke="#2d2a32" stroke-width="1.4"/></svg></span><span class="wname">Storybook garden</span></label>
     <label class="world-opt"><input type="radio" name="brief-world" value="cosmic"><span class="swatch" aria-hidden="true"><svg viewBox="0 0 60 40"><defs><linearGradient id="sw-cosmic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1d5c"/><stop offset="1" stop-color="#05060f"/></linearGradient></defs><rect width="60" height="40" fill="url(#sw-cosmic)"/><circle cx="10" cy="9" r="1" fill="#fff"/><circle cx="26" cy="15" r="1.2" fill="#fff"/><circle cx="48" cy="8" r="1" fill="#fff"/><circle cx="40" cy="20" r=".8" fill="#fff"/><path d="M-4 40 Q30 22 64 40Z" fill="#2b2258" stroke="#a891ff" stroke-width="1.4"/></svg></span><span class="wname">Cosmic orbit</span></label>
     <label class="world-opt"><input type="radio" name="brief-world" value="candy"><span class="swatch" aria-hidden="true"><svg viewBox="0 0 60 40"><defs><linearGradient id="sw-candy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd0e8"/><stop offset="1" stop-color="#e3d6ff"/></linearGradient></defs><rect width="60" height="40" fill="url(#sw-candy)"/><path d="M0 30 Q15 20 30 28 T60 26" fill="none" stroke="#ff4fa3" stroke-width="3.4" stroke-dasharray="4 3" stroke-linecap="round"/><circle cx="44" cy="13" r="6" fill="#ffd84d" stroke="#ff4fa3" stroke-width="2.4" stroke-dasharray="4 3"/></svg></span><span class="wname">Candy pop</span></label>
@@ -3197,7 +3192,146 @@ LOOK_PANEL = """<div class="look-panel" id="look-panel" role="dialog" aria-label
   <fieldset class="look-layout"><legend>Layout</legend>
     <div class="seg" role="group" aria-label="Layout"><button type="button" data-layout="stage">Tabs</button><button type="button" data-layout="deck">Deck</button><button type="button" data-layout="scene">Scene</button><button type="button" data-layout="map">Map</button></div>
   </fieldset>
-""" + FAIRY_BTN + """</div>"""
+<!--sources--></div>"""
+
+# ---- the Look panel's extras (1.18.0): who the mascot is, and which sources this morning's brief read ----
+# Every source the README's "Where the data comes from" lists, in its order: key, label, what it is for, and the words a
+# morning's content may use for it (its sources_marquee, or a row title in the Sources chapter), lower case.
+SOURCES = (
+    ("calendar", "Calendar", "the day scene", ("calendar", "google calendar")),
+    ("email", "Email", "the to-do list", ("email", "gmail", "mail", "outlook")),
+    ("notes", "Meeting notes", "Jira drafts", ("meeting notes", "meetings", "notes", "drive", "google drive", "gemini notes")),
+    ("chat", "Slack", "the to-do list", ("slack", "chat", "teams")),
+    ("jira", "Jira", "Jira drafts", ("jira", "atlassian")),
+    ("github", "GitHub", "Jira drafts and the Scout", ("github", "code host", "gh")),
+    ("cloud", "Google Cloud", "Cloud spend (optional)", ("google cloud", "cloud spend", "gcp", "bigquery", "spend")),
+    ("logs", "Claude Code logs", "timesheet hours (optional)", ("claude code logs", "session logs", "claude logs", "local claude logs")),
+    ("tempo", "Tempo", "timesheet hours (optional)", ("tempo",)),
+    ("web", "The web", "the Scout (optional)", ("the web", "web", "scout", "web search")),
+)
+
+
+def sources_read(d):
+    """[(key, read this morning?)] for every known source, in SOURCES order. Read means the content names it: in its
+    sources_marquee or as a row title in its Sources chapter. Nothing here knows why a source was not read."""
+    words = [w for w in d.get("sources_marquee") or [] if isinstance(w, str)]
+    for c in d.get("chapters") or []:
+        if isinstance(c, dict) and c.get("id") == "sources":
+            words += [r.get("title") for r in c.get("rows") or [] if isinstance(r, dict) and isinstance(r.get("title"), str)]
+    said = {w.strip().rstrip(":").strip().lower() for w in words}
+    # a Scout list with finds in it means the web was searched this morning
+    if any(isinstance(c, dict) and isinstance(lst, dict) and lst.get("tone") == "scout" and lst.get("items")
+           for c in d.get("chapters") or [] for lst in (c.get("lists") or [] if isinstance(c, dict) else [])):
+        said.add("scout")
+    return [(k, any(a in said for a in aliases)) for k, _, _, aliases in SOURCES]
+
+
+def sources_prompt(d):
+    """What the Look panel's button copies: the setup trigger and the sources this morning did not read; None when it read them all."""
+    label = {k: lab for k, lab, _, _ in SOURCES}
+    missing = [label[k] for k, on in sources_read(d) if not on]
+    if not missing:
+        return None
+    return ("set up morning fairy: this morning's brief did not read " + ", ".join(missing) + ". Check which of these I "
+            "can connect and which would help me, and tell me how to switch on the ones that would. Change nothing until I "
+            "say yes, and never ask me for a password or token in chat.")
+
+
+def look_panel_html(kind, d):
+    """The Look panel: the Ticket | Clawd switch first (when Clawd is offered), then the worlds and switches, then the sources."""
+    mascot = ""
+    if OFFER_CLAWD:
+        btn = "".join(f'<button type="button" data-mascot="{k}" aria-pressed="{str(k == kind).lower()}">{t}</button>'
+                      for k, t in (("ticket", "Ticket"), ("clawd", "Clawd")))
+        mascot = ('  <fieldset class="look-mascot"><legend>Mascot</legend>'
+                  f'<div class="seg" role="group" aria-label="Mascot">{btn}</div>'
+                  '<p class="look-say" id="mascot-say" role="status" aria-live="polite"></p></fieldset>\n')
+    label = {k: (lab, why) for k, lab, why, _ in SOURCES}
+    read = sources_read(d)
+
+    def chips(on):
+        return "".join(f'<li data-src="{k}" data-on="{int(on)}" title="For {esc(label[k][1])}">{esc(label[k][0])}</li>'
+                       for k, o in read if o == on)
+    yes, no = chips(True), chips(False)
+    src = '  <section class="look-sources" aria-labelledby="src-h"><h3 id="src-h">What your fairy reads</h3>'
+    if yes:
+        src += f'<p class="src-sub">Read this morning</p><ul class="src-chips">{yes}</ul>'
+    if no:
+        src += (f'<p class="src-sub">Not read this morning</p><ul class="src-chips">{no}</ul>'
+                '<button type="button" class="look-switch" id="sources-copy"><span>Copy a prompt to set up the rest</span>'
+                '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2.5" '
+                'fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" fill="none" '
+                'stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>'
+                '<p class="look-say" id="sources-say" role="status" aria-live="polite">Paste it to Claude. It checks each one '
+                'and changes nothing until you say yes.</p>')
+    src += "</section>\n"
+    return LOOK_PANEL.replace("<!--mascot-->", mascot, 1).replace("<!--sources-->", src, 1)
+
+
+CSS_LOOK_MORE = r"""
+/* ===== the Look panel's mascot switch and sources ===== */
+.look-mascot{margin:0;padding:0;border:0;min-width:0}
+.look-mascot legend{float:left;width:100%;padding:0;margin:0 0 8px;font-size:13px;font-weight:650;color:var(--muted)}
+.look-mascot .seg{display:flex;clear:both}
+.look-mascot .seg button{flex:1;padding:6px 4px}
+.look-mascot .seg button:disabled{opacity:.6;cursor:progress}
+.look-say{margin:6px 2px 0;font-size:12.5px;line-height:1.4;color:var(--muted)}
+.look-say:empty{display:none}
+.look-sources{display:grid;gap:6px;padding-top:10px;border-top:1px dashed var(--line-strong)}
+html .look-panel .look-sources h3{margin:0;font:650 13px/1.3 "Geist",system-ui,sans-serif;letter-spacing:0;color:var(--muted)}
+.look-sources .src-sub{margin:2px 0 0;font-size:12px;font-weight:600;color:var(--ink)}
+.src-chips{display:flex;flex-wrap:wrap;gap:5px;margin:0;padding:0;list-style:none}
+.src-chips li{display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 6px;border-radius:999px;font-size:12.5px;font-weight:600;
+  border:1px solid var(--line-strong);background:var(--bg);color:var(--ink)}
+.src-chips li::before{content:"";width:12px;height:12px;border-radius:50%;flex:none;box-sizing:border-box}
+.src-chips li[data-on="1"]::before{background:var(--ok,#2f9e6b) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.2 6.2l1.8 1.8 3.8-4' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat}
+.src-chips li[data-on="0"]{border-style:dashed;color:var(--muted);background:transparent}
+.src-chips li[data-on="0"]::before{border:1.5px dashed currentColor}
+#sources-copy{margin-top:4px}
+"""
+
+JS_LOOK_MORE = r"""(function(){
+  var C = {cfg};
+  // same rule as the Done button: only a brief the local helper serves can save
+  var SERVED = /^http:\/\/(127\.0\.0\.1|localhost):8765$/.test(location.origin);
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function today(){ var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function say(id, t){ var el = document.getElementById(id); if (el) el.textContent = t; }
+
+  /* ---------- Ticket | Clawd: saved through the helper (POST /look, a whole look), which rebuilds today's brief ---------- */
+  var btns = Array.prototype.slice.call(document.querySelectorAll('.look-mascot [data-mascot]')), busy = false;
+  btns.forEach(function(b){ b.addEventListener('click', function(){
+    var k = b.getAttribute('data-mascot');
+    if (busy || b.getAttribute('aria-pressed') === 'true') return;
+    if (!SERVED) { say('mascot-say', 'Switching saves through the Morning Brief app: open the brief from your Dock, then switch here.'); return; }
+    busy = true; btns.forEach(function(x){ x.disabled = true; }); say('mascot-say', 'Switching…');
+    function fail(t){ busy = false; btns.forEach(function(x){ x.disabled = false; }); say('mascot-say', t); }
+    var body = {mascot: k, animal: C.look.animal, line: C.look.line, eyes: C.look.eyes, moves: C.look.moves};
+    fetch('/look', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body), credentials: 'same-origin', redirect: 'error'})
+      .then(function(r){ return r.json().catch(function(){ return {old: r.status === 404}; }); })  // 404: a helper from before /look
+      .then(function(j){
+        if (j && j.rebuilt === true) { say('mascot-say', 'Here it comes…'); if (C.date === today()) location.reload(); else location.assign('/'); }
+        else if (j && j.saved === true) {
+          busy = false; btns.forEach(function(x){ x.disabled = false; x.setAttribute('aria-pressed', String(x === b)); });
+          say('mascot-say', 'Saved: it arrives with tomorrow\'s brief.');
+        } else if (j && j.old) fail('Not switched: the brief helper running now is an older version. It updates the next time it starts.');
+        else fail('Not switched: the brief helper said no. Nothing has changed; try again in a moment.');
+      }, function(){ fail('Not switched: the brief helper did not answer. Nothing has changed; try again in a moment.'); });
+  }); });
+
+  /* ---------- the sources: copy the setup prompt ---------- */
+  var cp = document.getElementById('sources-copy');
+  if (cp && C.prompt) cp.addEventListener('click', function(){
+    function done(){ say('sources-say', 'Copied. Paste it to Claude in a new session.'); }
+    function old(){
+      var t = document.createElement('textarea'); t.value = C.prompt; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); done(); } catch (e) { say('sources-say', 'Could not copy here. The prompt: ' + C.prompt); }
+      document.body.removeChild(t);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(C.prompt).then(done, old); else old();
+  });
+})();"""
 
 
 def _stars(w, h, n, seed):
@@ -3523,10 +3657,6 @@ html.wand a,html.wand button:not(:disabled),html.wand summary,html.wand label,ht
 @media (prefers-reduced-motion:reduce){.pc-ov{transition:none}}
 """
 
-
-# The good-morning parachute never lands on top of the fairy picker: while the picker is open it waits, and comes once it closes.
-HELLO_WAIT = ("if (window.briefFairy && briefFairy.isOpen()) { briefFairy.whenClosed(function(){ setTimeout(show, 600); }); return; }"
-              "  // the fairy picker is up: land after it closes\n      ")
 
 JS = r"""
 (function(){
@@ -4771,7 +4901,7 @@ JS = r"""
     function bye(){ if (!ov) return; var o = ov; ov = null; timers.forEach(clearTimeout); document.removeEventListener('keydown', esc); o.classList.remove('show'); o.classList.add('out'); setTimeout(function(){ o.remove(); }, 600); }
     function esc(e){ if (e.key === 'Escape') bye(); }
     function show(){
-      {hello_wait}set('brief-hello-' + today, '1');
+      set('brief-hello-' + today, '1');
       var rows = waiting(), qs = document.querySelectorAll('.quest:not(.quest-done):not(.ticked)').length, bits = [];
       if (rows) bits.push(rows + (rows === 1 ? ' row' : ' rows'));
       if (qs) bits.push(qs + (qs === 1 ? ' quest' : ' quests'));
@@ -6692,9 +6822,9 @@ def _panel(key, nav, title_html, count, body, icon):
             f'<button type="button" class="x" aria-label="Close">{_ic(CLOSE_ICON)}</button></div><div class="pb">{body}</div></section>')
 
 
-# ---- the look: fanfan icons (MIT, by 唐幡, bundled in fanfan/), picked in a look.json that sits beside runs/ ----
-# No look.json: the page keeps its own drawn icons and only says so (<body data-look-set="0">), so the picker can offer one.
-# With one: only the chosen animal and style are embedded, each drawing ONCE as a <template>, and every place that uses it
+# ---- the look: fanfan icons (MIT, by 唐幡, bundled in fanfan/), one fixed style (FF_LOOK) on every page ----
+# A look.json beside runs/ only says who the mascot is and which moves play. The drawings used are embedded, each ONCE
+# as a <template>, and every place that uses it
 # holds a small placeholder <svg data-ff="noun"> that a script swaps for a copy before anything else on the page runs.
 FF_DIR = HERE / "fanfan"
 LOOK_CHOICES = {"mascot": ("ticket", "clawd", "fanfan"), "animal": ("cat", "dog", "lop", "bunny"),
@@ -6708,7 +6838,10 @@ FF_NOUNS = ("sun", "bell", "ticket", "robot", "trophy", "clock", "news", "mail",
             "moon", "wand", "sleep", "star", "face-whole", "alarm", "heart")
 # which drawing each section gets (tab, signpost, panel heading); a section not listed keeps its own line drawing
 FF_SEC = {"today": "sun", "overview": "sun", "flags": "bell", "todo": "ticket", "quests": "robot", "nochange": "trophy",
-          "calendar": "clock", "sources": "news", "internal": "file"}
+          "calendar": "clock", "sources": "news", "internal": "file", "hours": "clock", "spend": "alarm", "scout": "search"}
+# The one fanfan style every page draws since 1.18.0 (the picker that chose one is gone). A look.json's animal, line and
+# eyes are read and ignored; only its mascot and moves still count.
+FF_LOOK = {"animal": "dog", "line": "thick", "eyes": "shiny"}
 FF_QUEST = {"mail": "mail", "find": "search", "page": "file", "spark": "sparkles"}
 FF_DARK_INK = "#e2e8f0"  # the tab icon's lines on a dark browser tab strip
 FAN = None  # the Fan for the page being built, or None (set by build() only)
@@ -6720,8 +6853,8 @@ FAN = None  # the Fan for the page being built, or None (set by build() only)
 CLAWD_BASE = ("https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80"
               "/dev-life/theme/clawd-dev-life/assets/")
 CLAWD_IDLE = "idle.svg"
-# Whether this builder offers Clawd at all (the public package's copy sets it too). False: the picker has no
-# Clawd card, a look.json asking for Clawd gets the ticket, and no jsDelivr address appears anywhere in the page.
+# Whether this builder offers Clawd at all (the public package's copy sets it too). False: the Look panel has no
+# Ticket | Clawd switch, a look.json asking for Clawd gets the ticket, and no jsDelivr address appears anywhere in the page.
 OFFER_CLAWD = True
 # a mood sticker plays once for its length (ms), then Clawd goes back to idle; 0 = keeps looping (asleep at night)
 CLAWD_STICKERS = {"sweat": ["deadline.apng", 4280], "starry": ["passed_long.apng", 4760], "hello": ["hello.apng", 4650],
@@ -7053,361 +7186,6 @@ JS_MASCOT = r"""(function(){
 })();"""
 
 
-# ---- "Build your own fairy": the picker, a sheet inside the brief ----
-# The whole sheet is one <template> that a script puts into a shadow root the first time it opens, so nothing in it is ever
-# part of the page itself: the copy button, the rows ring and every page script that looks for check boxes never see its
-# boxes, and the page's own styles cannot reach in (the world's colours still do, as its --tokens). It opens by itself ONCE
-# EVER, on today's brief when no look.json was found, and again from "Build your fairy…" in the Look panel. Saving posts
-# the look to the local helper (POST /look), which writes look.json and rebuilds today's brief; the page then reloads.
-FAIRY_STYLES = ("thin", "thick", "thin-highlight", "thick-highlight")
-FAIRY_PREVIEW = ("face-whole", "bell", "mail", "star")  # the drawings the live preview shows
-FAIRY_FACE_STYLE = "thin"  # every picker carries each animal's face in this style, so the animals show even with no helper to ask
-FAIRY_ANIMALS = (("cat", "Cat"), ("dog", "Dog"), ("lop", "Lop bunny"), ("bunny", "Bunny"))
-FAIRY_MOVES = (("wake", "Wake"), ("sleep", "Sleep"), ("bounce", "Bounce"), ("blush", "Blush"), ("trick", "Its own trick"))
-
-CSS_FAIRY = r"""
-:host{all:initial}
-dialog{box-sizing:border-box;width:min(620px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:0;
-  border:1px solid var(--line-strong,#ccc);border-radius:26px;background:var(--card-solid,#fff);color:var(--ink,#1d2433);
-  box-shadow:var(--shadow,0 20px 60px rgba(0,0,0,.3));font:400 15px/1.45 "Geist",system-ui,-apple-system,sans-serif;overflow:hidden}
-dialog[open]{display:flex;flex-direction:column}
-dialog::backdrop{background:rgba(12,14,24,.5)}
-*,*::before,*::after{box-sizing:border-box}
-.body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 22px 10px;display:grid;gap:18px}
-h2{margin:0;font:700 26px/1.12 "Fraunces","Geist",Georgia,serif;color:var(--ink)}
-:host([data-world="garden"]) h2{font:700 34px/1 "Caveat","Bradley Hand",cursive}
-:host([data-world="candy"]) h2{font-family:"Fredoka","Geist",system-ui,sans-serif}
-:host([data-world="candy"]) dialog{border-width:3px}
-.what{margin:6px 0 0;color:var(--muted)}
-.sect h3{margin:0;font-size:15px;font-weight:700}
-.sect .what{margin-top:2px;font-size:13.5px;line-height:1.4}
-fieldset{margin:0;padding:0;border:0;min-width:0}
-legend{float:left;width:100%;padding:0;margin:0 0 8px;font-size:13px;font-weight:650;color:var(--muted)}
-legend+*{clear:both}
-.pick{position:relative;cursor:pointer}
-.pick>input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.card{display:grid;justify-items:center;align-content:start;gap:4px;padding:12px 10px 14px;border-radius:18px;border:2px solid var(--line-strong);
-  background:var(--bg);text-align:center}
-.card .nm{font-weight:700;font-size:15px}
-.card .nm b{display:inline-grid;place-items:center;width:22px;height:22px;margin-right:5px;border-radius:50%;font-size:12px;
-  background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
-.card .sub{font-size:12.5px;line-height:1.35;color:var(--muted)}
-.pick:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line-strong))}
-.pick:has(>input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,var(--card-solid))}
-.pick:has(>input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
-.pic{display:grid;place-items:center;width:76px;height:76px;color:var(--w-ink,var(--ink))}
-.pic img{display:block;width:64px;height:64px}
-.pic.clawd img{width:76px;height:76px;image-rendering:pixelated;transform:scale(1.55);transform-origin:50% 80%}  /* Clawd stands small in the middle of its sticker */
-.pic svg{width:58px;height:58px}
-.pic.none::before{content:"";width:46px;height:46px;border-radius:50%;border:2px dashed var(--line-strong)}
-.credit{margin:8px 2px 0;font-size:12px;line-height:1.4;color:var(--muted)}
-.opts{display:flex;flex-wrap:wrap;gap:8px}
-.chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:4px 14px;border-radius:999px;border:1.5px solid var(--line-strong);
-  background:var(--bg);font-weight:600;font-size:14px}
-.chip .pic{width:30px;height:30px;margin-left:-6px}
-.chip .pic svg{width:28px;height:28px}
-.chip .pic.none::before{width:22px;height:22px;border-width:1.5px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.pv{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border-radius:18px;border:1.5px dashed var(--line-strong)}
-.pv>span:first-child{font-size:13px;font-weight:650;color:var(--muted);margin-right:auto}
-.pv .pic{width:44px;height:44px}
-.pv .pic svg{width:40px;height:40px}
-.pv .pic.none::before{width:30px;height:30px}
-.note{margin:-8px 2px 0;font-size:12.5px;color:var(--muted)}
-.ticks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 10px}
-.tk{display:flex;align-items:center;gap:10px;min-height:42px;padding:6px 12px;border-radius:12px;border:1px solid var(--line-strong);background:var(--bg);cursor:pointer;font-size:14px}
-.tk input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--accent);cursor:pointer}
-.tk:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
-.tk input:focus-visible{outline:none}
-.foot{display:grid;gap:8px;padding:12px 22px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line-strong);background:var(--card-solid)}
-.say{margin:0;font-weight:650}
-.say:empty{display:none}
-.say.bad{color:var(--stamp,#c0392b)}
-.why{margin:0;font-size:13.5px;color:var(--muted)}
-.btns{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px}
-button{font:650 15px/1 "Geist",system-ui,-apple-system,sans-serif;min-height:44px;padding:0 20px;border-radius:999px;cursor:pointer}
-.later{background:transparent;border:1.5px solid var(--line-strong);color:var(--ink)}
-.save{background:var(--accent);border:1.5px solid var(--accent);color:var(--accent-ink)}
-.save:disabled{opacity:.45;cursor:not-allowed}
-button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-/* the drawings at rest, the way fanfan's own css shows them: eyes open, no z */
-.bb .bb-eye-s,.bb .bb-eye-h,.bb .bb-z{opacity:0}
-@media (max-width:600px){
-  dialog{width:100vw;margin:auto 0 0;max-height:calc(100dvh - 10px);border-radius:24px 24px 0 0;border-bottom:0}
-  .body{padding:18px 16px 8px}
-  .foot{padding-left:16px;padding-right:16px}
-  .cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .card{padding:10px 4px 12px}
-  .pic{width:60px;height:60px}.pic img{width:52px;height:52px}.pic.clawd img{width:60px;height:60px}.pic svg{width:48px;height:48px}
-  .card .sub{font-size:11.5px}
-  .pic.clawd img{transform:scale(1.3)}
-  .ticks{grid-template-columns:1fr 1fr}
-  .btns button{flex:1}
-}
-@media (max-width:400px){.cards{grid-template-columns:1fr}.card{grid-template-columns:auto 1fr;justify-items:start;text-align:left;column-gap:10px}.card .pic{grid-row:span 2}}
-@media (prefers-reduced-motion:no-preference){dialog[open]{animation:fairy-in .3s cubic-bezier(.2,.9,.3,1.08)}}
-@keyframes fairy-in{from{opacity:0;transform:translateY(18px) scale(.985)}}
-"""
-
-JS_FAIRY = r"""(function(){
-  var C = {cfg}, NS = 'http://www.w3.org/2000/svg';
-  var RE = {d: new RegExp('^' + C.safe.d + '$'), v: new RegExp('^' + C.safe.v + '$')};
-  // same rule as the Done button: only a brief the local helper serves can save
-  var SERVED = /^http:\/\/(127\.0\.0\.1|localhost):8765$/.test(location.origin);
-  // opened as a plain file: the helper refuses saves from there, so "Save" opens this same brief through the helper instead,
-  // carrying the choices in the address after a #, where a served page picks them up and opens the sheet with them filled in
-  var FROM_FILE = location.protocol === 'file:';
-  var tpl = document.getElementById('fairy-tpl'); if (!tpl) return;
-  var root = null, dlg = null, opener = null, waiters = [], cache = {}, busy = false, reloading = false;
-  function get(k){ try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }
-  function pad(n){ return (n < 10 ? '0' : '') + n; }
-  function today(){ var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-  function $(s){ return root.querySelector(s); }
-  function $$(s){ return Array.prototype.slice.call(root.querySelectorAll(s)); }
-  function styleOf(l){ return l.line + (l.eyes === 'shiny' ? '-highlight' : ''); }
-
-  /* ---------- the choices in an address: #fairy=mascot.animal.line.eyes.move-move (names only; nothing else travels) ---------- */
-  /*hash:start*/
-  function hashOf(l){ return 'fairy=' + [l.mascot, l.animal, l.line, l.eyes, (l.moves || []).join('-')].join('.'); }
-  // only values from the allowed lists count; a bad or missing part is left out, so the sheet keeps its own choice there
-  function parseHash(h){
-    var m = /^#?fairy=([A-Za-z0-9.-]*)$/.exec(h || ''); if (!m) return null;
-    var p = m[1].split('.'), A = C.allowed, out = {};
-    ['mascot', 'animal', 'line', 'eyes'].forEach(function(k, i){ if (A[k].indexOf(p[i]) > -1) out[k] = p[i]; });
-    if (p.length > 4) out.moves = p[4].split('-').filter(function(x, i, a){ return A.moves.indexOf(x) > -1 && a.indexOf(x) === i; });
-    return out;
-  }
-  /*hash:end*/
-
-  /* ---------- drawings for the previews: the page's own copy when it has this style, else the helper's; a face with neither
-     falls back to the picker's own thin face of that animal, so the animals always show ---------- */
-  // a drawing from the helper is kept only if it uses nothing but what the bundled drawings use (the builder's _ff_read rule):
-  // these elements and attributes, path data in d, and plain values elsewhere: no brackets, colons or backslashes, so no url()
-  function plain(text){
-    if (/<!|<\?|&/.test(text)) return null;
-    var doc = new DOMParser().parseFromString(text, 'image/svg+xml'), s = doc.documentElement;
-    if (!s || s.namespaceURI !== NS || s.localName !== 'svg' || doc.getElementsByTagName('parsererror').length) return null;
-    var all = [s].concat(Array.prototype.slice.call(s.getElementsByTagName('*')));
-    for (var i = 0; i < all.length; i++) {
-      var el = all[i];
-      if (el.namespaceURI !== NS || C.safe.tags.indexOf(el.localName) < 0) return null;
-      for (var j = 0; j < el.attributes.length; j++) {
-        var a = el.attributes[j];
-        if (a.name === 'xmlns') { if (a.value !== NS) return null; continue; }
-        if (a.namespaceURI || C.safe.attrs.indexOf(a.name) < 0 || !RE[a.name === 'd' ? 'd' : 'v'].test(a.value)) return null;
-      }
-    }
-    return s;
-  }
-  function copyOf(s){
-    var c = document.importNode(s, true);
-    c.removeAttribute('width'); c.removeAttribute('height'); c.setAttribute('aria-hidden', 'true'); c.setAttribute('focusable', 'false');
-    return c;
-  }
-  function drawing(look, noun){
-    var st = styleOf(look), an = look.animal;
-    if (C.styles.indexOf(st) < 0 || C.animals.indexOf(an) < 0 || C.nouns.indexOf(noun) < 0) return Promise.resolve(null);
-    if (C.emb && C.emb[0] === st && C.emb[1] === an) {
-      var t = document.getElementById('ff-' + noun);
-      if (t && t.content && t.content.firstElementChild) return Promise.resolve(copyOf(t.content.firstElementChild));
-    }
-    function face(){
-      var f = noun === 'face-whole' && root.querySelector('template.face[data-a="' + an + '"]');
-      return f && f.content.firstElementChild ? copyOf(f.content.firstElementChild) : null;
-    }
-    if (st === C.faceStyle && face()) return Promise.resolve(face());
-    if (!SERVED) return Promise.resolve(face());
-    var path = '/fanfan/' + st + '/' + an + '-' + noun + '.svg';
-    if (!cache[path]) {
-      cache[path] = fetch(path, {credentials: 'same-origin', redirect: 'error'}).then(function(r){
-        var u = new URL(r.url, location.href);
-        if (!r.ok || r.redirected || u.origin !== location.origin || u.pathname !== path || u.search
-            || !/^image\/svg\+xml\b/.test(r.headers.get('Content-Type') || '')) return null;
-        return r.text().then(plain);
-      }).catch(function(){ return null; });
-      cache[path].then(function(s){ if (!s) delete cache[path]; });  // a miss may be tried again next time
-    }
-    return cache[path].then(function(s){ return s ? copyOf(s) : face(); });
-  }
-  function paint(slot, look, noun){
-    var mine = slot._n = (slot._n || 0) + 1;
-    drawing(look, noun).then(function(s){
-      if (slot._n !== mine) return;  // a newer choice has already asked for its own
-      slot.textContent = '';
-      if (s) { slot.appendChild(s); slot.classList.remove('none'); } else slot.classList.add('none');
-    });
-  }
-
-  /* ---------- the choices ---------- */
-  function choice(){
-    function one(n){ var r = $('input[name="' + n + '"]:checked'); return r ? r.value : C.def[n]; }
-    function many(n){ return $$('input[name="' + n + '"]').filter(function(b){ return b.checked; }).map(function(b){ return b.value; }); }
-    return {mascot: one('mascot'), animal: one('animal'), line: one('line'), eyes: one('eyes'), moves: many('moves')};
-  }
-  function fill(l){
-    ['mascot', 'animal', 'line', 'eyes'].forEach(function(n){
-      var rs = $$('input[name="' + n + '"]'), hit = rs.filter(function(r){ return r.value === l[n]; })[0] || rs.filter(function(r){ return r.value === C.def[n]; })[0] || rs[0];
-      rs.forEach(function(r){ r.checked = r === hit; });
-    });
-    $$('input[name="moves"]').forEach(function(b){ b.checked = (l.moves || []).indexOf(b.value) > -1; });
-  }
-  function preview(){
-    var l = choice();
-    $$('.chip .pic[data-a]').forEach(function(p){ paint(p, {animal: p.getAttribute('data-a'), line: l.line, eyes: l.eyes}, 'face-whole'); });
-    $$('.pv .pic').forEach(function(p){ paint(p, l, p.getAttribute('data-n')); });
-    var n = $('.note'); if (n) n.hidden = SERVED || !!(C.emb && C.emb[0] === styleOf(l) && C.emb[1] === l.animal);
-  }
-  function say(t, bad){ var s = $('.say'); s.textContent = t; s.classList.toggle('bad', !!bad); }
-
-  /* ---------- the sheet ---------- */
-  function make(){
-    if (root) return;
-    var host = document.createElement('div'); host.id = 'fairy-host';
-    document.body.appendChild(host);
-    root = host.attachShadow({mode: 'open'});
-    root.appendChild(document.importNode(tpl.content, true));
-    dlg = $('dialog');
-    root.addEventListener('change', function(){ if (!reloading) { say(''); preview(); } });
-    // Clawd's picture cannot load (offline): the card shows the ticket and says why
-    var cw = $('.pic.clawd img');
-    if (cw) cw.addEventListener('error', function(){ cw.src = C.ticket; cw.parentNode.classList.remove('clawd'); var s = cw.parentNode.parentNode.querySelector('.sub'); if (s) s.textContent = 'Offline: Clawd shows once the artist\'s page can load'; });
-    $('.later').addEventListener('click', notNow);
-    $('.save').addEventListener('click', save);
-    if (!SERVED) {
-      $('.why').hidden = false;
-      if (FROM_FILE) $('.save').textContent = 'Open the live brief to save'; else $('.save').disabled = true;
-    }
-    dlg.addEventListener('cancel', function(e){ e.preventDefault(); notNow(); });
-    // keys stay inside the sheet: Escape is "Not now", Tab goes round, and nothing reaches the page's own shortcuts
-    dlg.addEventListener('keydown', function(e){
-      e.stopPropagation();
-      if (e.key === 'Escape') { e.preventDefault(); notNow(); return; }
-      if (e.key !== 'Tab') return;
-      var f = $$('input:not([disabled]),button:not([disabled])').filter(function(el){ return el.getClientRects().length && (el.type !== 'radio' || el.checked); });
-      if (!f.length) return;
-      var first = f[0], last = f[f.length - 1], at = root.activeElement;
-      if (e.shiftKey && (at === first || !at)) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && (at === last || !at)) { e.preventDefault(); first.focus(); }
-    });
-  }
-  function open(from, pre){
-    make();
-    if (dlg.open) return;
-    opener = from || document.activeElement;
-    root.host.setAttribute('data-world', document.documentElement.getAttribute('data-world') || 'garden');
-    var l = C.look || C.def;
-    fill(pre ? Object.assign({}, l, pre) : l); say(''); preview();
-    dlg.showModal();
-    var c = $('input[name="mascot"]:checked'); if (c) c.focus();
-  }
-  function close(){
-    if (!dlg || !dlg.open) return;
-    dlg.close();
-    // back to whatever opened it; the Look panel has closed by now, so its own button stands in for the row inside it
-    var back = opener;
-    if (back && back.closest && back.closest('#look-panel')) back = document.getElementById('look');
-    if (back && back !== document.body && back.focus && back.isConnected) back.focus();
-    opener = null;
-    var w = waiters; waiters = []; w.forEach(function(f){ f(); });
-  }
-  function notNow(){ if (reloading) return; set('brief-fairy-offered', '1'); close(); }
-  function save(){
-    if (FROM_FILE && !SERVED) {
-      var name = encodeURIComponent(decodeURIComponent(location.pathname.split('/').pop() || ''));
-      location.assign('http://127.0.0.1:8765/brief/' + name + '#' + hashOf(choice()));
-      return;
-    }
-    if (!SERVED || busy || reloading) return;
-    var l = choice(), btn = $('.save');
-    busy = true; btn.disabled = true; say('Saving your fairy…');
-    function fail(t){ busy = false; btn.disabled = false; say(t, true); }
-    fetch('/look', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(l), credentials: 'same-origin', redirect: 'error'})
-      .then(function(r){ return r.json().catch(function(){ return {old: r.status === 404}; }); })  // 404: a helper from before /look
-      .then(function(j){
-        if (j && j.rebuilt === true) {
-          reloading = true; set('brief-fairy-offered', '1'); say('Your fairy is moving in…');
-          if (C.date === today()) location.reload(); else location.assign('/');  // an older brief: go to today's, which has the new look
-        } else if (j && j.saved === true) {
-          busy = false; btn.disabled = false; C.look = l; set('brief-fairy-offered', '1');
-          say('Saved — your fairy arrives with tomorrow\'s brief'); $('.later').textContent = 'Close';
-        } else if (j && j.old) fail('Your fairy was not saved: the brief helper running now is an older version, and it updates the next time it starts (a restart of your Mac does it). Nothing has changed.');
-        else fail('Your fairy was not saved: the brief helper said no. Nothing has changed; try again in a moment.');
-      }, function(){ fail('Your fairy was not saved: the brief helper did not answer. Nothing has changed; try again in a moment.'); });
-  }
-
-  window.briefFairy = {open: open, isOpen: function(){ return !!(dlg && dlg.open); }, whenClosed: function(f){ waiters.push(f); }};
-  var row = document.getElementById('fairy-open');
-  if (row) row.addEventListener('click', function(){
-    var lb = document.getElementById('look'), lp = document.getElementById('look-panel');
-    if (lb && lp && !lp.hidden) lb.click();  // the Look panel closes the way it always does
-    open(lb || row);
-  });
-  // sent here from a file page's Save: open with its choices filled in, then clear the address
-  var sent = SERVED && /^#fairy=/.test(location.hash) ? parseHash(location.hash) : null;
-  if (SERVED && /^#fairy=/.test(location.hash)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
-  if (sent) { set('brief-fairy-offered', '1'); open(null, sent); }
-  // once ever: on today's brief, when no look.json was found (a past morning from the time machine never asks)
-  else if (document.body.getAttribute('data-look-set') === '0' && C.date === today() && !get('brief-fairy-offered')) {
-    set('brief-fairy-offered', '1');
-    open(null);
-  }
-})();"""
-
-
-def fairy_picker(look, date, emb):
-    """The picker's <template> and its script. look: the page's look (None: the defaults); emb: [style, animal] of the
-    fanfan drawings already in the page as templates, which the preview reuses, or None."""
-    def radio(name, value, inner, cls):
-        return f'<label class="pick {cls}"><input type="radio" name="{name}" value="{value}">{inner}</label>'
-
-    def tick(name, value, text):
-        return f'<label class="tk"><input type="checkbox" name="{name}" value="{value}"><span>{esc(text)}</span></label>'
-    ticket = favicon_href("calm")
-    cards = [radio("mascot", "ticket", f'<span class="pic"><img src="{ticket}" alt="" width="64" height="64"></span>'
-                   '<span class="nm"><b>A</b>The ticket</span><span class="sub">The brief\'s own blue ticket</span>', "card")]
-    credit = ""
-    if OFFER_CLAWD:
-        cards.append(radio("mascot", "clawd", f'<span class="pic clawd"><img src="{CLAWD_BASE}{CLAWD_IDLE}" alt="" width="76" height="76"></span>'
-                           '<span class="nm"><b>B</b>Clawd</span><span class="sub">Fan art, non-commercial use, loads from the artist\'s own page</span>', "card"))
-        credit = '<p class="credit">Clawd stickers: fan art by alwinecor (CC BY-NC-SA 4.0). Clawd belongs to Anthropic; unofficial.</p>'
-    animals = "".join(radio("animal", a, f'<span class="pic none" data-a="{a}"></span><span>{esc(t)}</span>', "chip") for a, t in FAIRY_ANIMALS)
-    lines = "".join(radio("line", v, f"<span>{t}</span>", "chip") for v, t in (("thin", "Thin"), ("thick", "Thick")))
-    eyes = "".join(radio("eyes", v, f"<span>{t}</span>", "chip") for v, t in (("dots", "Dots"), ("shiny", "Shiny")))
-    pv = "".join(f'<span class="pic none" data-n="{n}"></span>' for n in FAIRY_PREVIEW)
-    try:
-        faces = "".join(f'<template class="face" data-a="{a}">{_ff_read(FF_DIR / FAIRY_FACE_STYLE / f"{a}-face-whole.svg")}</template>'
-                        for a, _ in FAIRY_ANIMALS)
-    except (OSError, ValueError):
-        faces = ""  # no bundled drawings: the chips fall back to empty circles
-    moves = "".join(tick("moves", v, t) for v, t in FAIRY_MOVES)
-    tpl = (f'<template id="fairy-tpl"><style>{_cat_css(CSS_FAIRY)}</style>{faces}'
-           '<dialog class="fairy" aria-modal="true" aria-labelledby="fairy-title" aria-describedby="fairy-what"><div class="body">'
-           '<div><h2 id="fairy-title">Build your own fairy</h2><p class="what" id="fairy-what">Pick who lives in your brief, the little '
-           'animal that draws its icons, and how it moves. You can change it any time from Look.</p></div>'
-           f'<fieldset><legend>Mascot</legend><div class="cards">{"".join(cards)}</div>{credit}</fieldset>'
-           '<div class="sect"><h3>Little animal icons</h3><p class="what">They draw the little icons across the page: '
-           'tabs, quests, the Done box and the browser tab.</p></div>'
-           f'<fieldset><legend>Animal</legend><div class="opts">{animals}</div></fieldset>'
-           f'<div class="two"><fieldset><legend>Line</legend><div class="opts">{lines}</div></fieldset>'
-           f'<fieldset><legend>Eyes</legend><div class="opts">{eyes}</div></fieldset></div>'
-           f'<div class="pv"><span>Preview</span>{pv}</div>'
-           '<p class="note" hidden>This style shows once the brief is opened from the Morning Brief app.</p>'
-           f'<fieldset><legend>Moves</legend><div class="ticks">{moves}</div></fieldset>'
-           '</div><div class="foot"><p class="say" role="status" aria-live="polite"></p>'
-           '<p class="why" id="fairy-why" hidden>Saving goes through the Morning Brief app. If the page doesn\'t open, click Morning Brief in your Dock (or run launch.sh) first.</p>'
-           '<div class="btns"><button type="button" class="later">Not now</button>'
-           '<button type="button" class="save" aria-describedby="fairy-why">Save my fairy</button></div></div></dialog></template>')
-    cfg = {"date": date, "def": LOOK_DEFAULT, "look": look, "emb": emb, "styles": list(FAIRY_STYLES),
-           "animals": [a for a, _ in FAIRY_ANIMALS],
-           "allowed": {"mascot": ["ticket"] + (["clawd"] if OFFER_CLAWD else []), "animal": [a for a, _ in FAIRY_ANIMALS],
-                       "line": list(LOOK_CHOICES["line"]), "eyes": list(LOOK_CHOICES["eyes"]), "moves": list(FF_MOVES)}, "nouns": list(FAIRY_PREVIEW), "ticket": ticket, "faceStyle": FAIRY_FACE_STYLE,
-           "safe": {"tags": list(FF_TAGS), "attrs": list(FF_ATTRS), "d": FF_D_RE, "v": FF_VALUE_RE}}
-    js = "<script>" + JS_FAIRY.replace("{cfg}", json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/")) + "</script>\n"
-    return tpl, js
-
-
 def _ff_assets():
     css = (FF_DIR / "fanfan-motion.css").read_text(encoding="utf-8")
     js = (FF_DIR / "fanfan-motion.js").read_text(encoding="utf-8")
@@ -7419,15 +7197,15 @@ def build(content, log=None, admin_log=None, briefs=None, look=None):
     global FAN, CATERPILLAR
     FAN = None
     cat = CATERPILLAR  # _build may leave the caterpillar out of this one page (see _build); the next build starts as before
-    if look:
-        look = dict(look, places=list(FF_PLACES))  # all six places, whatever the look lists
-    if look and look.get("mascot") in ("fanfan", "clawd") and (look["mascot"] == "fanfan" or not OFFER_CLAWD):
-        look = dict(look, mascot="ticket")  # an older "fanfan" mascot, or Clawd where it is not offered: the ticket, and the picker starts from it
-    if look:
-        try:
-            FAN = Fan(look)
-        except (OSError, ValueError, KeyError) as e:
-            print(f"warning: fanfan icons unavailable ({e}); the page keeps its own icons", file=sys.stderr)
+    # every page draws the one fanfan style (FF_LOOK); the look only says who the mascot is and which moves play
+    look = dict(LOOK_DEFAULT, **{k: v for k, v in (look or {}).items() if k in ("mascot", "moves")}, **FF_LOOK)
+    look["places"] = list(FF_PLACES)
+    if look.get("mascot") != "clawd" or not OFFER_CLAWD:
+        look["mascot"] = "ticket"  # an older "fanfan" mascot, or Clawd where it is not offered: the ticket
+    try:
+        FAN = Fan(look)
+    except (OSError, ValueError, KeyError) as e:
+        print(f"warning: fanfan icons unavailable ({e}); the page keeps its own icons", file=sys.stderr)
     try:
         return _build(content, log, admin_log, briefs, look)
     finally:
@@ -7481,7 +7259,7 @@ def _build(content, log, admin_log, briefs, look):
     js = (JS.replace("{storage_key}", storage_key).replace("{copy_header}", copy_header)
           .replace("{brief_date}", json.dumps(d["date"])).replace("{tm_past}", TM_PAST_JS)
           .replace("{task_header}", json.dumps(f"For Claude to pick up (morning brief, {d['date_label']}):"))
-          .replace("{task_guard}", json.dumps(TASK_GUARD)).replace("{hello_wait}", HELLO_WAIT)
+          .replace("{task_guard}", json.dumps(TASK_GUARD))
           .replace("{admin_header}", json.dumps(f"Record as admin done (morning brief, {d['date_label']}):"))
           .replace("{admin_guard}", json.dumps(ADMIN_GUARD))
           .replace("{sun}", json.dumps(ICONS["sun"])).replace("{moon}", json.dumps(ICONS["moon"]))
@@ -7515,10 +7293,10 @@ def _build(content, log, admin_log, briefs, look):
     css += CSS_TODO    # Done pills, the to-do cards' quest and Jira chips, project groups
     css += CSS_STAGE   # last of all: the shell, the scene and the panels
     css += CSS_PANEL   # the boards in their world's colours, after the shell rules they recolour
-    ff_body, ff_fill, ff_moves, look_panel = "", "", "", LOOK_PANEL
+    ff_fill, ff_moves = "", ""
     kind = mascot_kind(look, FAN)
     defs = mascot_defs(kind)
-    credits = (CLAWD_CREDIT if kind == "clawd" else "") + (FF_CREDIT if FAN else "")  # the little animals are on every page with a look
+    credits = (CLAWD_CREDIT if kind == "clawd" else "") + (FF_CREDIT if FAN else "")  # the little animals are on every page
     if kind != "ticket" or credits:
         css += CSS_MASCOT
     if FAN:
@@ -7527,31 +7305,28 @@ def _build(content, log, admin_log, briefs, look):
         ff_fill = f"<script>{JS_FAN_FILL}</script>\n"
         ff_moves = (f"<script>{ff_js}\n" + JS_FAN_MOVES.replace("{moves}", json.dumps(FAN.look["moves"]).replace("</", "<\\/"))
                     .replace("{tricks}", json.dumps(FAN.tricks).replace("</", "<\\/")) + "</script>\n")
+    look_panel = look_panel_html(kind, d)
     if FAN:  # the switches inside the Look panel carry the animal
-        look_panel = (LOOK_PANEL.replace("<span>Dark mode</span>", f'<span>{FAN.ph("moon")}Dark mode</span>')
-                      .replace("<span>Sparkles</span>", f'<span>{FAN.ph("wand")}Sparkles</span>')
-                      .replace("<span>Build your fairy…</span>", f'<span>{FAN.ph("face-whole")}Build your fairy…</span>'))
-    if look:
-        ff_body = ' data-look-set="1"'  # the picker reads the look itself from its own settings (fairy_picker)
-        if kind != "ticket":
-            cfg = {"kind": kind}
-            if kind == "clawd":  # only a Clawd page names the sticker addresses
-                cfg.update(base=CLAWD_BASE, idle=CLAWD_IDLE, stickers=CLAWD_STICKERS, box=list(CLAWD_BOX))
-            ff_fill += "<script>" + JS_MASCOT.replace("{cfg}", json.dumps(cfg).replace("</", "<\\/")) + "</script>\n"
-    else:
-        ff_body = ' data-look-set="0"'  # no look.json was found: the page keeps its own look, and a picker may offer one
-    # the picker: its preview reuses the drawings this page already carries (only when they are written out below)
-    emb = [FAN.style, FAN.animal] if FAN else None
+        look_panel = (look_panel.replace("<span>Dark mode</span>", f'<span>{FAN.ph("moon")}Dark mode</span>')
+                      .replace("<span>Sparkles</span>", f'<span>{FAN.ph("wand")}Sparkles</span>'))
+    css += CSS_LOOK_MORE
+    if kind != "ticket":
+        cfg = {"kind": kind}
+        if kind == "clawd":  # only a Clawd page names the sticker addresses
+            cfg.update(base=CLAWD_BASE, idle=CLAWD_IDLE, stickers=CLAWD_STICKERS, box=list(CLAWD_BOX))
+        ff_fill += "<script>" + JS_MASCOT.replace("{cfg}", json.dumps(cfg).replace("</", "<\\/")) + "</script>\n"
+    look_js = "<script>" + JS_LOOK_MORE.replace("{cfg}", json.dumps(
+        {"look": {k: FAN.look[k] if FAN else look[k] for k in ("mascot", "animal", "line", "eyes", "moves")},
+         "date": d["date"], "prompt": sources_prompt(d)}, ensure_ascii=False).replace("</", "<\\/")) + "</script>\n"
     # An unattended morning build must never stop for the caterpillar: if a place its code goes into has moved, say so and
     # build the page without that world at all (no whitelist, swatch, css or code), so the page never offers a world it
-    # cannot draw. Checked here, on the page's own final pieces, before the picker writes the first caterpillar css.
+    # cannot draw. Checked here, on the page's own final pieces.
     if CATERPILLAR:
         gone = _cat_problems({"head": HEAD_SCRIPT, "look": look_panel, "js": js, "stage": JS_STAGE})
         for why in gone:
             print(f"warning: {why}; this page is built without the caterpillar world", file=sys.stderr)
         if gone:
             CATERPILLAR = False
-    fairy_tpl, fairy_js = fairy_picker(look, d["date"], emb)
     window = d["window"].replace(" → ", " to ")
 
     # ---- the sections: one panel per chapter in the content's own order, Quests after the first, Calendar last ----
@@ -7629,7 +7404,7 @@ def _build(content, log, admin_log, briefs, look):
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{fonts}&display=swap">
 <style>{css}</style>
 </head>
-<body{ff_body}>
+<body>
 {defs}
 <div class="ambient" aria-hidden="true"></div>
 <div class="app" data-layout="scene">
@@ -7661,12 +7436,11 @@ def _build(content, log, admin_log, briefs, look):
   </main>{tm_dlg}
 </div>
 <textarea id="out" aria-label="Copied rows"></textarea>
-{fairy_tpl}
 <script type="application/json" id="stage-data">{stage_json}</script>
 <script type="application/json" id="quest-data">{quest_json}</script>
 {hours_js}{FAN.templates() if FAN else ""}{ff_fill}<script>{_cat("stage", JS_STAGE)}</script>
 <script>{js}</script>
-{fairy_js}{ff_moves}</body></html>
+{look_js}{ff_moves}</body></html>
 """
 
 

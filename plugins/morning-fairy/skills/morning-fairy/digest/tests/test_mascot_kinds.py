@@ -37,11 +37,8 @@ class MascotKinds(unittest.TestCase):
         self.assertEqual(bd.mascot_defs("fanfan"), bd.mascot_defs())  # not a mascot any more: the ticket
 
     def test_ticket_look_has_no_mascot_script_and_no_clawd(self):
-        from test_fairy_look import without_picker
-        look = dict(FULL_LOOK, mascot="ticket")
-        html = self.page(look)
-        # the picker's Clawd card names the address too, inside a template that only loads when the picker opens
-        self.assertNotIn(bd.CLAWD_BASE, without_picker(html, self.content["date"], look, [bd.ff_style(look), look["animal"]]))
+        html = self.page(dict(FULL_LOOK, mascot="ticket"))
+        self.assertNotIn(bd.CLAWD_BASE, html)
         self.assertNotIn("clawd-credit", html)
         self.assertNotIn("tk-mascot", html)
         self.assertNotIn('"kind":', html)
@@ -100,17 +97,15 @@ class MascotKinds(unittest.TestCase):
             self.assertNotIn(gone, html)
 
     # ---- the list headings ----
-    def test_needs_and_resolved_headings_get_icons_with_a_look(self):
-        html = self.page(dict(FULL_LOOK, mascot="ticket"))
+    def test_needs_and_resolved_headings_get_icons(self):
+        html = self.page(None)  # every page draws the animal since 1.18.0
         self.assertIn('<h3 class="group gh" id="needs"><span class="gi"><svg data-ff="bell" aria-hidden="true"></svg></span>Needs attention</h3>', html)
         self.assertIn('<h3 class="group gh" id="resolved"><span class="gi"><svg data-ff="trophy" aria-hidden="true"></svg></span>Resolved</h3>', html)
-        plain = self.page(None)  # no look: the headings keep their plain text
-        self.assertIn('<h3 class="group" id="needs">Needs attention</h3>', plain)
 
-    def test_no_credit_without_borrowed_art(self):
-        html = self.page(None)  # no look: no animal, no sticker
-        self.assertNotIn('class="foot credit"', html)
-        self.assertNotIn(".who-pic", html)
+    def test_a_ticket_page_credits_only_the_animals(self):
+        html = self.page(None)  # the animal is on every page; no sticker
+        self.assertEqual(html.count('class="foot credit"'), 1)
+        self.assertNotIn("clawd-credit", html)
 
 
 if __name__ == "__main__":

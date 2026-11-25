@@ -1,6 +1,6 @@
 /**
- * The Python tests beside the builder (digest/tests: the look, the three mascots, the "Build your own fairy" picker,
- * and the helper's /fanfan and /look routes), run through unittest so `npm test` and CI cover them.
+ * The Python tests beside the builder (digest/tests: the look, the mascots, the Look panel,
+ * and the helper's /look route), run through unittest so `npm test` and CI cover them.
  * HOME and every data folder point at a fresh temp folder, so nothing can reach your own ~/.morning-fairy or Desktop.
  */
 import { describe, it } from "node:test";

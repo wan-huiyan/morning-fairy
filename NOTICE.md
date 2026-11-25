@@ -46,8 +46,4 @@ If you pick Clawd as your mascot, the page shows stickers by alwinecor from
 - The page credits the artist wherever Clawd appears.
 - Clawd is a character that belongs to Anthropic. These stickers are unofficial fan art, and their licence
   allows non-commercial use only. Whether your own use fits that licence is your call.
-- **Two screenshots show one sticker.** `docs/picker.png` and `docs/picker-phone.png` picture the picker with
-  `dev-life/theme/clawd-dev-life/assets/idle.svg` (same commit) on its Clawd card. Because they contain the
-  artist's work, these two images are licensed
-  [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), not MIT: credit alwinecor, no commercial
-  use, and share any adaptation under the same licence. The rest of the repository stays MIT.
+- **No screenshot in this repository shows a sticker** (the two picker screenshots that did were removed in 1.18.0).

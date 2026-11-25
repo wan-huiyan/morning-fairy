@@ -8,8 +8,7 @@ clients.json in ~/.morning-fairy (no block, no route); the page only sends a dat
 opens one such session per project for the quests picked on the Quests board, rebuilt from that day's saved brief;
 it needs start.json in ~/.morning-fairy. Sessions start in your own default permission mode. Writes that done.jsonl, and look.json
 in the same folder (beside runs/) when the brief saves a new look, after which it rebuilds today's brief with the
-builder beside this file. Also serves the bundled fanfan icons (fanfan/ beside this file) for the look picker's
-previews. Python standard library only.
+builder beside this file. Python standard library only.
 Start it with: python3 -I serve.py   (the launcher script does this when it is not already running)
 Tests may point it elsewhere with BRIEF_DIGEST_DIR and BRIEF_DESKTOP_DIR.
 """
@@ -48,13 +47,8 @@ def config_path(name):
     return old if old.exists() and not home.exists() else home
 
 
-# /fanfan/<style>/<animal>-<noun>.svg: only these names, built from the match, never from the request
-FF_STYLES = ("thin", "thick", "thin-highlight", "thick-highlight")
+# the animals a look.json may name (the builder draws one fixed style since 1.18.0; the name is still checked)
 FF_ANIMALS = ("cat", "dog", "lop", "bunny")
-FF_NOUNS = ("sun", "bell", "ticket", "robot", "trophy", "clock", "news", "mail", "search", "file", "sparkles",
-            "moon", "wand", "sleep", "star", "face-whole", "alarm", "heart")
-FF_PATH = re.compile(r"/fanfan/(" + "|".join(FF_STYLES) + r")/(" + "|".join(FF_ANIMALS) + r")-("
-                     + "|".join(re.escape(n) for n in FF_NOUNS) + r")\.svg")
 # look.json: every key required except "places", nothing else allowed (the builder is more forgiving; this is the one place that writes it).
 # "places" is no longer chosen: an older page may still send it (checked, then ignored); what gets written always lists all six.
 LOOK_ONE = {"mascot": ("ticket", "clawd", "fanfan"), "animal": FF_ANIMALS, "line": ("thin", "thick"), "eyes": ("dots", "shiny")}
@@ -386,15 +380,6 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/health":
             return self._send(200, "ok")
-        if path.startswith("/fanfan/"):
-            m = FF_PATH.fullmatch(self.path)  # the raw path: no query, no escapes, nothing but a listed name
-            if not m:
-                return self._send(404, "not found")
-            f = CODE / "fanfan" / m.group(1) / f"{m.group(2)}-{m.group(3)}.svg"
-            if not f.is_file():
-                return self._send(404, "not found")
-            return self._send(200, f.read_bytes(), "image/svg+xml",
-                              extra=[("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")])
         if path == "/":
             found = briefs()
             if not found:

@@ -91,7 +91,8 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 | 🌍 | **Four worlds** | Storybook garden, Cosmic orbit, Candy pop and Caterpillar, each with a light and a dark version (8 looks), its own cursor wand and its own fairy dust. In the caterpillar world the day is a leaf, the caterpillar's body is the part of the day already lived, and at 6 PM it curls into a cocoon. |
 | 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. Click a hill or its sign to open that meeting; click an admin clipboard to open its admin row. |
 | 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. |
-| 🧚 | **Build your own fairy** | Pick the mascot (the ticket or Clawd), then the little animal that draws the page's icons: one of 4 animals, thin or thick lines, dot or shiny eyes, and 5 moves. |
+| 🧚 | **Ticket or Clawd** | Switch the mascot at the top of Look. A little dog draws every tab and icon on the page, with 5 small moves. |
+| 🔌 | **What your fairy reads** | Look lists the sources this morning's brief read and the ones it did not, with one button that copies a prompt asking Claude to help set up the rest. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. Optionally, a **Start in Claude** button opens the session for you. |
 | 🔭 | **Scout: worth a look** | Optional. A chapter of web finds (new repos, a tool's changelog, Hacker News) that could improve your work, each saying which of your projects it helps and why. They are offers, not to-dos: nothing waits on you, no Done pill, and each ask is read-and-assess only. |
@@ -125,12 +126,11 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
   <br/><sub>The time machine in the dark garden: yesterday had 5 to-dos, 2 marked done, and one Jira row left to tick.</sub>
 </p>
 
-## 🧚 Build your own fairy
+## 🧚 The Look panel
 
 <p align="center">
-  <img src="docs/picker.png" width="760" alt="The Build your own fairy sheet: two mascot cards (the ticket and Clawd), then the little animal icons: four animals, line and eyes, a preview row, and tick boxes for moves"/>
-  <br/><sub>The picker over the demo morning, with the little cat in thick lines and shiny eyes. Clawd's card shows the
-  artist's sticker, fan art by alwinecor (CC BY-NC-SA 4.0; see Credits). (Made-up data.)</sub>
+  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: a Ticket or Clawd switch at the top, the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
+  <br/><sub>Look, over the demo morning. (Made-up data.)</sub>
 </p>
 
 <p align="center">
@@ -141,26 +141,20 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
   <a href="https://github.com/alwinecor/clawd-stickers">alwinecor/clawd-stickers</a> as you read this page; they are not part of this repository.</sub>
 </p>
 
-The first time you open a brief, a sheet asks who should live in it. Later, open it again from **Look →
-Build your fairy…**.
-
-- **Two mascots:** the brief's own blue ticket, or **Clawd**, as fan-art stickers loaded from the artist's own
-  repository.
-- **Little animal icons:** the animal you pick draws the little icons across the page: tabs and signposts, quest
-  rows, the Done box, empty lists and the browser-tab icon (asleep after 6 PM). Pick one of **four animals** (cat,
-  dog, lop bunny, bunny), a **thin or thick line** and **dot or shiny eyes**, with a live preview. The top bar's
-  sound and Look buttons keep their own drawings.
-- **Five moves:** wake, sleep, bounce, blush, and each icon's own trick. All of them stop under reduced motion.
-
-**Saving goes through the local helper.** Open the brief from the Dock app (or `launch.sh`) and "Save my fairy"
-writes your pick to `~/.morning-fairy/look.json` and rebuilds today's brief in your new look; every morning after
-that uses it too. Opened straight from the file, the button reads **Open the live brief to save**: it opens the
-same brief through the helper with your choices filled in, ready to save. If nothing opens, the helper is not
-running yet: click Morning Brief in your Dock (or run `launch.sh`) first.
-
-<p align="center">
-  <img src="docs/picker-phone.png" width="300" alt="The same sheet on a phone, the mascot cards stacked one above the other"/>
-</p>
+- **Mascot: Ticket or Clawd.** The brief's own blue ticket, or **Clawd**, as fan-art stickers loaded from the
+  artist's own repository. The switch saves through the local helper: open the brief from the Dock app (or
+  `launch.sh`), tap the other mascot, and it writes `~/.morning-fairy/look.json` and rebuilds today's brief. Opened
+  straight from the file, the switch says to open it from the Dock app instead.
+- **The little dog icons.** One fanfan style (the dog, thick lines, shiny eyes) draws the tabs and signposts, quest
+  rows, the Done box, empty lists and the browser-tab icon (asleep after 6 PM), with five small moves: wake,
+  sleep, bounce, blush and its own trick. All of them stop under reduced motion. The top bar's sound and Look
+  buttons keep their own drawings.
+- **What your fairy reads.** Each source from [Where the data comes from](#-where-the-data-comes-from), split into
+  "Read this morning" and "Not read this morning", taken from what that morning's brief says it read. It cannot
+  tell *why* a source was not read (not connected, not needed, or failed that morning), so it never says. When
+  something was not read, **Copy a prompt to set up the rest** copies a message that starts with "set up morning
+  fairy", names the missing sources, and asks Claude to check which ones you can connect and which would help you,
+  changing nothing until you say yes.
 
 ## Quick start
 
@@ -272,7 +266,7 @@ spend) unless you want them. Copy everything below its line, then in the Claude 
 |---|---|
 | A new page, `2026-03-12 Morning brief and Jira digest.html` | Your Desktop. Earlier days stay there, and the time machine links them. |
 | That day's content, the streak, the admin log | `~/.morning-fairy/runs/`, outside the skill folder, so updates never touch it |
-| Your fairy (from the picker) | `~/.morning-fairy/look.json`, read by every morning's build |
+| Your mascot (from Look) | `~/.morning-fairy/look.json`, read by every morning's build |
 | Your settings (`routine-prompt.md`, and `clients.json`, `start.json` if you turned those on) | `~/.morning-fairy/`, so a plugin update keeps them |
 | Your Done taps (through the Dock app's helper) | `~/.morning-fairy/runs/done.jsonl`, read by the next morning's run |
 
@@ -298,9 +292,9 @@ and your fairy in `~/.morning-fairy/look.json`, outside the skill folder, so a p
 
 The optional local helper, `digest/launch.sh`, starts a tiny server on `127.0.0.1:8765` so Done taps are saved
 across browsers and the next morning knows what you finished. Without it, taps stay in that one browser. It also
-saves your fairy from the picker and rebuilds today's brief with it. **After updating the plugin, restart the
+saves the mascot you pick in Look and rebuilds today's brief with it. **After updating the plugin, restart the
 helper** (`pkill -f 'morning-fairy/digest/serve.py'`, then click the Dock app), or the one already running stays on
-the old version and cannot save a fairy.
+the old version and cannot save a mascot.
 
 ## ▶️ Start in Claude (optional, macOS, off by default)
 
@@ -477,11 +471,10 @@ npm test
 
 33 checks: the demo builds, the time machine links the earlier morning, the Dock app opens the right brief (on
 macOS), the helper keeps data outside the skill folder, the demo data uses only `example.com`, and no keys or real
-email addresses appear anywhere in the repo. One of the 33 runs the 60 Python tests in
-`plugins/morning-fairy/skills/morning-fairy/digest/tests/` (the look, the two mascots, the picker and the choices
-it carries from a file page to the live one, and the
-helper's `/fanfan` and `/look` routes: only listed icon names are served, and a look is saved only when every
-field is one of the allowed values). On their own:
+email addresses appear anywhere in the repo. One of the 33 runs the Python tests in
+`plugins/morning-fairy/skills/morning-fairy/digest/tests/` (the look, the two mascots, the Look panel's mascot
+switch and sources, and the helper's `/look` route: a look is saved only when every field is one of the allowed
+values). On their own:
 
 ```bash
 python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests
@@ -498,9 +491,7 @@ python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy
   The little animals are bundled in `digest/fanfan/`, with their licence and the commit they came from.
 - **Clawd stickers** by alwinecor ([alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers)),
   CC BY-NC-SA 4.0. The code does not bundle them: if you pick Clawd, your browser loads them from the artist's
-  repository (through jsDelivr, pinned to one commit) when the page opens. The only copies here are inside two
-  screenshots, `docs/picker.png` and `docs/picker-phone.png`, which show one sticker on the picker's Clawd card;
-  those two pictures are under CC BY-NC-SA 4.0 (see [NOTICE.md](NOTICE.md)). Clawd belongs to
+  repository (through jsDelivr, pinned to one commit) when the page opens. No copy of them is in this repository. Clawd belongs to
   Anthropic; these are unofficial fan art, licensed for non-commercial use only. Whether your own use fits that
   licence is your call.
 
@@ -511,6 +502,12 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.18.0** (2026-11-25): a simpler Look panel. "Build your fairy…" and its picker are gone: the mascot is now a
+  Ticket | Clawd switch at the top of Look, and every page draws the same little dog icons, including the tabs added
+  since the picker (Hours, Cloud spend, Scout), which had kept plain line drawings. In the picker's place, Look lists
+  which sources this morning's brief read and which it did not, with a button that copies a "set up morning fairy"
+  prompt for the rest. An existing `look.json` still works: its mascot and moves count, its animal, line and eyes
+  are ignored. The helper no longer serves `/fanfan` (only the picker used it).
 - **1.17.2** (2026-11-24): the same login-page check now finds the right browser for you. When more than one Chrome is
   connected to Claude, the session opens the Tempo link in each one, just to look, and carries on in the one that is
   signed in. It asks you only if none, or more than one, is signed in. Before this it asked you which one to use.

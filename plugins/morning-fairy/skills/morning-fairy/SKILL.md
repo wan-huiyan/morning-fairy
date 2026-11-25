@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.17.2
+version: 1.18.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -162,9 +162,8 @@ python3 -I <skill>/digest/build_digest.py <home>/runs/content-<date>.json \
 - `--log` records one line per day (Jira rows left, applied). `--admin-log` upserts the content's admin
   records; a newly arrived "done" closes one open deadline with the same wording.
 - **The look comes from `<home>/look.json`**: the builder reads `look.json` beside the `runs/` folder that holds
-  `--log`, so the command above needs no extra flag. `--look <file>` names another one. No file: the page keeps
-  its own look (the ticket and its line icons) and offers the picker. Never write `look.json` by hand for the
-  owner; it is theirs to pick (see "The fairy" below).
+  `--log`, so the command above needs no extra flag. `--look <file>` names another one. No file: the ticket. Never
+  write `look.json` by hand for the owner; it is theirs to pick from Look (see "The fairy" below).
 - **Never rebuild a past day with `--log`/`--admin-log`:** it rewrites that day's log lines. The time
   machine opens the original file.
 - Then open it: `<skill>/digest/launch.sh` starts the local helper and opens the newest brief.
@@ -208,21 +207,24 @@ All design lives in the builder; the content never sets colours, layout or motio
 - **mascot:** `ticket` (the brief's own) or `clawd` (fan-art stickers by alwinecor, CC BY-NC-SA 4.0, loaded as
   pictures from jsDelivr pinned to one commit, never copied into the page or this folder; offline, the ticket stands
   in; the page credits the artist and says Clawd belongs to Anthropic). A `fanfan` mascot (from an older file or page; the helper still accepts it) reads as the ticket.
-- **animal / line / eyes:** the little animal icons (fanfan, MIT, by 唐幡, bundled in `digest/fanfan/`): with any
-  look they replace the line icons on tabs and signposts, quest rows, the Done box, empty lists and the browser-tab
-  icon (asleep after 6 PM). The top bar's sound and Look buttons keep their own drawings. Only the chosen style is
-  embedded in a page, each drawing once.
+- **animal / line / eyes** are read and ignored since 1.18.0: every page draws one fanfan style (`FF_LOOK` in the
+  builder: the dog, thick lines, shiny eyes; MIT, by 唐幡, bundled in `digest/fanfan/`) on every tab and signpost
+  (each section in `FF_SEC`; a new chapter id needs an entry there, or its tab keeps a plain line drawing), quest
+  rows, the Done box, empty lists and the browser-tab icon (asleep after 6 PM). The top bar's sound and Look buttons
+  keep their own drawings. Each drawing used is embedded once.
 - **places** is no longer a choice: every place is always on, and an older file's shorter list (or none) reads as
   all six. The helper accepts a request without it and always writes all six.
 - **moves:** one-shot motions; none under reduced motion. The icons are decoration (`aria-hidden`), outside
   everything the copy button copies.
-- **The picker, "Build your own fairy",** opens by itself once (per browser) on today's brief when there is no
-  `look.json`, and from Look → "Build your fairy…" any time. It never stacks on the good-morning parachute.
-  "Save my fairy" posts to the helper, so it only saves when the brief was opened through it (the Dock app or
-  `launch.sh`). On a brief opened as a plain file the button reads "Open the live brief to save" and opens
-  `http://127.0.0.1:8765/brief/<this file>#fairy=<mascot>.<animal>.<line>.<eyes>.<move>-<move>`; a page the helper
-  serves reads that address (names only, each checked against the allowed values, anything else ignored), opens
-  the picker with those choices filled in and clears the address. Nothing is saved until "Save my fairy" there.
+- **The Look panel** starts with a Ticket | Clawd switch (only when the builder offers Clawd). It posts the whole
+  look to the helper (`POST /look`), so it only saves on a brief opened through it (the Dock app or `launch.sh`);
+  on a plain file it says so. "Build your fairy…" and its picker were removed in 1.18.0.
+- **What your fairy reads**, at the bottom of Look, lists every source in the README's table as "Read this
+  morning" or "Not read this morning". Read means the content names it in `sources_marquee` or as a row title in
+  the Sources chapter (a Scout list with finds counts as the web), matched by the aliases in the builder's
+  `SOURCES`, so **name every source you read in `sources_marquee`**. When any is missing, a button copies a prompt
+  that starts with "set up morning fairy", names them, and asks Claude to check and advise, changing nothing until
+  the owner says yes.
 - A bad value in `look.json` falls back to its default one by one (with a warning); a file that is not a JSON
   object is ignored.
 
@@ -234,8 +236,6 @@ tapped Done goes to Resolved as "You marked this done"). It binds to 127.0.0.1 o
 Host, and accepts 4 KB at most. Without it, Done taps stay in that browser.
 Opened through the helper, an earlier brief gets a "Back to today" pill, and no brief can be framed by another site.
 
-- `GET /fanfan/<style>/<animal>-<noun>.svg` serves the bundled icons (from `fanfan/` beside `serve.py`) for the
-  picker's preview. Only listed styles, animals and nouns match; anything else is a 404.
 - `POST /look` takes the whole look (`places` may be left out), refuses any missing, unknown or repeated value,
   writes `<home>/look.json` with all six places (creating `<home>` if needed; a temp file swapped in), then
   rebuilds TODAY's brief from
@@ -243,8 +243,8 @@ Opened through the helper, an earlier brief gets a "Back to today" pill, and no 
   `BRIEF_DESKTOP_DIR`), with the same `--log` / `--admin-log` as the morning run. No content for today yet: the look
   is saved and arrives with the next brief. The reply says whether it was saved and whether it was rebuilt.
 - **Restart the helper after updating the plugin.** The Dock app and `launch.sh` only start one when
-  `/health` does not answer, so a helper started from the old version keeps running, and the picker reports that
-  it cannot save. Stop it with `pkill -f 'morning-fairy/digest/serve.py'`; the next click starts the new one.
+  `/health` does not answer, so a helper started from the old version keeps running, and the mascot switch
+  reports that it cannot save. Stop it with `pkill -f 'morning-fairy/digest/serve.py'`; the next click starts the new one.
 
 ## 4. Applying what the owner pasted back
 
