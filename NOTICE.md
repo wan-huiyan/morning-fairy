@@ -42,8 +42,9 @@ If you pick Clawd as your mascot, and on the Clawd button of the Look panel, the
 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 - **The code bundles no Clawd file.** Your browser loads each sticker as a picture from the artist's
-  repository through jsDelivr, pinned to commit `516f40536c9e3aaaa9995c267daad6e4d45e3d80`: every sticker when
-  the page opens if Clawd is your mascot, and otherwise one picture (Clawd standing) the first time you open Look.
+  repository through jsDelivr, pinned to commit `516f40536c9e3aaaa9995c267daad6e4d45e3d80`: when Clawd is your
+  mascot, a sticker each time it reacts (a mood, a click, Done, or an occasional idle moment), and otherwise one
+  picture (Clawd standing) the first time you open Look.
 - The page credits the artist wherever Clawd appears.
 - Clawd is a character that belongs to Anthropic. These stickers are unofficial fan art, and their licence
   allows non-commercial use only. Whether your own use fits that licence is your call.

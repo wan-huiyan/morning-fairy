@@ -37,6 +37,8 @@ INK = "#1e293b"
 M_STROKE = "#2a4d8a"
 BODY_PATH = "M17 15H47A10 10 0 0 1 57 25V29A5.5 5.5 0 0 0 57 40V44A10 10 0 0 1 47 54H17A10 10 0 0 1 7 44V40A5.5 5.5 0 0 0 7 29V25A10 10 0 0 1 17 15Z"
 MOODS = ("calm", "sweat", "sleepy", "starry")
+# faces the ticket pulls for a moment: a click, a tick, Done, or now and then by itself (JS_STAGE "the mascot reacts")
+REACTIONS = ("happy", "love", "wow", "wink", "dizzy")
 MOOD_LABELS = {"calm": "A smiling ticket with a sparkle", "sweat": "A ticket with a sweat drop: something is overdue",
                "sleepy": "A sleepy ticket: the working day is over", "starry": "A starry-eyed ticket: nothing waits on you"}
 SPARKLE = ('<path d="M55 2.5L56.9 8.1 62.5 10 56.9 11.9 55 17.5 53.1 11.9 47.5 10 53.1 8.1Z" fill="#f59e0b" stroke="#b86e06" '
@@ -82,6 +84,31 @@ def mascot_parts(mood="calm", live=True):
         star = lambda cx, cy: (f'<path d="M{cx} {cy - 5.6}L{cx + 1.5} {cy - 1.5} {cx + 5.6} {cy} {cx + 1.5} {cy + 1.5} {cx} {cy + 5.6} '
                                f'{cx - 1.5} {cy + 1.5} {cx - 5.6} {cy} {cx - 1.5} {cy - 1.5}Z" fill="#f59e0b" stroke="#b86e06" stroke-width=".7" stroke-linejoin="round"/>')
         face = (shine + _eyes(star(22.5, 32) + star(38.5, 32), live) + BLUSH.format(o=".6") + _mouth("M25.5 39Q30.5 45.5 35.5 39") + twinkle)
+    elif mood == "happy":  # eyes squeezed shut in a grin, mouth open
+        face = (shine + '<path d="M19 33.6Q22.5 28.2 26 33.6M35 33.6Q38.5 28.2 42 33.6" fill="none" stroke="#1e293b" stroke-width="2.4" stroke-linecap="round"/>'
+                + BLUSH.format(o=".85") + '<path d="M24.8 38.4Q30.5 48 36.2 38.4Z" fill="#1e293b" stroke="#1e293b" stroke-width="1.2" stroke-linejoin="round"/>'
+                '<path d="M27.6 43.2Q30.5 45.6 33.4 43.2Q30.5 41.6 27.6 43.2Z" fill="#f472b6"/>' + SPARKLE)
+    elif mood == "love":  # heart eyes
+        heart = lambda cx, cy: (f'<path d="M{cx} {cy + 4.6}C{cx - 6.6} {cy} {cx - 4} {cy - 6} {cx} {cy - 2.4}C{cx + 4} {cy - 6} {cx + 6.6} {cy} {cx} {cy + 4.6}Z" '
+                                'fill="#f43f5e" stroke="#9f1239" stroke-width=".8" stroke-linejoin="round"/>')
+        face = (shine + heart(22.5, 32) + heart(38.5, 32) + BLUSH.format(o=".9") + _mouth("M25.5 39Q30.5 45 35.5 39")
+                + '<path d="M54 4.5C51.4 1.6 47.6 4.4 50 7.6L54 11.5 58 7.6C60.4 4.4 56.6 1.6 54 4.5Z" fill="#f472b6" stroke="#be185d" stroke-width=".7"/>')
+    elif mood == "wow":  # surprised: brows up, eyes wide, mouth an O
+        face = (shine + '<path d="M18.5 24.6Q22.5 21.8 26.5 24.6M34.5 24.6Q38.5 21.8 42.5 24.6" fill="none" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round"/>'
+                '<ellipse cx="22.5" cy="32" rx="3.8" ry="4.8" fill="#1e293b"/><ellipse cx="38.5" cy="32" rx="3.8" ry="4.8" fill="#1e293b"/>'
+                '<circle cx="21.2" cy="30.2" r="1.4" fill="#fff"/><circle cx="37.2" cy="30.2" r="1.4" fill="#fff"/>'
+                + BLUSH.format(o=".4") + '<ellipse cx="30.5" cy="42.6" rx="2.6" ry="3.3" fill="#1e293b"/>'
+                f'<path d="M53 2.5V9" stroke="{st}" stroke-width="2" stroke-linecap="round"/><circle cx="53" cy="12.6" r="1.2" fill="{st}"/>')
+    elif mood == "wink":  # one eye shut, a cheeky smile, a sparkle
+        face = (shine + '<ellipse cx="22.5" cy="32" rx="3" ry="3.9" fill="#1e293b"/><circle cx="21.4" cy="30.6" r="1.1" fill="#fff"/>'
+                '<path d="M35 32.6Q38.5 29.2 42 32.6" fill="none" stroke="#1e293b" stroke-width="2.4" stroke-linecap="round"/>'
+                + BLUSH.format(o=".75") + _mouth("M25.5 39.4Q30.5 44.6 35.8 38.4") + SPARKLE)
+    elif mood == "dizzy":  # too many pokes: spiral eyes, a wobbly mouth
+        swirl = lambda cx, cy: (f'<path d="M{cx} {cy}m-.8 0a.8 .8 0 1 1 1.6 0a1.9 1.9 0 1 1-3.8 0a3 3 0 1 1 6 0" fill="none" '
+                                'stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>')
+        face = (shine + swirl(22.5, 32) + swirl(38.5, 32) + BLUSH.format(o=".5")
+                + _mouth("M24.5 41.6q1.5-2 3 0t3 0 3 0 3 0")
+                + f'<path d="M50 6l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4Z" fill="#f59e0b" stroke="#b86e06" stroke-width=".6"/>')
     elif mood == "sad":
         face = (shine + '<ellipse cx="22.5" cy="34" rx="2.8" ry="3.4" fill="#1e293b"/><ellipse cx="38.5" cy="34" rx="2.8" ry="3.4" fill="#1e293b"/>'
                 + _mouth("M26 44Q30.5 39.5 35 44")
@@ -106,7 +133,7 @@ def mascot_defs(kind="ticket"):
         sym = "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{pic}</symbol>' for m in MOODS)
         sym += "".join(f'<symbol id="{_mood_id(m, "tk-")}" viewBox="0 0 64 64" overflow="visible">{mascot_parts(m)}</symbol>' for m in MOODS)
     else:
-        sym = "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{mascot_parts(m)}</symbol>' for m in MOODS)
+        sym = "".join(f'<symbol id="{_mood_id(m)}" viewBox="0 0 64 64" overflow="visible">{mascot_parts(m)}</symbol>' for m in MOODS + REACTIONS)
     return ('<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>'
             '<linearGradient id="mbody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c2e0ff"/><stop offset="1" stop-color="#7cb2f6"/></linearGradient>'
             f'{sym}</defs></svg>')
@@ -2692,6 +2719,15 @@ main{overflow-x:clip;width:100%;max-width:100%}
 .tick-face.pop{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes pop{0%{transform:scale(.7)}55%{transform:scale(1.28)}100%{transform:scale(1.06)}}
 .brand .mascot.hop{animation:hop .9s cubic-bezier(.3,1.6,.5,1)}
+.pet-logo{display:inline-grid;place-items:center;padding:0;margin:0;border:0;background:none;color:inherit;font:inherit;line-height:0;cursor:pointer;border-radius:10px;-webkit-tap-highlight-color:transparent}
+.pet-logo:focus-visible{outline:3px solid var(--w-accent,var(--accent));outline-offset:3px}
+.pet-logo .mascot{transition:transform .16s cubic-bezier(.22,1,.36,1)}
+@media (hover:hover) and (pointer:fine){.pet-logo:hover .mascot:not(.hop){transform:translateY(-2px) rotate(-6deg)}}
+.petme{position:absolute;left:0;top:0;width:0;height:0;z-index:5;padding:0;margin:0;border:0;background:none;border-radius:40%;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pet-fx{position:fixed;left:0;top:0;width:0;height:0;z-index:95;pointer-events:none}
+.pet-fx span{position:absolute;left:-8px;top:-8px;width:16px;height:16px}
+.pet-fx svg{display:block;width:100%;height:100%}
+@media (prefers-reduced-motion:reduce){.pet-logo .mascot{transition:none}}
 @keyframes hop{0%,100%{transform:translateY(0)}30%{transform:translateY(-9px) rotate(-8deg)}60%{transform:translateY(0) rotate(4deg)}75%{transform:translateY(-3px)}}
 .ring.all-done{box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 30%,transparent)}
 #sound[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
@@ -3789,6 +3825,7 @@ JS = r"""
     close: function(){ note(sc(4), 0, .07); note(sc(1), .05, .12, {gain: .8}); },           // and closes
     flip: function(){ whoosh(0, .16, 1600, 700, .05); note(sc(3), .06, .09, {gain: .6}); }, // a deck card slides past
     tick: function(){ note(sc(5), 0, .14); note(sc(7), .045, .2, {gain: .55}); },           // a box ticked
+    pet: function(){ note(sc(7), 0, .08, {gain: .7}); note(sc(9), .07, .12, {gain: .55}); },   // the mascot is poked
     untick: function(){ note(sc(1), 0, .1, {gain: .6}); },                                   // and unticked
     done: function(){ run([3, 5, 7], .07, .16); note(sc(7) * 2, .22, .35, {gain: .35}); },  // a to-do marked Done
     copy: function(){ whoosh(0, .22, 500, 3400); note(sc(6), .15, .28); },                  // rows copied
@@ -5882,7 +5919,7 @@ JS_STAGE = r"""
     }
   };
 
-  function moodRef(){ var m = st.night ? 'sleepy' : st.done ? 'starry' : D.mood; return m === 'calm' ? '#mascot' : '#mascot-' + m; }
+  function moodRef(){ var m = st.react || (st.night ? 'sleepy' : st.done ? 'starry' : D.mood); return m === 'calm' ? '#mascot' : '#mascot-' + m; }
   function drawScene(){
     // more sky for the sun: where the scene can have it, it gets just enough for a sun of at least .55 to clear every
     // board and post, at most 35% of its height. A phone's stage row grows (the panel row below gives up that height); the scene
@@ -5924,7 +5961,87 @@ JS_STAGE = r"""
     if (wrap) wrap.hidden = !live;
     if (ck) ck.textContent = st.real ? (after ? 'After 6 PM' : clockText(st.t)) : clockText(st.t);
     var ss = $('.sunspot'); if (ss) { var lft = sx > G.W - 180; ss.classList.toggle('l', lft); ss.style.left = (sx + (lft ? -1 : 1) * 46 * G.k * G.ss) + 'px'; ss.style.top = sy + 'px'; }
+    placePet();
   }
+  function placePet(){
+    var b = document.getElementById('petme'), u = $('#whoUse', sceneEl); if (!b || !u) return;
+    var r = u.getBoundingClientRect(), s = stage.getBoundingClientRect(); if (!r.width) return;
+    b.style.left = (r.left - s.left).toFixed(1) + 'px'; b.style.top = (r.top - s.top).toFixed(1) + 'px';
+    b.style.width = r.width.toFixed(1) + 'px'; b.style.height = r.height.toFixed(1) + 'px';
+  }
+
+  /* ---------- the mascot reacts: a click (the logo, or the one in the scene), a tick, Done, and now and then by itself ---------- */
+  // The ticket pulls a face for a moment (st.react, which moodRef shows over the mood, so a redraw keeps it) and hops; hearts or
+  // stars float up. Clawd plays a sticker instead (briefClawd, from the mascot script). Five quick clicks: dizzy. Reduced motion:
+  // the face still changes, nothing hops or floats, and nothing happens by itself.
+  var REACT = ['happy', 'love', 'wow', 'wink'], ri = 0, reactT = 0, taps = [], lastAct = Date.now(), idleN = 0;
+  function clawdOn(){ return !!(window.briefClawd && briefClawd.on()); }
+  function logoUse(){ return document.querySelector('#pet-logo use'); }
+  function setFace(r){
+    var u = $('#whoUse', sceneEl); if (u) u.setAttribute('href', moodRef());
+    var l = logoUse(); if (!l) return;
+    if (r) { if (!l.hasAttribute('data-own')) l.setAttribute('data-own', l.getAttribute('href')); l.setAttribute('href', '#mascot-' + r); }
+    else if (l.hasAttribute('data-own')) { l.setAttribute('href', l.getAttribute('data-own')); l.removeAttribute('data-own'); }
+  }
+  function face(r, ms){
+    if (clawdOn() || !document.getElementById('mascot-' + r)) return false;  // Clawd (or a Clawd page gone back to the ticket) has no faces
+    clearTimeout(reactT); st.react = r; setFace(r);
+    reactT = setTimeout(function(){ st.react = null; setFace(null); }, ms || 1400);
+    return true;
+  }
+  function playing(el){ return el && el.getAnimations && el.getAnimations().some(function(a){ return a.playState === 'running'; }); }
+  function hopEl(el){
+    if (!el || rm() || playing(el)) return;  // never restart a hop in mid-air
+    if (el.id === 'hop') hop(); else { el.classList.remove('hop'); void el.getBoundingClientRect(); el.classList.add('hop'); }
+  }
+  var FX = {heart: '<path d="M7 12.2C2.2 9 1 6.4 2.6 4.2 4 2.4 6 2.8 7 4.6 8 2.8 10 2.4 11.4 4.2 13 6.4 11.8 9 7 12.2Z" fill="#f472b6" stroke="#be185d" stroke-width=".8"/>',
+            star: '<path d="M7 1.2L8.6 5.2 12.8 5.5 9.6 8.2 10.6 12.4 7 10.1 3.4 12.4 4.4 8.2 1.2 5.5 5.4 5.2Z" fill="#fbbf24" stroke="#b45309" stroke-width=".8"/>'};
+  function burst(el, r){
+    if (!el || rm()) return;
+    var b = el.getBoundingClientRect(); if (!b.width) return;
+    var host = document.createElement('div'); host.className = 'pet-fx'; host.style.transform = 'translate(' + (b.left + b.width / 2).toFixed(0) + 'px,' + (b.top + b.height * .2).toFixed(0) + 'px)';
+    var kind = r === 'love' || r === 'happy' ? 'heart' : 'star', n = r === 'dizzy' ? 5 : 3;
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement('span'); s.innerHTML = '<svg viewBox="0 0 14 14" aria-hidden="true">' + FX[r === 'dizzy' ? 'star' : kind] + '</svg>'; host.appendChild(s);
+      var dx = (i - (n - 1) / 2) * 16 + (Math.random() * 8 - 4), dy = -34 - Math.random() * 22;
+      s.animate([{transform: 'translate(0,0) scale(.6)', opacity: 0}, {transform: 'translate(' + (dx * .5).toFixed(0) + 'px,' + (dy * .45).toFixed(0) + 'px) scale(1)', opacity: 1, offset: .3},
+                 {transform: 'translate(' + dx.toFixed(0) + 'px,' + dy.toFixed(0) + 'px) scale(.9)', opacity: 0}],
+                {duration: 760, delay: i * 60, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both'});
+    }
+    document.body.appendChild(host); setTimeout(function(){ host.remove(); }, 760 + n * 60 + 40);
+  }
+  var dizzyTill = 0;
+  function pet(src){
+    var now = Date.now();
+    if (now < dizzyTill) { burst(src, 'dizzy'); return; }  // still seeing stars: more pokes only add stars
+    taps = taps.filter(function(t){ return now - t < 3000; }); taps.push(now);
+    var dizzy = taps.length >= 5; if (dizzy) { taps = []; dizzyTill = now + (clawdOn() ? 5800 : 2200); }
+    var r = dizzy ? 'dizzy' : st.night && !st.react ? 'wow' : REACT[ri++ % REACT.length];  // at night a poke wakes it with a start
+    if (clawdOn()) briefClawd.react(dizzy ? 'dizzy' : null); else face(r, dizzy ? 2200 : 1400);
+    hopEl(src); burst(src, r); snd('pet');
+  }
+  var petBtn = document.getElementById('petme'), petLogo = document.getElementById('pet-logo');
+  if (petBtn) petBtn.addEventListener('click', function(){ pet($('#hop', sceneEl)); });
+  if (petLogo) petLogo.addEventListener('click', function(){ pet(petLogo.querySelector('.mascot')); });
+  // a box ticked: a grin (the scene already hops); unticked: a start; Done: heart eyes
+  document.addEventListener('change', function(e){
+    var b = e.target; if (!b || !b.closest || b.type !== 'checkbox') return;
+    if (b.closest('label.dn')) { if (b.checked) face('love', 1500); }
+    else if (b.closest('.tick')) face(b.checked ? 'happy' : 'wow', 1100);
+  });
+  // now and then by itself, only while the page is in view, never at night or with reduced motion, and only twice after
+  // the last time the reader did something (for Clawd each moment is a picture to fetch)
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function(ev){ addEventListener(ev, function(){ lastAct = Date.now(); idleN = 0; }, {passive: true, capture: true}); });
+  (function idle(){
+    setTimeout(function(){
+      if (document.visibilityState === 'visible' && !rm() && !st.night && !st.react && idleN < 2 && Date.now() - lastAct > 15000) {
+        idleN++;
+        if (clawdOn()) briefClawd.react('idle');
+        else { face(Math.random() < .5 ? 'wink' : 'happy', 1300); hopEl($('#hop', sceneEl)); }
+      }
+      idle();
+    }, 40000 + Math.random() * 30000);
+  })();
   // the "now" label keeps the place given above when that place is inside the scene and clear of the headline, the mascot and
   // every meeting's board, post, gumdrop or moon; else it takes the first such place of a few around the mascot, else the one it overlaps least. Measured,
   // not assumed, so a big sticker, a tall hill or a board lifted over the mascot all count as drawn.
@@ -6715,7 +6832,10 @@ CLAWD_IDLE = "idle.svg"
 OFFER_CLAWD = True
 # a mood sticker plays once for its length (ms), then Clawd goes back to idle; 0 = keeps looping (asleep at night)
 CLAWD_STICKERS = {"sweat": ["deadline.apng", 4280], "starry": ["passed_long.apng", 4760], "hello": ["hello.apng", 4650],
-                  "done": ["lgtm.apng", 4760], "sleepy": ["sleep.apng", 0]}
+                  "done": ["lgtm.apng", 4760], "sleepy": ["sleep.apng", 0],
+                  # what a click, lots of clicks, or an idle moment plays
+                  "right": ["right.apng", 3660], "duck": ["duck.apng", 4620], "coffee": ["coffee.apng", 5010],
+                  "clear": ["clear.apng", 4380], "dizzy": ["dizzy.apng", 5800]}
 CLAWD_BOX = (-4, -7, 72)   # where a sticker sits in the mascot's 64-unit box (x, y, size): feet on the ticket's feet line
 CLAWD_CREDIT = ('<p class="foot credit" id="clawd-credit">Clawd stickers: fan art by '
                 '<a href="https://github.com/alwinecor/clawd-stickers" target="_blank" rel="noopener noreferrer">alwinecor</a>'
@@ -7040,6 +7160,13 @@ JS_MASCOT = r"""(function(){
     var c = document.getElementById('clawd-credit'); if (c) c.hidden = true;
   }
   if (kind === 'clawd') { var probe = new Image(); probe.onerror = toTicket; probe.src = M.base + M.idle; }
+
+  /* ---------- reactions: the scene asks; a click takes the next sticker in turn, an idle moment a quiet one ---------- */
+  var PET = ['hello', 'right', 'duck', 'coffee', 'clear'], pi = 0, IDLE = ['coffee', 'duck', 'hello'];
+  window.briefClawd = {on: function(){ return kind === 'clawd'; }, react: function(k){
+    if (k === 'idle') k = IDLE[Math.floor(Math.random() * IDLE.length)]; else if (!k) k = PET[pi++ % PET.length];
+    oneShot(k);
+  }};
 })();"""
 
 
@@ -7266,7 +7393,7 @@ def _build(content, log, admin_log, briefs, look):
 <div class="ambient" aria-hidden="true"></div>
 <div class="app" data-layout="scene">
   <header class="bar">
-    <div class="brand">{mascot_svg(cls="mascot logo", label="", mood=mood)}<span class="brand-name"><b>{esc(d.get("brand", "Jira digest"))}</b><small>{esc(d["date_short"])}</small></span></div>
+    <div class="brand"><button type="button" class="pet-logo" id="pet-logo" aria-label="Say hi to the mascot">{mascot_svg(cls="mascot logo", label="", mood=mood)}</button><span class="brand-name"><b>{esc(d.get("brand", "Jira digest"))}</b><small>{esc(d["date_short"])}</small></span></div>
     <div class="nav-tools">
       <span id="msg" aria-live="polite"></span>
       <span class="ring" id="ring" role="img" aria-label="rows ticked"><span>0/0</span></span>{tm_btn}
@@ -7281,6 +7408,7 @@ def _build(content, log, admin_log, briefs, look):
       <svg class="scene" id="scene" aria-hidden="true"></svg>
       <div class="headline" id="headline"><span class="when">{esc(d["date_label"])}<span id="clockwrap"> · <b id="clock"></b></span><span id="hint"> · drag the sun</span></span><h1>{headline}</h1><p>{d["lede_html"]}</p></div>
       <div class="meetlinks" id="meetlinks"></div>
+      <button type="button" class="petme" id="petme" tabindex="-1" aria-hidden="true"></button>
       <div class="hotspots" id="hotspots"></div>
       <div class="pinlinks" id="pinlinks"></div>
       <div class="finale-banner" id="finale-banner" hidden><span></span></div>
