@@ -97,8 +97,42 @@ class MascotSwitch(unittest.TestCase):
         finally:
             bd.OFFER_CLAWD = saved
 
-    def test_a_ticket_page_names_no_clawd_address(self):
-        self.assertNotIn(bd.CLAWD_BASE, bd.build(content(), look=dict(FULL_LOOK, mascot="ticket")))
+    def test_a_ticket_page_fetches_no_clawd_until_look_opens(self):
+        html = bd.build(content(), look=dict(FULL_LOOK, mascot="ticket"))
+        # the Look panel's Clawd button names the sticker as data-src only: nothing is fetched until Look opens
+        self.assertEqual(html.count(bd.CLAWD_BASE), 1)
+        self.assertIn(f'data-src="{bd.CLAWD_BASE}{bd.CLAWD_IDLE}"', html)
+        self.assertNotIn(f'src="{bd.CLAWD_BASE}', html.replace(f'data-src="{bd.CLAWD_BASE}', ""))
+
+    def test_the_mascots_are_pictures_not_words(self):
+        panel = look_panel(bd.build(content(), look=None))
+        picks = re.findall(r'<button type="button" class="mpick" data-mascot="([a-z]+)"[^>]*>(.*?)</button>', panel)
+        self.assertEqual([k for k, _ in picks], ["ticket", "clawd"])
+        for k, inner in picks:
+            self.assertTrue(inner.startswith("<img "), k)
+            self.assertEqual(re.sub(r"<[^>]+>", "", inner).strip(), "", k)  # no visible words
+        self.assertRegex(panel, r'data-mascot="ticket"[^>]*aria-label="The ticket"')
+
+
+class Layouts(unittest.TestCase):
+    """1.19.0: Map is retired, the top bar's layout switch is gone (Look has it), and the scene opens on the scene alone."""
+
+    def test_no_map_and_one_layout_switch(self):
+        html = bd.build(content(), look=None)
+        self.assertNotIn('data-layout="map"', html)
+        self.assertNotIn("lvxp", html)
+        self.assertNotIn('class="lvl', html)
+        self.assertNotIn("mapLayout", html)
+        self.assertEqual(html.count('aria-label="Layout"'), 1)  # only the Look panel's
+        self.assertIn('<button type="button" data-layout="scene">Scene</button></div>', look_panel(html))
+
+    def test_a_saved_map_opens_the_scene(self):
+        html = bd.build(content(), look=None)
+        self.assertIn("return v === 'map' ? 'scene' :", html)
+
+    def test_switching_to_the_scene_opens_no_sheet(self):
+        html = bd.build(content(), look=None)
+        self.assertNotIn("openSheet(keep", html)
 
 
 class Sources(unittest.TestCase):
