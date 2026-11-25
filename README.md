@@ -90,7 +90,7 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 |---|---|---|
 | 🌍 | **Four worlds** | Storybook garden, Cosmic orbit, Candy pop and Caterpillar, each with a light and a dark version (8 looks), its own cursor wand and its own fairy dust. In the caterpillar world the day is a leaf, the caterpillar's body is the part of the day already lived, and at 6 PM it curls into a cocoon. |
 | 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. Click a hill or its sign to open that meeting; click an admin clipboard to open its admin row. |
-| 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. |
+| 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. **Click it** (on the hill, or top left) and it reacts: the ticket hops and pulls a face (a grin, heart eyes, surprise, a wink) as hearts or stars float up; Clawd plays a sticker. Five quick clicks make either one dizzy. It also grins when you tick a box, looks startled when you untick one, gets heart eyes on Done, and now and then does something by itself. |
 | 🧚 | **Ticket or Clawd** | Tap a picture at the top of Look to switch the mascot. A little dog draws every tab and icon on the page, with 5 small moves. |
 | 🔌 | **What your fairy reads** | Look lists the sources this morning's brief read and the ones it did not, with one button that copies a prompt asking Claude to help set up the rest. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
@@ -283,8 +283,9 @@ Nothing in that folder leaves your machine, and the page is never rebuilt over a
    Claude quests, Jira drafts). It never writes HTML.
 3. **The builder draws the page.** `build_digest.py` is one Python file using only the standard library. It
    escapes every text field, keeps only `https` links, and puts everything into one self-contained HTML file
-   (the one exception: Clawd's stickers load as pictures from the artist's repository, all of them when Clawd is
-   your mascot, and one picture for the Clawd button the first time you open Look).
+   (the one exception: Clawd's stickers load as pictures from the artist's repository: when Clawd is your mascot, a sticker each time it reacts (a mood, a click, Done, or now and then by itself,
+   at most twice in a row while nobody uses the page),
+   and one picture for the Clawd button the first time you open Look).
 4. **You act.** Tick the Jira rows you agree with, accept the quests you want, tap Done on what you finished,
    then press **Copy ticked** and paste the result back to Claude. Claude applies only what you pasted.
 
@@ -493,7 +494,7 @@ python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy
   The little animals are bundled in `digest/fanfan/`, with their licence and the commit they came from.
 - **Clawd stickers** by alwinecor ([alwinecor/clawd-stickers](https://github.com/alwinecor/clawd-stickers)),
   CC BY-NC-SA 4.0. The code does not bundle them: your browser loads them from the artist's repository (through
-  jsDelivr, pinned to one commit), every sticker when the page opens if Clawd is your mascot, and otherwise one
+  jsDelivr, pinned to one commit): when Clawd is your mascot, a sticker each time it reacts, and otherwise one
   picture the first time you open Look. No copy of them is in this repository. Clawd belongs to
   Anthropic; these are unofficial fan art, licensed for non-commercial use only. Whether your own use fits that
   licence is your call.
@@ -505,6 +506,13 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.20.0** (2026-11-25): a livelier mascot. Click it, on the hill or top left (the top-left one is a button, so
+  the keyboard reaches it too), and it reacts. The ticket hops and pulls one of four new faces in turn (a grin,
+  heart eyes, surprise, a wink) while hearts or stars float up; Clawd plays one of five stickers in turn. Five quick
+  clicks make either one dizzy. The ticket also grins when you tick a box, looks startled when you untick one and
+  gets heart eyes on Done, and both do something small by themselves now and then: only while the page is in view,
+  never at night or with reduced motion, and at most twice in a row while nobody uses the page. With reduced motion
+  the faces still change but nothing hops or floats.
 - **1.19.0** (2026-11-25): tidier layouts. The mascot switch in Look is two pictures instead of the words Ticket and
   Clawd. The layout switch in the top bar is gone (Look has the same one). Map is retired: it looked busy, and a
   browser that had saved Map opens the scene instead. Switching to Scene no longer opens the section you were reading:

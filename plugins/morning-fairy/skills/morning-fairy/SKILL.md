@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.19.0
+version: 1.20.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -218,7 +218,13 @@ All design lives in the builder; the content never sets colours, layout or motio
 - **moves:** one-shot motions; none under reduced motion. The icons are decoration (`aria-hidden`), outside
   everything the copy button copies.
 - **The Look panel** starts with the mascot switch, two pictures (the ticket, Clawd), only when the builder offers
-  Clawd; Clawd's picture is fetched only once Look opens (`data-src`). It posts the whole
+  Clawd; Clawd's picture is fetched only once Look opens (`data-src`).
+- **Reactions (1.20.0):** a click on the mascot (the logo button top left, or a pointer-only button the scene keeps
+  over its mascot) makes the ticket hop and pull a face from `REACTIONS` (happy, love, wow, wink; dizzy after five
+  quick clicks), shown over the mood for about 1.4 s, with hearts or stars floating up; Clawd plays a sticker
+  (`CLAWD_STICKERS`: hello, right, duck, coffee, clear, dizzy). A tick, an untick and Done pull faces too. Idle
+  moments run only while the page is visible, never at night or under reduced motion, at most twice after the
+  reader's last input. Reduced motion keeps the faces and drops the hop and the floating bits. It posts the whole
   look to the helper (`POST /look`), so it only saves on a brief opened through it (the Dock app or `launch.sh`);
   on a plain file it says so. "Build your fairy…" and its picker were removed in 1.18.0.
 - **What your fairy reads**, at the bottom of Look, lists every source in the README's table as "Read this
