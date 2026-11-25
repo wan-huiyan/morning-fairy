@@ -62,6 +62,7 @@ it can see.
 | ✉️ **Email** (Gmail) | Threads where you were asked and have not replied, deadlines sent to you by name (training, timesheets, access reviews), alert emails such as a failing job, and Jira notification emails | Email connector | The to-do list (core) |
 | 📝 **Meeting notes** | What was agreed in yesterday's meetings, as evidence for Jira updates. It prefers the raw transcript over an AI summary | Wherever your notes land. For example, Google Meet's "Notes by Gemini" arrive by email and link to a Google Doc, which needs a Google Drive connector to open | Jira drafts |
 | 💬 **Chat** (Slack) | Every direct and group message in the window, not only mentions; project channels as evidence for Jira | Slack connector | The to-do list (core) |
+| 🗨️ **Doc comments** (Google Docs, Slides, Sheets) | Comments that tag you: action items assigned to you that are still open, and @-mentions that ask you something. Assignments you have resolved move to Resolved; old ones in files nobody has touched for 14 days are left out | Google's comment emails through the email connector, and a Google Drive connector to check which assignments are still open | The to-do list |
 | 🎫 **Jira** | Your assigned tickets and what each one already says, so a draft never repeats what the ticket shows | Atlassian connector | Jira drafts |
 | 🐙 **GitHub** | Merged pull requests as evidence for Jira; the live state of anything carried over from yesterday ("to merge" may have merged overnight); Scout searches | The `gh` command-line tool, signed in | Jira drafts; Scout (optional) |
 | ☁️ **Google Cloud** | What BigQuery queries cost this month in each project you work in | `gcloud` and `bq`, signed in | Cloud spend (optional) |
@@ -507,6 +508,10 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.22.0** (2026-11-25): a new source, **doc comments**. Comments in Google Docs, Slides and Sheets that tag you
+  now reach the to-do list: action items assigned to you that are still open, and @-mentions that ask you
+  something. Google's comment emails say what was asked; a Google Drive search says which assignments are still
+  open, so one you resolved moves to Resolved. Look's "What your fairy reads" lists it.
 - **1.21.0** (2026-11-25): two new mascots and a bigger Clawd. **Nib**, a wax crayon drawn in crayon (its lines redraw
   themselves a few times a second, like hand-drawn animation, in the scene and the top-left logo), and **Pip**, a little
   laptop whose face glows on its screen (dimmer at night). Both have the ticket's four moods and five click faces, hop,

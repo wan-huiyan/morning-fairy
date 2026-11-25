@@ -3375,6 +3375,7 @@ SOURCES = (
     ("email", "Email", "the to-do list", ("email", "gmail", "mail", "outlook")),
     ("notes", "Meeting notes", "Jira drafts", ("meeting notes", "meetings", "notes", "drive", "google drive", "gemini notes")),
     ("chat", "Slack", "the to-do list", ("slack", "chat", "teams")),
+    ("docs", "Doc comments", "the to-do list", ("doc comments", "google docs", "google slides", "docs comments", "comments")),
     ("jira", "Jira", "Jira drafts", ("jira", "atlassian")),
     ("github", "GitHub", "Jira drafts and the Scout", ("github", "code host", "gh")),
     ("cloud", "Google Cloud", "Cloud spend (optional)", ("google cloud", "cloud spend", "gcp", "bigquery", "spend")),

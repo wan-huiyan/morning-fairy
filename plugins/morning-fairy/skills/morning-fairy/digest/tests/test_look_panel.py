@@ -148,6 +148,18 @@ class Sources(unittest.TestCase):
         on = {k for k, v in bd.sources_read(d) if v}
         self.assertEqual(on, {"jira", "email", "calendar", "chat", "github", "tempo", "logs", "cloud"})
 
+    def test_doc_comments_count_as_read_when_named(self):
+        d = content()
+        for name in ("Doc comments", "Google Docs", "Google Slides"):
+            d["sources_marquee"] = [name]
+            self.assertIn(("docs", True), bd.sources_read(d), name)
+
+    def test_the_readme_lists_every_source(self):
+        readme = (DIGEST.parents[4] / "README.md").read_text(encoding="utf-8")
+        for _, label, *_ in bd.SOURCES:
+            if label not in ("Slack", "Claude Code logs"):  # the README says "Chat (Slack)" and "Your local Claude Code logs"
+                self.assertIn(f"**{label}**", readme, label)
+
     def test_the_sources_chapter_rows_count_too(self):
         d = content()
         d["sources_marquee"] = []
