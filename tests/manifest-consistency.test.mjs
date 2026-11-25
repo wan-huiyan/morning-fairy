@@ -87,11 +87,11 @@ describe("the version is bumped everywhere it is recorded", () => {
     const pkg = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf-8"));
     assert.equal(pkg.version, plugin.version);
   });
-  it("README's Version History has an entry for the current version", () => {
-    const readme = readFileSync(resolve(ROOT, "README.md"), "utf-8");
+  it("CHANGELOG.md has an entry for the current version", () => {
+    const changelog = readFileSync(resolve(ROOT, "CHANGELOG.md"), "utf-8");
     assert.ok(
-      readme.includes(`- **${plugin.version}** (`),
-      `README.md has no '- **${plugin.version}** (…)' line — bump the changelog too`
+      changelog.includes(`- **${plugin.version}** (`),
+      `CHANGELOG.md has no '- **${plugin.version}** (…)' line — bump the changelog too`
     );
   });
 });

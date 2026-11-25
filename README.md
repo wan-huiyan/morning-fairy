@@ -20,8 +20,8 @@
 > never sends, posts or changes anything in your mail, chat, calendar or Jira.**
 
 <p align="center">
-  <img src="docs/world-tour.gif" width="760" alt="Dragging the sun across the day, then switching between the garden, cosmic, candy and caterpillar worlds, switching to dark and opening the time machine"/>
-  <br/><sub>Drag the sun and the mascot walks the day. Switch worlds (garden, cosmic, candy, caterpillar), switch to dark, open the time machine. (All data here is made up.)</sub>
+  <img src="docs/world-tour.gif" width="760" alt="Dragging the sun across the day and back, a click on the mascot that makes it pull a face, then switching between the garden, cosmic, candy and caterpillar worlds in the Look panel, switching to dark and opening the time machine"/>
+  <br/><sub>Drag the sun and the mascot walks the day; click the mascot and it reacts. Switch worlds in Look (garden, cosmic, candy, caterpillar), switch to dark, open the time machine. (All data here is made up.)</sub>
 </p>
 
 ## What it is, and why
@@ -31,7 +31,7 @@ morning-fairy reads them once, sorts what it found into **needs you today**, **a
 worth your time**, and draws the result as one page you can take in at a glance.
 
 The page is built to be *enjoyed*, not just read. The day is a landscape: the ground rises at each meeting by
-how heavy it is, the sun rides from 8 AM to 6 PM, and a small ticket mascot stands at "now" with a face that
+how heavy it is, the sun rides from 8 AM to 6 PM, and a small mascot stands at "now" with a face that
 matches your morning (a sweat drop when something is overdue, starry eyes when nothing waits on you, sleepy
 after 6). When you finish something, you tap **Done** and watch it get crossed off and fly down into Resolved.
 
@@ -48,7 +48,7 @@ after 6). When you finish something, you tap **Done** and watch it get crossed o
 ## 🔌 Where the data comes from
 
 <p align="center">
-  <img src="docs/how-it-works.svg" width="760" alt="At 08:00 on a weekday the sun rises and the ticket mascot hops across ten little houses, one per connected tool; as it lands on each, a flag pops up naming it: Calendar, Email, Meeting notes, Slack, Jira, GitHub, Cloud spend, Local Claude logs, Tempo, The web. It flies to one page, a to-do on the page gets ticked, and a paper plane carries it to a terminal where claude opens in the project folder with that task and its context. Coloured dots carry what the fairy found from the houses to the page."/>
+  <img src="docs/how-it-works.svg" width="760" alt="At 08:00 on a weekday the sun rises and the ticket mascot hops across eleven little houses, one per connected tool; as it lands on each, a flag pops up naming it: Calendar, Email, Meeting notes, Slack, Doc comments, Jira, GitHub, Cloud spend, Local Claude logs, Tempo, The web. It flies to one page, a to-do on the page gets ticked, and a paper plane carries it to a terminal where claude opens in the project folder with that task and its context. Coloured dots carry what the fairy found from the houses to the page."/>
   <br/><sub>The morning round: one house per tool you connect, one page, then the to-do you pick goes to Claude with its context.</sub>
 </p>
 
@@ -105,16 +105,6 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 | 🎉 | **Small secrets** | Type `magic` anywhere for a party. Tick every box on the page and the mascot hops into an all-done finale. |
 | ♿ | **Calm when asked** | With reduced motion on, nothing flies, bobs, wiggles or sparkles. |
 
-<p align="center">
-  <img src="docs/three-worlds.png" alt="The same morning in the garden, cosmic and candy worlds"/>
-  <br/><sub>One morning, three worlds: the Scene layout in the garden, Tabs in space, the Quests board in candy.</sub>
-</p>
-
-<p align="center">
-  <img src="docs/caterpillar-world.png" width="760" alt="The caterpillar world: the day is a leaf, the caterpillar's body runs from 8 AM to now with the mascot on its back, and meeting signs stand on the leaf's humps"/>
-  <br/><sub>The fourth world: the caterpillar's body is the part of the day already lived. Click a hump to open that meeting.</sub>
-</p>
-
 <table>
 <tr>
 <td width="62%"><img src="docs/cosmic-light-jira.png" alt="The Jira tab: a draft comment, what the client will see, and the private evidence behind it"/><br/><sub>Jira drafts: what the ticket will say, and the evidence that stays private.</sub></td>
@@ -122,26 +112,24 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 </tr>
 </table>
 
-<p align="center">
-  <img src="docs/garden-dark-timemachine.png" width="760" alt="The time machine in the dark garden: a month calendar and yesterday's summary"/>
-  <br/><sub>The time machine in the dark garden: yesterday had 5 to-dos, 2 marked done, and one Jira row left to tick.</sub>
-</p>
-
 ## 🧚 The Look panel
 
 <p align="center">
-  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: four mascot pictures at the top (the ticket picked, then Nib the crayon, Pip the laptop, and the Clawd button, left blank in this picture), the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
+  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: four mascot pictures at the top (the ticket picked, then Nib the crayon, Pip the laptop, and the Clawd button, left blank in this picture), the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Doc comments, Jira, GitHub and The web read this morning; Meeting notes, Google Cloud, Claude Code logs and Tempo not read; and a button that copies a prompt to set up the rest"/>
   <br/><sub>Look, over the demo morning. Clawd's button shows the artist's sticker once Look opens; it is left blank
   here so this repository holds no copy of it. (Made-up data.)</sub>
 </p>
 
-<p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/hello.gif" width="120" alt="Clawd waving hello"/>
-  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/sleep.gif" width="120" alt="Clawd asleep in a night cap"/>
-  <img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/passed.gif" width="120" alt="Clawd celebrating a green tick"/>
-  <br/><sub>Clawd as the mascot: good morning, after 6 PM, all done. These stickers load from
-  <a href="https://github.com/alwinecor/clawd-stickers">alwinecor/clawd-stickers</a> as you read this page; they are not part of this repository.</sub>
-</p>
+<table>
+<tr>
+<td width="25%" align="center"><img src="docs/mascot-ticket.gif" width="100%" alt="The ticket mascot clicked five ways: a grin, heart eyes, surprise, a wink, then dizzy after five quick clicks, hopping each time as hearts or stars float up"/><br/><sub><b>The ticket</b>: the brief's own</sub></td>
+<td width="25%" align="center"><img src="docs/mascot-nib.gif" width="100%" alt="Nib, a wax crayon drawn in wobbly crayon lines, clicked five ways: a grin, heart eyes, surprise, a wink, then dizzy"/><br/><sub><b>Nib</b>: a wax crayon, drawn in crayon</sub></td>
+<td width="25%" align="center"><img src="docs/mascot-pip.gif" width="100%" alt="Pip, a little laptop whose face glows on its screen, clicked five ways: a grin, heart eyes, surprise, a wink, then dizzy"/><br/><sub><b>Pip</b>: a little laptop</sub></td>
+<td width="25%" align="center"><img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/hello.gif" width="48%" alt="Clawd waving hello"/><img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/passed.gif" width="48%" alt="Clawd celebrating a green tick"/><br/><img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/sleep.gif" width="48%" alt="Clawd asleep in a night cap"/><img src="https://cdn.jsdelivr.net/gh/alwinecor/clawd-stickers@516f40536c9e3aaaa9995c267daad6e4d45e3d80/dev-life/gif/coffee.gif" width="48%" alt="Clawd sipping a coffee"/><br/><sub><b>Clawd</b>: fan-art stickers by <a href="https://github.com/alwinecor/clawd-stickers">alwinecor</a></sub></td>
+</tr>
+</table>
+<p align="center"><sub>Each mascot clicked: a grin, heart eyes, surprise, a wink, then five quick clicks for dizzy. Clawd plays a sticker
+instead; its stickers load from the artist's repository as you read this page and are not part of this one. (Made-up data.)</sub></p>
 
 - **Mascot: the ticket, Nib, Pip or Clawd**, four pictures, no words. The brief's own blue ticket; **Nib**, a wax crayon
   drawn in crayon; **Pip**, a little laptop with its face on the screen (both drawn inside the page, with the ticket's moods
@@ -508,153 +496,7 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
-- **1.22.0** (2026-11-25): a new source, **doc comments**. Comments in Google Docs, Slides and Sheets that tag you
-  now reach the to-do list: action items assigned to you that are still open, and @-mentions that ask you
-  something. Google's comment emails say what was asked; a Google Drive search says which assignments are still
-  open, so one you resolved moves to Resolved. Look's "What your fairy reads" lists it.
-- **1.21.0** (2026-11-25): two new mascots and a bigger Clawd. **Nib**, a wax crayon drawn in crayon (its lines redraw
-  themselves a few times a second, like hand-drawn animation, in the scene and the top-left logo), and **Pip**, a little
-  laptop whose face glows on its screen (dimmer at night). Both have the ticket's four moods and five click faces, hop,
-  and do the same idle moments; both are drawn inside the page, so they work offline. Clawd now stands about 1.4 times
-  bigger, filling the space the ticket fills. The mascot switch in Look is always shown, with four pictures (three if
-  the builder does not offer Clawd).
-- **1.20.0** (2026-11-25): a livelier mascot. Click it, on the hill or top left (the top-left one is a button, so
-  the keyboard reaches it too), and it reacts. The ticket hops and pulls one of four new faces in turn (a grin,
-  heart eyes, surprise, a wink) while hearts or stars float up; Clawd plays one of five stickers in turn. Five quick
-  clicks make either one dizzy. The ticket also grins when you tick a box, looks startled when you untick one and
-  gets heart eyes on Done, and both do something small by themselves now and then: only while the page is in view,
-  never at night or with reduced motion, and at most twice in a row while nobody uses the page. With reduced motion
-  the faces still change but nothing hops or floats.
-- **1.19.0** (2026-11-25): tidier layouts. The mascot switch in Look is two pictures instead of the words Ticket and
-  Clawd. The layout switch in the top bar is gone (Look has the same one). Map is retired: it looked busy, and a
-  browser that had saved Map opens the scene instead. Switching to Scene no longer opens the section you were reading:
-  the scene always opens on the scene alone.
-- **1.18.0** (2026-11-25): a simpler Look panel. "Build your fairy…" and its picker are gone: the mascot is now a
-  Ticket | Clawd switch at the top of Look, and every page draws the same little dog icons, including the tabs added
-  since the picker (Hours, Cloud spend, Scout), which had kept plain line drawings. In the picker's place, Look lists
-  which sources this morning's brief read and which it did not, with a button that copies a "set up morning fairy"
-  prompt for the rest. An existing `look.json` still works: its mascot and moves count, its animal, line and eyes
-  are ignored. The helper no longer serves `/fanfan` (only the picker used it).
-- **1.17.2** (2026-11-24): the same login-page check now finds the right browser for you. When more than one Chrome is
-  connected to Claude, the session opens the Tempo link in each one, just to look, and carries on in the one that is
-  signed in. It asks you only if none, or more than one, is signed in. Before this it asked you which one to use.
-- **1.17.1** (2026-11-24): Fill Tempo and Approve and log no longer get stuck on a login page. If the Tempo link lands
-  on the Atlassian login page, the session now checks which Chrome browsers are connected to Claude and asks which
-  one you are signed in on, instead of asking you to sign in again in a browser you are not using.
-- **1.17.0** (2026-11-20): easy setup. Say "set up morning fairy" and Claude checks your computer with the new
-  `digest/doctor.py` (Python, folders, `gh` and `gcloud` sign-ins, settings files, the helper, the Dock app; read-only,
-  each problem with its fix), tests each connector with one small read, asks your name, email and time zone, writes
-  your routine prompt to `~/.morning-fairy/routine-prompt.md`, builds your first brief, and schedules the run or tells
-  you how. Your settings files `clients.json` and `start.json` now live in `~/.morning-fairy/`, so a plugin update
-  (which installs a new folder) no longer loses them; a file still beside the code is read until you move it, and
-  `doctor.py` tells you how.
-- **1.16.0** (2026-11-19): the swipe deck is back, beside the map, so there are four layouts to pick from. Tap the card in
-  the middle of the deck (or the Enlarge button in its header) and it grows into a big reading view, nearly the whole
-  window on a laptop and the whole screen on a phone, with its own scroll. Close it with ×, Escape or a tap outside and it
-  shrinks back into its place. Tapping a box, a link or a button inside the card still does just that, and a swipe still
-  just moves the deck. Tapping a card at the side brings it to the middle. A pick of the deck saved in the browser opens
-  as the deck again.
-- **1.15.0** (2026-11-18): a quest map. The side-scrolling card layout is retired and a new Map layout takes its
-  place: each section is a numbered level standing on the hills, joined by a dashed path (a snake across a laptop, a
-  zig-zag down a phone). The mascot hops to the level you open and its card pops up over the scene, with Level i of n,
-  Back and Next level (or the arrow keys). A level shows how many of its items are still to do and turns into a check
-  when you have ticked them all; an XP bar under the headline counts today's ticks. A saved pick of the old layout opens
-  as the map.
-- **1.14.1** (2026-11-18): calendar meetings are logged as the calendar shows them. An hours entry can carry a
-  `start` time; the page shows it ("from 10:00") and the logging session logs that row as its own worklog at that
-  time and length. Both Tempo prompts now say each meeting is its own worklog, never merged with another.
-- **1.14.0** (2026-11-18): quiet stretches. The session log only sees time while messages flow, so reading an
-  agent's work or writing your answers in the brief went uncounted. `measure_session_hours.py --spans` now lists
-  the silence before each reply you typed, cut around meetings, out-of-office blocks (`"away": true` in
-  `--meetings`) and typing in other sessions, and the timeline draws them dotted and left out until you tick them.
-  And overlaps between rows now count in both rows: the timeline marks them and takes nothing off either.
-- **1.13.0** (2026-11-18): the Spend tab splits each project's cost into **Your patch** (your login plus the
-  service accounts you list in `spend_accounts.json`) and **The neighbours** (everyone else), in the summary bar,
-  each row and each day's bar.
-- **1.12.1** (2026-11-18): the session that Approve and log starts now runs on Sonnet (`--model sonnet`): the hours
-  are already decided on the page, so it only types them in. Fill Tempo, which measures and proposes, stays on your
-  default model.
-- **1.12.0** (2026-11-18): the Approve and log card draws each day as a timeline. One lane per row, each stretch
-  of work across the hours in the project's colour, calendar meetings as pills, and stretches where an agent ran
-  alone faded and left out until you click them in. Where two rows overlap, the overlap is hatched and counted
-  once (in the meeting's row by default; a click moves it). Lane totals sum into the tiles and the button, and
-  hovering a block says where it came from. `measure_session_hours.py --spans` lists the stretches the brief needs.
-- **1.11.0** (2026-11-18): the Spend tab, optional. `measure_gcp_spend.py` finds the Google Cloud projects you ran
-  a BigQuery query in over the last 30 days and estimates what their queries cost this month; the page draws a row
-  per project with a bar per day, the month-end pace and any day that jumped. And the "No change" tickets now always
-  sit folded at the foot of the Jira tab as "Already up to date in Jira (N)": on a morning with nothing to update
-  they used to get a tab of their own.
-- **1.10.0** (2026-11-18): the Hours tab gets an "Approve and log" card. For each day Tempo still lacks, it lists
-  the morning's proposed rows, all ticked, with the minutes and the description Tempo will get, both editable.
-  One click starts a Claude session that logs exactly those rows, reading the day in Tempo first and stopping if
-  anything does not match. It needs the same Tempo setup as Fill Tempo; without it the card still shows and says logging is not set up.
-  Hours entries can carry a short `desc` for that description. The hours measure now counts only stretches where you
-  actually typed a message, so agents running on their own, a loaded skill, a `/loop` prompt or a
-  context-refresh summary no longer add time; `--include-unattended` brings the old count back, and
-  `--require-typed` still works but is now the default.
-- **1.9.0** (2026-11-17): the time machine moves from the tabs to a clock button in the top row and opens as a
-  dialog, so the remaining tabs fit; a narrow tab strip (a laptop window about 1000 px wide) shows them icon over
-  label. An earlier brief served by the helper now has a way forward inside its time machine: its own day is
-  labelled with its date instead of "Today", and a "Today" chip and a "Back to today's brief" button lead to the
-  newest brief. A past brief opened straight from the folder links back through the helper. The calendar's
-  Sunday column no longer overflows on a phone.
-- **1.8.1** (2026-11-16): Fill Tempo opens its Terminal session as `claude --chrome`, so it can reach the Claude in
-  Chrome extension to read your Tempo page (without the flag the session has no Chrome tools). Start in Claude
-  sessions stay without it.
-- **1.8.0** (2026-11-16): the Scout tab. An optional `scout` list (tone `scout`) shows web finds as offers: no Done
-  pill, left out of every count of what waits on you, asks read-and-assess only, and `read_scouted` keeps a link from
-  being shown twice in 14 mornings. The routine prompt gains an optional step for it. Quest prompts now say the
-  tasks may come from "email, Slack, calendar and the web". On a phone, the seven tab labels wrap instead of
-  overlapping.
-- **1.7.0** (2026-11-16): Start in Claude. With `digest/start.json` in place and the brief opened through the
-  local helper, each project and quest on the Quests board can open a Claude Code session in Terminal, in its
-  project folder (`POST /start-quests`, quest ids only; folders limited to `root`). It runs in your own default
-  permission mode; Copy stays for anyone who would rather paste the prompt themselves. Fill Tempo now hands its
-  prompt to Terminal the same way, through a private file the new shell reads once and deletes.
-- **1.6.2** (2026-11-16): the Hours tab lists the newest day first, in the bars and the table.
-- **1.6.1** (2026-11-16): the Hours tab's bars take each world's own colours (garden, cosmic, candy,
-  caterpillar; light and dark), and the greys follow each world's muted ink.
-- **1.6.0** (2026-11-16): the Hours tab. An `hours` chapter draws one stacked bar per day (each project
-  its own colour; billable solid, non-billable striped, unattributed dotted grey; a tick for what Tempo
-  already holds), with week totals and a table view. A Fill Tempo button asks the local helper
-  (`POST /fill-hours`, a date only) to open Terminal on an attended Claude session for one day, or copies
-  the prompt without the helper. Its Tempo page, work-item note and folder come from a `fill_tempo` block
-  in `clients.json`; without one the button does not show.
-- **1.5.0** (2026-11-13): an optional timesheet-hours step. With a `digest/clients.json` in place, the
-  run measures the last seven days from your session transcripts, proposes the per-day gap against what
-  is already logged, and stops there — it reads and proposes, it never saves a timesheet entry. Off by
-  default; the repo ships only `clients.example.json`.
-- **1.4.1** (2026-11-06): the README's picker pictures show Clawd's real sticker on the Clawd card, instead of
-  the ticket the card falls back to offline. Those two pictures carry the sticker's CC BY-NC-SA 4.0 licence.
-- **1.4.0** (2026-11-06): calmer and roomier. The right-hand panel (count tiles, project cards, tabs and buttons)
-  now takes its colours from its world, light and dark, a step quieter than the scene. Cards tilt less as they grow
-  and not at all past 560 px, so big cards stay easy to read. A tall meeting hill no longer pushes signs into the sun:
-  the sun rides above every board, getting smaller first, and on a phone the scene gets up to 35% more sky rather than
-  shrinking the signs. In the swipe deck, where the scene's height is fixed by the screen, the sun can still touch the
-  top sign on a very tall day. The "now" label no longer sits on a signpost.
-- **1.3.0** (2026-11-05): a fourth world, Caterpillar: the day is a big leaf, the caterpillar's body is the
-  part of the day already lived with its head munching at now, it climbs over each meeting's hill, curls into a cocoon
-  after 6 PM, and the all-done finale is a butterfly. The meeting hills and the admin clipboards on the scene are now
-  links: each opens its row in Your day. Ticking Done on an admin to-do now closes its overdue or due-today deadline
-  in the admin log at the next build. Meeting titles are escaped before they reach the scene drawing (a `<` in a
-  calendar title used to break it).
-- **1.2.1** (2026-11-05): a simpler picker. The mascot is the ticket or Clawd; the little animal is now the style
-  of the page's icons rather than a third mascot, and it goes everywhere it fits (no more choosing places). The top
-  bar's sound and Look buttons keep their own drawings. On a brief opened as a file, the save button opens the live
-  brief with your choices already filled in. An older `look.json` still works: a "fanfan" mascot reads as the
-  ticket, and any list of places reads as all of them. 60 Python tests.
-- **1.2.0** (2026-11-05): build your own fairy. A picker (once on the first brief, then from Look) chooses the
-  mascot (the ticket, Clawd, or a little animal), one of four animals, line and eyes, six places for little animal
-  icons, and five moves. Saved by the helper to `~/.morning-fairy/look.json`, which also redraws today's brief. The
-  fanfan icons are bundled (MIT); Clawd loads from the artist's repository and falls back to the ticket offline.
-  The helper now refuses to be framed by another site. 56 Python tests, run by `npm test`.
-- **1.1.1** (2026-11-05): the Auto layout button is gone. On a wide window it looked exactly like Tap the scene;
-  the page still follows your window until you pick a layout, and the button for what's showing is the pressed one.
-- **1.1.0** (2026-11-05): a Dock app maker (`make_dock_app.sh`, macOS) with the mascot icon, a fill-in-the-blanks
-  daily routine prompt (`routine-prompt.md`), and a "Set up your daily brief" guide. CI now also runs on macOS.
-- **1.0.0** (2026-11-05): first release. Three worlds in light and dark, four layouts, the day scene with
-  meeting hills and a draggable sun, the mood mascot, the Done flight, the Quests board, Jira drafts with
-  tick-to-copy, the time machine, 17 sound effects, and a local helper that remembers Done taps.
+Every release, newest first, is in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
