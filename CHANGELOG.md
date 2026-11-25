@@ -1,5 +1,14 @@
 # Changelog
 
+- **1.23.0** (2026-11-25): a wider Scout. It now searches four lanes, so the list is never all one changelog: skills
+  and agent tooling (GitHub trending, skill repos rising over the last 30 days, Anthropic and Claude news), your
+  stack's release notes, posts by credible people (Simon Willison, Eugene Yan, Hamel Husain, Latent Space, Hacker
+  News, Reddit through web search) and one wildcard from outside your stack. Up to 8 finds, no more than 3 from one
+  lane, within 30 reads. A new script, `scout_feeds.py`, reads every feed in one call and says per source whether it
+  was read, so "nothing new" is never confused with "could not read"; add your own stack's feeds in
+  `~/.morning-fairy/scout_feeds.json` (example included: Google Cloud release notes, the Google Ads blog, two data
+  visualisation blogs). A credibility rule: an official source, a named practitioner or real discussion; a star
+  count alone is not enough.
 - **1.22.0** (2026-11-25): a new source, **doc comments**. Comments in Google Docs, Slides and Sheets that tag you
   now reach the to-do list: action items assigned to you that are still open, and @-mentions that ask you
   something. Google's comment emails say what was asked; a Google Drive search says which assignments are still

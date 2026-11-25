@@ -68,7 +68,7 @@ it can see.
 | ☁️ **Google Cloud** | What BigQuery queries cost this month in each project you work in | `gcloud` and `bq`, signed in | Cloud spend (optional) |
 | 🤖 **Your local Claude Code logs** | The time stamp on every message in the session logs Claude Code keeps on this computer (`~/.claude/projects/`), turned into hours per project. Sessions you run elsewhere (claude.ai, Claude Code on the web, another machine) are not seen | Local files, no connector | Timesheet hours (optional) |
 | ⏱ **Tempo** (the timesheet app inside Jira) | What you have already logged, and, after you approve the hours on the page, logging them | Claude in Chrome, signed in to Tempo ([why the browser](#-timesheet-hours-optional-off-by-default)) | Timesheet hours (optional) |
-| 🔭 **The web** | New repositories, the Claude Code changelog and Hacker News, for ideas that could help your projects | `gh`, web search | Scout (optional) |
+| 🔭 **The web** | GitHub trending and new skill repos, release notes, AI engineering blogs, Hacker News and Reddit, for ideas that could help your projects | `gh`, web search | Scout (optional) |
 | ✅ **Your Done taps** | What you finished on earlier briefs, so it does not come back as a to-do | `~/.morning-fairy/runs/done.jsonl`, written by the local helper | Automatic |
 
 **How to connect them.** Gmail, Google Calendar, Google Drive, Slack and Atlassian (Jira) are connectors you
@@ -96,7 +96,7 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 | 🔌 | **What your fairy reads** | Look lists the sources this morning's brief read and the ones it did not, with one button that copies a prompt asking Claude to help set up the rest. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. Optionally, a **Start in Claude** button opens the session for you. |
-| 🔭 | **Scout: worth a look** | Optional. A chapter of web finds (new repos, a tool's changelog, Hacker News) that could improve your work, each saying which of your projects it helps and why. They are offers, not to-dos: nothing waits on you, no Done pill, and each ask is read-and-assess only. |
+| 🔭 | **Scout: worth a look** | Optional. A chapter of web finds (trending repos, release notes, credible blogs and discussion, one wildcard) that could improve your work, each saying which of your projects it helps and why. They are offers, not to-dos: nothing waits on you, no Done pill, and each ask is read-and-assess only. |
 | 💸 | **Cloud spend** | Optional. What BigQuery queries have cost this month in each Google Cloud project you work in: a little bar per day, the month-end pace, the account that spent most, and a sweating mascot when a day jumps. |
 | 🎫 | **Jira drafts, tick to apply** | Each proposed update shows the exact text the ticket will get, the private evidence behind it, and a confidence line. Nothing is written until you paste it back. Tickets that already match sit folded underneath as "Already up to date". |
 | 🕰️ | **Time machine** | A month calendar plus a row of recent mornings. Pick a day to see what it said and what got done, then open that brief exactly as it was. |
@@ -321,9 +321,13 @@ What keeps it contained:
 ## 🔭 Scout (optional, off by default)
 
 The Scout tab, "Worth a look", is a short list of things the morning run found on the web this week that could
-improve your work, with a line on which project each helps, why, and how you might use it. It reads GitHub (one
-search per topic), a tool's changelog and Hacker News, never shows the same link twice in 14 mornings, and lists
-only what that run actually opened, with its real link.
+improve your work, with a line on which project each helps, why, and how you might use it. It searches four lanes,
+up to 8 finds and no more than 3 from one lane: skills and agent tooling (GitHub trending, new skill repos,
+Anthropic and Claude news), your stack's release notes, posts by credible people (a few AI engineering blogs,
+Hacker News, Reddit through web search), and one wildcard from outside your stack. One script reads every feed at
+once; add your own stack's release notes and blogs in `~/.morning-fairy/scout_feeds.json` (copy
+`digest/scout_feeds.example.json`). Stars alone never make a find credible. It never shows the same link twice in
+14 mornings, and lists only what that run actually opened, with its real link.
 
 It is off until you ask for it, because it searches the web: keep step 7 in `routine-prompt.md` and fill in one
 line about your projects and their stack. The finds are **offers, not to-dos**. They are left out of every count of
