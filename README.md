@@ -90,8 +90,8 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 |---|---|---|
 | 🌍 | **Four worlds** | Storybook garden, Cosmic orbit, Candy pop and Caterpillar, each with a light and a dark version (8 looks), its own cursor wand and its own fairy dust. In the caterpillar world the day is a leaf, the caterpillar's body is the part of the day already lived, and at 6 PM it curls into a cocoon. |
 | 🗺️ | **The day scene** | Hills rise at each real meeting by its weight (1 to 3). Drag the sun to scrub through the day; let go and it snaps back to now. Click a hill or its sign to open that meeting; click an admin clipboard to open its admin row. |
-| 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. **Click it** (on the hill, or top left) and it reacts: the ticket hops and pulls a face (a grin, heart eyes, surprise, a wink) as hearts or stars float up; Clawd plays a sticker. Five quick clicks make either one dizzy. It also grins when you tick a box, looks startled when you untick one, gets heart eyes on Done, and now and then does something by itself. |
-| 🧚 | **Ticket or Clawd** | Tap a picture at the top of Look to switch the mascot. A little dog draws every tab and icon on the page, with 5 small moves. |
+| 🎟️ | **A mascot with moods** | 4 moods: calm, sweat (something overdue), starry (nothing waits), sleepy (after 6 PM). The ticket's eyes follow your pointer. **Click it** (on the hill, or top left) and it reacts: the ticket hops and pulls a face (a grin, heart eyes, surprise, a wink) as hearts or stars float up; Nib and Pip pull the same faces; Clawd plays a sticker. Five quick clicks make either one dizzy. It also grins when you tick a box, looks startled when you untick one, gets heart eyes on Done, and now and then does something by itself. |
+| 🧚 | **Four mascots** | Tap a picture at the top of Look to switch the mascot: the ticket, Nib (a wax crayon drawn in crayon, its lines wobbling like hand-drawn animation), Pip (a little laptop whose face glows on its screen), or Clawd. A little dog draws every tab and icon on the page, with 5 small moves. |
 | 🔌 | **What your fairy reads** | Look lists the sources this morning's brief read and the ones it did not, with one button that copies a prompt asking Claude to help set up the rest. |
 | ✅ | **The Done flight** | A world-themed burst, a pen stroke across the card, then the card flies into Resolved. Undo flies it back to its place. |
 | 🧚 | **Quests for Claude** | Tasks Claude can pick up, grouped by project, each with a size ("about 20 min") and a "Copy for &lt;project&gt;" prompt that names the folder to open. Optionally, a **Start in Claude** button opens the session for you. |
@@ -129,7 +129,7 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
 ## 🧚 The Look panel
 
 <p align="center">
-  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: two mascot pictures at the top (the ticket picked; the Clawd button is left blank in this picture), the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
+  <img src="docs/look-panel.png" width="420" alt="The Look panel over the demo morning: the mascot pictures at the top (the ticket picked), the four worlds, dark mode and sparkles, the layout switch, then What your fairy reads: Calendar, Email, Slack, Jira and GitHub read this morning; Meeting notes, Google Cloud, Claude Code logs, Tempo and The web not read; and a button that copies a prompt to set up the rest"/>
   <br/><sub>Look, over the demo morning. Clawd's button shows the artist's sticker once Look opens; it is left blank
   here so this repository holds no copy of it. (Made-up data.)</sub>
 </p>
@@ -142,8 +142,9 @@ Chrome. What the morning run finds goes into that morning's brief (on your Deskt
   <a href="https://github.com/alwinecor/clawd-stickers">alwinecor/clawd-stickers</a> as you read this page; they are not part of this repository.</sub>
 </p>
 
-- **Mascot: Ticket or Clawd**, two pictures, no words. The brief's own blue ticket, or **Clawd**, as fan-art stickers
-  loaded from the artist's own repository (Clawd's picture on the switch loads only when you open Look). The switch saves through the local helper: open the brief from the Dock app (or
+- **Mascot: the ticket, Nib, Pip or Clawd**, four pictures, no words. The brief's own blue ticket; **Nib**, a wax crayon
+  drawn in crayon; **Pip**, a little laptop with its face on the screen (both drawn inside the page, with the ticket's moods
+  and faces); or **Clawd**, as fan-art stickers loaded from the artist's own repository (Clawd's picture on the switch loads only when you open Look). The switch saves through the local helper: open the brief from the Dock app (or
   `launch.sh`), tap the other mascot, and it writes `~/.morning-fairy/look.json` and rebuilds today's brief. Opened
   straight from the file, the switch says to open it from the Dock app instead.
 - **The little dog icons.** One fanfan style (the dog, thick lines, shiny eyes) draws the tabs and signposts, quest
@@ -506,6 +507,12 @@ See [NOTICE.md](NOTICE.md).
 
 ## Version history
 
+- **1.21.0** (2026-11-25): two new mascots and a bigger Clawd. **Nib**, a wax crayon drawn in crayon (its lines redraw
+  themselves a few times a second, like hand-drawn animation, in the scene and the top-left logo), and **Pip**, a little
+  laptop whose face glows on its screen (dimmer at night). Both have the ticket's four moods and five click faces, hop,
+  and do the same idle moments; both are drawn inside the page, so they work offline. Clawd now stands about 1.4 times
+  bigger, filling the space the ticket fills. The mascot switch in Look is always shown, with four pictures (three if
+  the builder does not offer Clawd).
 - **1.20.0** (2026-11-25): a livelier mascot. Click it, on the hill or top left (the top-left one is a button, so
   the keyboard reaches it too), and it reacts. The ticket hops and pulls one of four new faces in turn (a grin,
   heart eyes, surprise, a wink) while hearts or stars float up; Clawd plays one of five stickers in turn. Five quick

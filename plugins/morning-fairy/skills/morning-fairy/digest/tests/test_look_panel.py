@@ -77,7 +77,7 @@ class MascotSwitch(unittest.TestCase):
         self.assertIn('data-mascot="clawd"', panel)
 
     def test_the_current_mascot_is_pressed(self):
-        for kind in ("ticket", "clawd"):
+        for kind in ("ticket", "nib", "pip", "clawd"):
             panel = look_panel(bd.build(content(), look=dict(FULL_LOOK, mascot=kind)))
             self.assertRegex(panel, rf'data-mascot="{kind}" aria-pressed="true"')
 
@@ -87,12 +87,13 @@ class MascotSwitch(unittest.TestCase):
         for k, v in bd.FF_LOOK.items():
             self.assertIn(f'"{k}": "{v}"', html)
 
-    def test_no_switch_when_clawd_is_not_offered(self):
+    def test_no_clawd_button_when_clawd_is_not_offered(self):
         saved = bd.OFFER_CLAWD
         bd.OFFER_CLAWD = False
         try:
             html = bd.build(content(), look=FULL_LOOK)
-            self.assertNotIn('class="look-mascot"', html)
+            self.assertNotIn('data-mascot="clawd"', look_panel(html))
+            self.assertIn('data-mascot="nib"', look_panel(html))  # the drawn mascots are always offered
             self.assertNotIn("jsdelivr", html)
         finally:
             bd.OFFER_CLAWD = saved
@@ -107,7 +108,7 @@ class MascotSwitch(unittest.TestCase):
     def test_the_mascots_are_pictures_not_words(self):
         panel = look_panel(bd.build(content(), look=None))
         picks = re.findall(r'<button type="button" class="mpick" data-mascot="([a-z]+)"[^>]*>(.*?)</button>', panel)
-        self.assertEqual([k for k, _ in picks], ["ticket", "clawd"])
+        self.assertEqual([k for k, _ in picks], ["ticket", "nib", "pip", "clawd"])
         for k, inner in picks:
             self.assertTrue(inner.startswith("<img "), k)
             self.assertEqual(re.sub(r"<[^>]+>", "", inner).strip(), "", k)  # no visible words
