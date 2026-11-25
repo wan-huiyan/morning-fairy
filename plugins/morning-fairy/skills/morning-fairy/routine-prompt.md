@@ -16,8 +16,8 @@ to act on.
 
 1. Use the morning-fairy skill and follow its sections 1 ("The run") and 2 ("Build the page").
 2. Window: since the previous run (weekdays at 08:00; on a Monday, since Friday 08:00).
-3. Sources: <the connectors you have, for example: Google Calendar, Gmail, Slack, and Jira project PROJ through
-   the Atlassian connector>. If a source cannot be reached, build the page anyway and say which source was
+3. Sources: <the connectors you have, for example: Google Calendar, Gmail, Slack, doc comments through Google Drive, and
+   Jira project PROJ through the Atlassian connector>. If a source cannot be reached, build the page anyway and say which source was
    missing at the top.
 4. Before writing Needs attention, read what was marked Done on earlier briefs: run the skill's `read_done` on
    `~/.morning-fairy/runs/done.jsonl` for today. Anything marked done goes to Resolved as "You marked this
