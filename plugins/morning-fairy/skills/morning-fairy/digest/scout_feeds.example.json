@@ -1,0 +1,12 @@
+{
+  "_comment": "Copy this to ~/.morning-fairy/scout_feeds.json and keep only the feeds for your own stack (in that folder a plugin update keeps it). scout_feeds.py reads these after its built-in sources (GitHub trending, Anthropic and Claude news, a few AI engineering blogs). kind is feed (RSS or Atom), trending (a github.com/trending page) or sitemap (add \"filter\": \"/blog/,/news/\" to keep only those paths). lane is skills, stack or people, so the Scout can spread its finds across lanes. Every URL here answered with a feed on 25 Nov 2026.",
+  "feeds": [
+    {"lane": "skills", "name": "GitHub trending, Python, this week", "url": "https://github.com/trending/python?since=weekly", "kind": "trending"},
+    {"lane": "stack", "name": "BigQuery release notes", "url": "https://cloud.google.com/feeds/bigquery-release-notes.xml", "kind": "feed"},
+    {"lane": "stack", "name": "Dataform release notes", "url": "https://cloud.google.com/feeds/dataform-release-notes.xml", "kind": "feed"},
+    {"lane": "stack", "name": "Cloud Run release notes", "url": "https://cloud.google.com/feeds/cloud-run-release-notes.xml", "kind": "feed"},
+    {"lane": "stack", "name": "Google Ads and Commerce blog", "url": "https://blog.google/products/ads-commerce/rss/", "kind": "feed"},
+    {"lane": "people", "name": "FlowingData", "url": "https://flowingdata.com/feed", "kind": "feed"},
+    {"lane": "people", "name": "Datawrapper blog", "url": "https://www.datawrapper.de/blog/feed", "kind": "feed"}
+  ]
+}

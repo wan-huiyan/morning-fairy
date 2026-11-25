@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.22.0
+version: 1.23.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -455,25 +455,58 @@ never click a worklog card anywhere but its pencil.
 
 A "Worth a look" chapter of web finds that could improve the owner's work, shown after Hours. **Off unless the
 routine prompt asks for it** (step 7 of `routine-prompt.md`): it searches the web, so it is the owner's choice.
-Keep it small: at most 12 searches, commands or page reads in all, and at most 5 items. Do it last, after
-everything else is gathered.
+Budget: at most 30 searches, commands or page reads in all, and at most 8 items. Do it last, after everything else
+is gathered, and if it has run 25 minutes, stop it and build the page with what it has: the brief always ships, and
+the blurb says the Scout stopped early.
 
 **What the owner's work is.** Name it once in the routine prompt, from the content's `projects` list and each
 project's stack, so every find can say which project it helps and why, in one sentence.
 
-**Where to look** (commands tested 16 Nov 2026; swap the topics for the owner's):
+**Four lanes**, so the list is never all one tool's changelog. Read at least one source in every lane, and take at
+most 3 items from any one lane:
 
-- GitHub, **one topic per search** (an `OR` query returns nothing, silently):
+1. **Skills and agent tooling**: what is trending on GitHub, new skill and plugin repos, Anthropic and Claude news.
+2. **The owner's stack**: release notes of the tools the projects run on.
+3. **Posts by credible people**: practitioners writing about the owner's fields, and real discussion of them.
+4. **One wildcard**: at most one item outside the stack that could still change how the owner works (a new way of
+   working with agents, a chart form, an analysis method). Its `source` starts with "Wildcard:".
+
+**Start with one call** that reads every feed at once (about 30 seconds):
+`python3 -I <skill>/digest/scout_feeds.py`. Built in: GitHub trending this week, Anthropic's news and engineering
+posts, the Claude blog, and the blogs of Simon Willison, Eugene Yan, Hamel Husain and Latent Space. The owner adds
+their own stack's release notes and blogs in `<home>/scout_feeds.json` (copy `<skill>/digest/scout_feeds.example.json`,
+which has Google Cloud release notes, the Google Ads blog and two data visualisation blogs). Dated sources print only
+entries since the last brief; for Anthropic's sitemap that date is when a post last changed, so check an "updated"
+post is new before calling it news. A source marked UNREADABLE was not read: say so in the blurb, never "nothing new" for it.
+
+**Then, per lane** (commands tested 25 Nov 2026; swap the topics for the owner's):
+
+- Skills: rising repos, **one topic per search** (an `OR` query returns nothing, silently):
+  `gh search repos --topic=agent-skills --created ">=<today minus 30 days>" --sort stars --limit 8 --json fullName,description,stargazersCount,url,createdAt`,
+  and the same for `--topic=claude-skills` and `--topic=claude-code`. The Claude Code changelog, only the versions
+  since the last brief: `gh api repos/anthropics/claude-code/contents/CHANGELOG.md -H "Accept: application/vnd.github.raw" | head -60`
+  (without the raw `Accept` header the API returns no body for that file). A trending repo the owner already has
+  installed is news only for a new release; say they have it.
+- Stack: besides the release notes from the helper, new repos on the owner's topics,
   `gh search repos "<topic>" --created ">=<today minus 7 days>" --sort stars --limit 5 --json fullName,description,stargazersCount,url`.
-  Read a candidate's README with `gh api repos/<owner>/<name>/readme -H "Accept: application/vnd.github.raw" | head -80`.
-- A release or changelog of a tool the owner already uses, only the versions since the last brief. For Claude Code:
-  `gh api repos/anthropics/claude-code/contents/CHANGELOG.md -H "Accept: application/vnd.github.raw" | head -60`.
-  Without the raw `Accept` header the API returns no body for that file.
-- Hacker News top posts of the week, keeping only the owner's topics:
-  `curl -s --max-time 20 "https://hn.algolia.com/api/v1/search?tags=story&numericFilters=created_at_i>$(( $(date +%s) - 7*86400 )),points>150&hitsPerPage=40"`.
-- With searches left, a blog the owner trusts, through web search.
-- Prefer a release or feature of something already in use over a brand-new repo. Say in the blurb which sources
-  were read and what each gave, including "small, none worth your time" when that is the finding.
+  A release-note entry counts only when it changes something the owner uses; name what it changes.
+- People and discussion: Hacker News top posts of the week, keeping only the owner's topics and reading the post,
+  not just the headline:
+  `curl -s --max-time 20 "https://hn.algolia.com/api/v1/search?tags=story&numericFilters=created_at_i>$(( $(date +%s) - 7*86400 )),points>100&hitsPerPage=60"`.
+- Web search, 2 to 4 searches, for what scripts cannot read (Reddit and Search Engine Land answer 403): the week's
+  top posts in the subreddits on the owner's tools, and trade news for the owner's fields.
+- Read a GitHub candidate's README with `gh api repos/<owner>/<name>/readme -H "Accept: application/vnd.github.raw" | head -80`.
+
+**Credibility.** A find counts only if it comes from an official vendor source, a named practitioner with a track
+record, or real discussion (a Hacker News thread with more than 100 points, or a Reddit thread with substantive
+replies that this run could open and read in full; a search snippet is not enough). Stars
+alone are not credibility: in November 2026 some agent-skill repos showed 100k to 480k stars, implausible for their
+age, so treat an implausible count as a warning to show on the item, never a reason to pick it. Read every GitHub
+find's README before choosing it. Skip listicles, SEO pages, "top 10 AI tools" posts and anything not readable in full.
+
+Prefer a release or feature of something already in use over a brand-new repo, and a post that teaches a method over a
+product announcement. Say in the blurb, lane by lane, which sources were read and what each gave, including "small,
+none worth your time" when that is the finding.
 
 **Do not show a find twice.** Before choosing, read what earlier mornings showed and skip those URLs:
 `python3 -I -c "import sys; sys.path.insert(0, '<skill>/digest'); import build_digest as b; print(sorted(b.read_scouted('<home>/runs', '<YYYY-MM-DD today>')))"`
@@ -490,7 +523,7 @@ An empty list with "Looked at <sources>; nothing new worth your time" means the 
 {"id": "scout", "nav": "Scout", "title": "Worth a look", "blurb": "...",
  "lists": [{"id": "scout", "tone": "scout", "title": "Found this morning", "empty": "...",
    "items": [{"title": "what it is, in plain words", "url": "https://...", "text": "why it matters, for which project. {source}",
-              "source": "GitHub, 1.2k stars this week", "detail": "how the owner might adopt it, in your own words",
+              "source": "GitHub trending, 1.2k stars this week", "detail": "how the owner might adopt it, in your own words",
               "project": "<a name from the projects list>", "claude": {"ask": "...", "size": "about 15 min"}}]}]}
 ```
 
