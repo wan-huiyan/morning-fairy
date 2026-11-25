@@ -49,11 +49,15 @@ def read_extra(path):
     kind is feed (RSS or Atom), trending (a github.com/trending page) or sitemap (with "filter": "/blog/,/news/")."""
     if not os.path.exists(path):
         return []
-    with open(path, encoding="utf-8") as f:
-        feeds = json.load(f).get("feeds", [])
+    try:  # a typo in the owner's file must not stop the built-in sources being read
+        with open(path, encoding="utf-8") as f:
+            feeds = json.load(f).get("feeds", [])
+    except (OSError, ValueError, AttributeError) as e:
+        print(f"Skipped {path}: {type(e).__name__}: {e}", file=sys.stderr)
+        return []
     out = []
-    for x in feeds:
-        if x.get("kind", "feed") not in KINDS or not str(x.get("url", "")).startswith("https://"):
+    for x in feeds if isinstance(feeds, list) else []:
+        if not isinstance(x, dict) or x.get("kind", "feed") not in KINDS or not str(x.get("url", "")).startswith("https://"):
             print(f"Skipped a feed in {path}: needs an https url and kind feed, trending or sitemap: {x}", file=sys.stderr)
             continue
         out.append((x.get("lane", "stack"), x.get("name", x["url"]), x["url"], x.get("kind", "feed"), x.get("filter", "")))
@@ -68,7 +72,9 @@ def last_brief(runs, today):
 
 def fetch(url, timeout):
     # curl, not urllib: some Python builds (Homebrew 3.14) refuse certificate chains that curl accepts
-    r = subprocess.run(["curl", "-sSL", "--fail", "--max-time", str(int(timeout)), "-A", UA, url],
+    # https only, redirects included; -g leaves any {} or [] in a URL alone
+    r = subprocess.run(["curl", "-sSLg", "--fail", "--proto", "=https", "--proto-redir", "=https",
+                        "--max-time", str(int(timeout)), "-A", UA, "--", url],
                        capture_output=True, timeout=timeout + 5)
     if r.returncode:
         raise OSError(r.stderr.decode("utf-8", "replace").strip() or f"curl exit {r.returncode}")
@@ -94,7 +100,14 @@ def clean(s, n=110):
     return s[:n] + ("…" if len(s) > n else "")
 
 
+def safe_link(link):
+    link = (link or "").strip()
+    return link if re.fullmatch(r"https://\S+", link) else ""
+
+
 def read_feed(text):
+    if "<!ENTITY" in text:  # no feed needs entity declarations; refusing them blocks entity-expansion attacks
+        raise ValueError("feed declares XML entities")
     root = ET.fromstring(text.lstrip().encode("utf-8"))  # some feeds start with a blank line
     out = []
     for el in root.iter():
@@ -113,8 +126,12 @@ def read_feed(text):
         for k in ("pubDate", "published", "updated", "date"):
             if k in kids and (date := parse_date(kids[k].text)):
                 break
-        out.append((date, title, link))
-    return out
+        out.append((date, title, safe_link(link)))
+    return newest_first(out)
+
+
+def newest_first(items):
+    return sorted(items, key=lambda i: i[0] or dt.date.min, reverse=True)
 
 
 def read_trending(text):
@@ -137,8 +154,8 @@ def read_sitemap(text, prefixes, since):
     for loc, mod in re.findall(r"<loc>([^<]+)</loc>\s*<lastmod>([^<]+)</lastmod>", text):
         date = parse_date(mod)
         if date and date >= since and any(p in loc for p in prefixes) and loc.rstrip("/").count("/") >= 4:
-            out.append((date, loc.rstrip("/").rsplit("/", 1)[-1].replace("-", " "), loc))
-    return sorted(out, reverse=True)
+            out.append((date, loc.rstrip("/").rsplit("/", 1)[-1].replace("-", " "), safe_link(loc)))
+    return newest_first(out)
 
 
 def sweep(sources, since, out=print):
@@ -155,6 +172,8 @@ def sweep(sources, since, out=print):
             elif kind == "trending":
                 items = read_trending(text)
             else:
+                if "<loc>" not in text:
+                    raise ValueError("no <loc> entries; not a sitemap any more?")
                 items = read_sitemap(text, [p for p in filt.split(",") if p] or ["/"], since)
         except Exception as e:  # one bad source never stops the sweep
             out(f"\n[{lane}] {name}: UNREADABLE ({type(e).__name__}: {clean(str(e), 80)})")
@@ -162,7 +181,8 @@ def sweep(sources, since, out=print):
         if not items and kind == "trending":
             out(f"\n[{lane}] {name}: UNREADABLE (page read but no entries found; its layout may have changed)")
             continue
-        out(f"\n[{lane}] {name}: {len(items)} {'' if kind == 'trending' else 'new '}entries")
+        word = {"trending": "", "sitemap": "updated "}.get(kind, "new ")  # a sitemap date is the last change
+        out(f"\n[{lane}] {name}: {len(items)} {word}entries")
         for date, title, link in items[:MAX_ITEMS]:
             out(f"  {date or '-'} | {title} | {link}")
 

@@ -476,7 +476,8 @@ most 3 items from any one lane:
 posts, the Claude blog, and the blogs of Simon Willison, Eugene Yan, Hamel Husain and Latent Space. The owner adds
 their own stack's release notes and blogs in `<home>/scout_feeds.json` (copy `<skill>/digest/scout_feeds.example.json`,
 which has Google Cloud release notes, the Google Ads blog and two data visualisation blogs). Dated sources print only
-entries since the last brief. A source marked UNREADABLE was not read: say so in the blurb, never "nothing new" for it.
+entries since the last brief; for Anthropic's sitemap that date is when a post last changed, so check an "updated"
+post is new before calling it news. A source marked UNREADABLE was not read: say so in the blurb, never "nothing new" for it.
 
 **Then, per lane** (commands tested 25 Nov 2026; swap the topics for the owner's):
 
@@ -497,7 +498,8 @@ entries since the last brief. A source marked UNREADABLE was not read: say so in
 - Read a GitHub candidate's README with `gh api repos/<owner>/<name>/readme -H "Accept: application/vnd.github.raw" | head -80`.
 
 **Credibility.** A find counts only if it comes from an official vendor source, a named practitioner with a track
-record, or real discussion (a Hacker News thread with 100+ points, a Reddit thread with substantive replies). Stars
+record, or real discussion (a Hacker News thread with more than 100 points, or a Reddit thread with substantive
+replies that this run could open and read in full; a search snippet is not enough). Stars
 alone are not credibility: in November 2026 some agent-skill repos showed 100k to 480k stars, implausible for their
 age, so treat an implausible count as a warning to show on the item, never a reason to pick it. Read every GitHub
 find's README before choosing it. Skip listicles, SEO pages, "top 10 AI tools" posts and anything not readable in full.

@@ -42,6 +42,19 @@ class Parsers(unittest.TestCase):
         self.assertEqual(items[0], (dt.date(2026, 11, 24), "New & shiny", "https://example.com/new"))
         self.assertEqual(len(items), 2)
 
+    def test_only_https_links_reach_the_output(self):
+        items = sf.read_feed(RSS.replace("https://example.com/new", "javascript:alert(1)"))
+        self.assertEqual([i[2] for i in items], ["", "https://example.com/old"])
+
+    def test_an_oldest_first_feed_prints_newest_first(self):
+        head, new, old = RSS.split("<item>")
+        oldest_first = head + "<item>" + old.replace("</channel></rss>", "") + "<item>" + new + "</channel></rss>"
+        self.assertEqual([i[0].day for i in sf.read_feed(oldest_first)], [24, 10])
+
+    def test_entity_declarations_are_refused(self):
+        with self.assertRaises(ValueError):
+            sf.read_feed('<?xml version="1.0"?><!DOCTYPE r [<!ENTITY a "aaaa">]><rss>&a;</rss>')
+
     def test_atom_takes_the_alternate_link(self):
         self.assertEqual(sf.read_feed(ATOM), [(dt.date(2026, 11, 24), "A post", "https://example.org/post")])
 
@@ -104,6 +117,10 @@ class Config(unittest.TestCase):
                 {"name": "Odd kind", "url": "https://example.com/x", "kind": "scrape"}]}))
             self.assertEqual(sf.read_extra(str(p)), [("stack", "Release notes", "https://example.com/feed.xml", "feed", "")])
             self.assertEqual(sf.read_extra(str(Path(d, "missing.json"))), [])
+            p.write_text('{"feeds": [{"url": "https://x",}]}')
+            self.assertEqual(sf.read_extra(str(p)), [])  # bad JSON: skipped, never a crash
+            p.write_text('{"feeds": ["https://x"]}')
+            self.assertEqual(sf.read_extra(str(p)), [])
 
     def test_the_example_file_is_valid(self):
         feeds = sf.read_extra(str(DIGEST / "scout_feeds.example.json"))
