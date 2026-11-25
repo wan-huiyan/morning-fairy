@@ -5,7 +5,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 out="${1:-$(mktemp -d)}"
 # runs/ inside a fresh folder of its own: the builder looks for look.json beside runs/, and there is none here,
-# so the demo always shows the page's own look (and offers the "Build your own fairy" picker from Look)
+# so the demo always shows the ticket (switch to Clawd from Look when the page is open through the helper)
 runs="$(mktemp -d)/runs"
 mkdir "$runs"
 cp "$here"/demo/*.jsonl "$here"/demo/content-*.json "$runs"/

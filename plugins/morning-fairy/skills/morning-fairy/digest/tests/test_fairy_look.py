@@ -1,4 +1,4 @@
-"""Tests for the look (look.json, fanfan icons) in build_digest.py and the helper's /fanfan and /look routes in serve.py.
+"""Tests for the look (look.json, fanfan icons) in build_digest.py and the helper's /look route in serve.py.
 
 Run from the repo root:  python3 -I -B -m unittest discover -s plugins/morning-fairy/skills/morning-fairy/digest/tests -v
 (npm test runs it too.) Pages are built from the made-up demo morning. Everything is written under temp folders: before
@@ -31,19 +31,7 @@ import build_digest as bd  # noqa: E402
 import serve  # noqa: E402
 
 FIXTURE = DIGEST / "demo" / "content-2026-03-12.json"  # made-up data, shipped with the package
-
-
-def without_picker(html, date, look=None, emb=None):
-    """The page with the "Build your own fairy" picker taken out again: its template, its script, its Look-panel row and
-    the line that makes the good-morning parachute wait for it. Each must be there exactly once."""
-    tpl, js = bd.fairy_picker(look, date, emb)
-    for part in (tpl + "\n", js, bd.HELLO_WAIT):
-        assert html.count(part) == 1, part[:80]
-        html = html.replace(part, "")
-    # the Look-panel row (with the top-bar icons on, its label carries a little face)
-    html, n = re.subn(r'  <button type="button" class="look-switch fairy-open" id="fairy-open"[^\n]*?</button>\n', "", html)
-    assert n == 1
-    return html
+STYLES = ("thin", "thick", "thin-highlight", "thick-highlight")  # the bundled fanfan folders
 
 
 # every choice switched on: Clawd, the cat in thick lines with shiny eyes, all six places, all five moves
@@ -116,15 +104,12 @@ class BuildWithLook(unittest.TestCase):
     def page(self, look):
         return bd.build(json.loads(json.dumps(self.content)), look=look)
 
-    def test_no_look_is_the_old_page_plus_a_flag(self):
-        html = without_picker(self.page(None), self.content["date"])  # the picker is in every page; see test_fairy_picker
-        self.assertIn('<body data-look-set="0">', html)
-        self.assertNotIn("data-ff=", html.split("<script>")[0])
-        self.assertNotIn("fanfan", html)
+    def test_no_look_is_the_ticket_in_the_one_style(self):
+        # since 1.18.0 every page draws the same fanfan style; no look.json is the default look with the ticket
+        self.assertEqual(self.page(None), self.page(dict(FULL_LOOK, mascot="ticket")))
 
     def test_look_embeds_each_used_drawing_once(self):
         html = self.page(FULL_LOOK)
-        self.assertIn('<body data-look-set="1">', html)
         self.assertIn("MIT · by @唐幡", html)  # fanfan's own header kept
         for noun in ("sun", "ticket", "bell", "trophy", "news", "moon", "wand", "robot"):
             self.assertEqual(html.count(f'<template id="ff-{noun}">'), 1, noun)
@@ -136,7 +121,7 @@ class BuildWithLook(unittest.TestCase):
         self.assertLessEqual(used, carried)
         tpl = "".join(re.findall(r'<template id="ff-[a-z-]+">.*?</template>', html))
         self.assertTrue(tpl)
-        self.assertNotRegex(tpl, r"bb-(dog|lop|bunny)\b")  # only the chosen animal (the motion css names them all)
+        self.assertNotRegex(tpl, r"bb-(cat|lop|bunny)\b")  # only the chosen animal (the motion css names them all)
 
     def test_all_six_places_are_on_whatever_the_look_lists(self):
         full = self.page(FULL_LOOK)
@@ -145,7 +130,6 @@ class BuildWithLook(unittest.TestCase):
         no_key = {k: v for k, v in FULL_LOOK.items() if k != "places"}
         page = self.page(no_key)  # a missing "places" key is valid: same drawings, and the picker starts from all six
         self.assertEqual(re.findall(r'<template id="ff-[a-z-]+">', page), re.findall(r'<template id="ff-[a-z-]+">', full))
-        self.assertIn('"places": ["tabs", "quests", "toolbar", "done", "empty", "favicon"]', page)
         self.assertEqual(sorted(bd.Fan(FULL_LOOK).places), sorted(bd.FF_PLACES))
 
     def test_icons_are_decoration(self):
@@ -196,17 +180,15 @@ class BuildWithLook(unittest.TestCase):
 
     def test_every_bundled_drawing_passes_the_check(self):
         n = 0
-        for style in bd.FAIRY_STYLES:
+        for style in STYLES:
             for p in sorted((bd.FF_DIR / style).glob("*.svg")):
                 bd._ff_read(p)
                 n += 1
-        self.assertEqual(n, len(bd.FAIRY_STYLES) * len(bd.LOOK_CHOICES["animal"]) * len(bd.FF_NOUNS))
+        self.assertEqual(n, len(STYLES) * len(bd.LOOK_CHOICES["animal"]) * len(bd.FF_NOUNS))
 
     def test_lists_match_the_helpers(self):
         # the helper and the builder each keep their own copy (neither imports the other): they must agree
-        self.assertEqual(serve.FF_STYLES, bd.FAIRY_STYLES)
         self.assertEqual(serve.FF_ANIMALS, bd.LOOK_CHOICES["animal"])
-        self.assertEqual(serve.FF_NOUNS, bd.FF_NOUNS)
         self.assertEqual({k: tuple(v) for k, v in serve.LOOK_ONE.items()}, bd.LOOK_CHOICES)
         self.assertEqual(serve.LOOK_MANY, {"places": bd.FF_PLACES, "moves": bd.FF_MOVES})
 
@@ -234,10 +216,10 @@ class BuildWithLook(unittest.TestCase):
             cmd = [sys.executable, "-I", "-B", str(DIGEST / "build_digest.py"), str(FIXTURE), str(out),
                    "--log", str(tmp / "runs" / "streak.jsonl")]
             subprocess.run(cmd, check=True, capture_output=True)
-            self.assertIn('data-look-set="0"', out.read_text(encoding="utf-8"))  # no look.json yet
+            self.assertIn('data-mascot="ticket" aria-pressed="true"', out.read_text(encoding="utf-8"))  # no look.json yet
             (tmp / "look.json").write_text(json.dumps(FULL_LOOK), encoding="utf-8")
             subprocess.run(cmd, check=True, capture_output=True)
-            self.assertIn('data-look-set="1"', out.read_text(encoding="utf-8"))
+            self.assertIn('data-mascot="clawd" aria-pressed="true"', out.read_text(encoding="utf-8"))
         finally:
             shutil.rmtree(tmp)
 
@@ -287,26 +269,6 @@ class Helper(unittest.TestCase):
 
     def leftovers(self, folder):
         return sorted(p.name for p in folder.glob(".look.json.*"))
-
-    # ---- GET /fanfan/... ----
-    def test_fanfan_serves_a_listed_icon(self):
-        st, ct, body = self.req("GET", "/fanfan/thick-highlight/cat-star.svg")
-        self.assertEqual(st, 200)
-        self.assertEqual(ct, "image/svg+xml")
-        self.assertTrue(body.startswith(b"<svg"))
-        self.assertEqual(self.req("GET", "/fanfan/thin/bunny-face-whole.svg")[0], 200)
-
-    def test_fanfan_refuses_everything_else(self):
-        for path in ("/fanfan/../serve.py", "/fanfan/thin/../../serve.py", "/fanfan/thin/cat-star.svg/..",
-                     "/fanfan/%2e%2e/serve.py", "/fanfan/thin/cat-star%2Esvg", "/fanfan/thin/%2e%2e%2fLICENSE",
-                     "/fanfan/LICENSE", "/fanfan/fanfan-motion.css", "/fanfan/favicon/thin/cat-face-whole.svg",
-                     "/fanfan/thin/cat-home.svg", "/fanfan/thin/fox-star.svg", "/fanfan/fat/cat-star.svg",
-                     "/fanfan/thin/cat-star.svg?x=1", "/fanfan/thin//cat-star.svg", "/fanfan/THIN/cat-star.svg",
-                     "/fanfan/thin/cat-star.svg%00", "/fanfan/thin\\cat-star.svg", "/fanfan/thin/cat-star"):
-            self.assertEqual(self.req("GET", path)[0], 404, path)
-
-    def test_fanfan_needs_the_local_host(self):
-        self.assertEqual(self.req("GET", "/fanfan/thin/cat-star.svg", host="evil.example:8765")[0], 403)
 
     def test_brief_refuses_to_be_framed(self):
         name = "2026-03-12 Morning brief and Jira digest.html"
@@ -362,13 +324,11 @@ class Helper(unittest.TestCase):
             d = json.loads(FIXTURE.read_text(encoding="utf-8"))
             d["date"] = today
             content.write_text(json.dumps(d), encoding="utf-8")
-            new = dict(FULL_LOOK, animal="dog")
+            new = dict(FULL_LOOK, mascot="ticket")
             st, ct, body = self.req("POST", "/look", new)
             self.assertEqual((st, json.loads(body)), (200, {"ok": True, "saved": True, "rebuilt": True}))
             page = (self.desk / f"{today} Morning brief and Jira digest.html").read_text(encoding="utf-8")
-            self.assertIn('data-look-set="1"', page)
-            tpl = "".join(re.findall(r'<template id="ff-[a-z-]+">.*?</template>', page))
-            self.assertIn("bb-dog", tpl)
+            self.assertIn('data-mascot="ticket" aria-pressed="true"', page)
             self.assertTrue((self.digest / "runs" / "streak.jsonl").is_file())
             self.assertEqual(self.leftovers(self.digest), [])
             self.assertEqual([p.name for p in self.desk.iterdir() if p.name.startswith(".")], [])  # the brief was swapped in whole

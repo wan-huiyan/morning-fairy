@@ -59,7 +59,8 @@ describe("the demo builds", () => {
   });
   it("escapes plain-text fields (no raw <script from content)", () => {
     const scripts = (today.match(/<script/g) || []).length;
-    assert.ok(scripts <= 6, `unexpected number of script tags: ${scripts}`);
+    // the builder's own: head, stage and quest data, fanfan fill and moves, stage, page, Look panel (1.18.0: every page draws fanfan)
+    assert.ok(scripts <= 8, `unexpected number of script tags: ${scripts}`);
   });
   it("the demo never writes inside the repo", () => {
     assert.ok(!existsSync(resolve(DIGEST, "runs")), "build_demo.sh must not create digest/runs/");
