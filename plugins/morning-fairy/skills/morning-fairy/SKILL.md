@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.24.0
+version: 1.24.1
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -48,7 +48,7 @@ and, on macOS with the owner's yes, the Dock app. Go step by step, and tell the 
    | Email | one inbox search, e.g. `in:inbox newer_than:1d`, ids only, one result | the call returns |
    | Chat (Slack) | the owner's own profile; if there is no such tool, one search in the last day | the call returns |
    | Doc comments (Google Docs, Slides, Sheets) | a Drive search `followUp = 'actionitems'`, one result, no content snippets; without a Drive tool, an email search `from:comments-noreply@docs.google.com`, ids only | the call returns; nothing found is fine |
-   | Jira (Atlassian) | the tool that lists the Atlassian sites the connector can reach | at least one site; ask which site and project key the brief is for, and say that one connector reaches one Atlassian account. No site: the brief is built without its Jira half |
+   | Jira (Atlassian) | the tool that lists the Atlassian sites the connector can reach | at least one site; ask which site and project key the brief is for, and say that one connector reaches one Atlassian account. No site: the brief is built without its Jira half. Tickets on several Atlassian sites: see "Jira on several sites" below |
    | Meeting notes | a Drive search for a title containing "Notes by Gemini", no content snippets; without a Drive tool, the same words as an email search | the call returns; nothing found (an empty answer) is fine |
    | GitHub | `gh auth status` (doctor already ran it) | signed in. A GitHub connector or plugin that fails does not matter: the brief uses `gh` |
 
@@ -379,12 +379,17 @@ page says so). The work item, project and billable setting always come from the 
 page; minutes are 5 to 600 in steps of 5 and a description is at most 160 characters. The session
 reads the day in Tempo first and stops on any mismatch (time already on those work items, a key not in
 the picker, the wrong week).
+**Jira on several sites.** One Atlassian connector reaches one Atlassian account. If your tickets sit on several
+sites, Kai Ruether's "Jira (all my sites)" connector (from his daily-brief plugin, Monks Data & Analytics) runs on your
+Mac with your own read-only tokens and lists your open tickets across all of them (`my_open_tickets`). The run can
+add its overdue tickets to Needs attention; name it in the routine prompt's Sources line if you have it.
+
 **How the sessions write (1.24.0).** When an Atlassian connector in the session reaches the Tempo site, both hours
 sessions write each worklog with its `addOrEditJiraIssueWorklog` operation instead of typing into Tempo's Log Time
 dialog, which can drop letters from a typed description. Tempo picks such a worklog up as yours within seconds. Two
-traps: Tempo draws the card at the clock time Jira *prints* for the worklog, which can be another time zone than yours
-(one site prints Pacific time, so 15:30 sent with the London offset landed at 07:30), so `started` is written with the
-offset Jira prints and the reply is checked; and Jira keeps at most 10,000 worklogs per work item, so a busy shared admin
+traps: Tempo draws the card at the clock time Jira *prints* for the worklog, which is the time zone set in your Jira
+profile, not necessarily where you are (a profile left on Pacific time put 15:30 London at 07:30), so `started` is
+written with the offset Jira prints and the reply is checked; and Jira keeps at most 10,000 worklogs per work item, so a busy shared admin
 item refuses the write (`WORKLOGS_PER_ISSUE_LIMIT_EXCEEDED`) and that item still goes through the dialog. Chrome is still
 used to read the day first and to check the cards afterwards. An hours entry in the brief's content may carry a `"desc"` field to
 set the description the page offers; without one it starts from the entry's `"what"`. The helper logs

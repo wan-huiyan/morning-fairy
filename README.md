@@ -67,7 +67,7 @@ it can see.
 | 🐙 **GitHub** | Merged pull requests as evidence for Jira; the live state of anything carried over from yesterday ("to merge" may have merged overnight); Scout searches | The `gh` command-line tool, signed in | Jira drafts; Scout (optional) |
 | ☁️ **Google Cloud** | What BigQuery queries cost this month in each project you work in | `gcloud` and `bq`, signed in | Cloud spend (optional) |
 | 🤖 **Your local Claude Code logs** | The time stamp on every message in the session logs Claude Code keeps on this computer (`~/.claude/projects/`), turned into hours per project. Sessions you run elsewhere (claude.ai, Claude Code on the web, another machine) are not seen | Local files, no connector | Timesheet hours (optional) |
-| ⏱ **Tempo** (the timesheet app inside Jira) | What you have already logged, and, after you approve the hours on the page, logging them | Claude in Chrome, signed in to Tempo ([why the browser](#-timesheet-hours-optional-off-by-default)) | Timesheet hours (optional) |
+| ⏱ **Tempo** (the timesheet app inside Jira) | What you have already logged, and, after you approve the hours on the page, logging them | Claude in Chrome, signed in to Tempo ([why the browser](#-timesheet-hours-optional-off-by-default)); an Atlassian connector that reaches your Tempo site writes the worklogs | Timesheet hours (optional) |
 | 🔭 **The web** | GitHub trending and new skill repos, release notes, AI engineering blogs, Hacker News and Reddit, for ideas that could help your projects | `gh`, web search | Scout (optional) |
 | ✅ **Your Done taps** | What you finished on earlier briefs, so it does not come back as a to-do | `~/.morning-fairy/runs/done.jsonl`, written by the local helper | Automatic |
 
@@ -76,6 +76,8 @@ switch on once in Claude ([claude.ai](https://claude.ai) → Settings → Connec
 the same account see them as tools. Other connectors that give Claude the same reads (Outlook instead of Gmail,
 say) should work too, but only the ones named here have been used. The command-line tools need one sign-in each:
 `gh auth login`, and for spend `gcloud auth login` (which also signs in `bq`). Then list what you have in step 3 of the [routine prompt](plugins/morning-fairy/skills/morning-fairy/routine-prompt.md).
+If your Jira tickets sit on several Atlassian sites, Kai Ruether's "Jira (all my sites)" connector (from his daily-brief
+plugin) lists your open tickets across all of them; the run can read it too (SKILL.md, "Jira on several sites").
 A source that cannot be reached one morning does not stop the run: the page is built anyway and says at the top
 which source was missing.
 

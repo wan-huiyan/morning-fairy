@@ -1,5 +1,8 @@
 # Changelog
 
+- **1.24.1** (2026-11-26): credits Kai Ruether's "Jira (all my sites)" connector for tickets on several Atlassian
+  sites, which the run can read alongside the Atlassian connector. Corrects 1.24.0's note on worklog times: Tempo
+  draws a worklog in the time zone of your Jira profile.
 - **1.24.0** (2026-11-26): hours go into Tempo through the Atlassian connector. When an Atlassian connector in the
   session reaches your Tempo site, Approve and log and Fill Tempo write each worklog with its worklog operation instead of
   typing into Tempo's Log Time dialog, so descriptions arrive exactly as approved. Tempo shows such a worklog as yours.
