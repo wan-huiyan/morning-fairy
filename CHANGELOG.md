@@ -1,5 +1,11 @@
 # Changelog
 
+- **1.24.0** (2026-11-26): hours go into Tempo through the Atlassian connector. When an Atlassian connector in the
+  session reaches your Tempo site, Approve and log and Fill Tempo write each worklog with its worklog operation instead of
+  typing into Tempo's Log Time dialog, so descriptions arrive exactly as approved. Tempo shows such a worklog as yours.
+  The start time is sent with the offset Jira prints for that site, because Tempo draws the card at that clock reading,
+  and a work item Jira refuses at its 10,000-worklog cap still goes through the dialog. Chrome still reads the day
+  before and checks the cards after.
 - **1.23.0** (2026-11-25): a wider Scout. It now searches four lanes, so the list is never all one changelog: skills
   and agent tooling (GitHub trending, skill repos rising over the last 30 days, Anthropic and Claude news), your
   stack's release notes, posts by credible people (Simon Willison, Eugene Yan, Hamel Husain, Latent Space, Hacker
