@@ -82,7 +82,8 @@ which source was missing.
 **What it does not read:** your browser history, or any tool you have not given it a connector or a sign-in for.
 The one place it uses your browser is the two hours sessions (Fill Tempo and Approve and log), which start with
 Claude in Chrome so they can open your Tempo page; like any Claude in Chrome session, they act in your signed-in
-Chrome. What the morning run finds goes into that morning's brief (on your Desktop) and its files in
+Chrome. When an Atlassian connector reaches your Tempo site, they write the worklogs through it and use the page to
+read the day and check the result. What the morning run finds goes into that morning's brief (on your Desktop) and its files in
 `~/.morning-fairy/`.
 
 ## What you get

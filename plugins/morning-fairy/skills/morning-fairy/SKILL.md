@@ -1,6 +1,6 @@
 ---
 name: morning-fairy
-version: 1.23.0
+version: 1.24.0
 description: |
   Build a cute one-screen morning brief: the shape of today drawn as a little world (a draggable sun,
   hills that rise at each meeting, a ticket mascot at "now"), what needs you from email, chat,
@@ -378,7 +378,15 @@ in; Fill Tempo, which measures and proposes, stays on your default model. It nee
 page says so). The work item, project and billable setting always come from the brief, never from the
 page; minutes are 5 to 600 in steps of 5 and a description is at most 160 characters. The session
 reads the day in Tempo first and stops on any mismatch (time already on those work items, a key not in
-the picker, the wrong week). An hours entry in the brief's content may carry a `"desc"` field to
+the picker, the wrong week).
+**How the sessions write (1.24.0).** When an Atlassian connector in the session reaches the Tempo site, both hours
+sessions write each worklog with its `addOrEditJiraIssueWorklog` operation instead of typing into Tempo's Log Time
+dialog, which can drop letters from a typed description. Tempo picks such a worklog up as yours within seconds. Two
+traps: Tempo draws the card at the clock time Jira *prints* for the worklog, which can be another time zone than yours
+(one site prints Pacific time, so 15:30 sent with the London offset landed at 07:30), so `started` is written with the
+offset Jira prints and the reply is checked; and Jira keeps at most 10,000 worklogs per work item, so a busy shared admin
+item refuses the write (`WORKLOGS_PER_ISSUE_LIMIT_EXCEEDED`) and that item still goes through the dialog. Chrome is still
+used to read the day first and to check the cards afterwards. An hours entry in the brief's content may carry a `"desc"` field to
 set the description the page offers; without one it starts from the entry's `"what"`. The helper logs
 nothing to disk.
 
